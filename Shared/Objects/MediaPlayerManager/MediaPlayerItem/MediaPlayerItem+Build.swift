@@ -225,7 +225,7 @@ extension MediaPlayerItem {
                 parameters: videoStreamParameters
             )
 
-            guard let videoStreamURL = userSession.client.url(with: videoStreamRequest)
+            guard let videoStreamURL = userSession.client.url(with: videoStreamRequest, queryAPIKey: true)
             else { throw ErrorMessage("Unable to make video stream URL") }
 
             return videoStreamURL
