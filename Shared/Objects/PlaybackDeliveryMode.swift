@@ -6,6 +6,7 @@
 // Copyright (c) 2026 Jellyfin & Jellyfin Contributors
 //
 
+import Foundation
 import JellyfinAPI
 
 /// How the server is delivering the item currently playing, cheapest first.
@@ -43,6 +44,60 @@ enum PlaybackDeliveryMode: Displayable {
             "waveform"
         case .transcode:
             "exclamationmark.triangle"
+        }
+    }
+}
+
+extension MediaSourceInfo {
+
+    /// The mode the server chose in `PlaybackInfo`, read before playback starts.
+    ///
+    /// Without a `TranscodingUrl` the client streams the original file. With one, the server's
+    /// `TranscodeReasons` say what it had to change: any video reason means the video is re-encoded,
+    /// audio reasons alone mean only the audio is, and anything else (container, codec tag) is a remux.
+    var playbackDeliveryMode: PlaybackDeliveryMode {
+        guard let transcodingURL else { return .directPlay }
+
+        let reasons = URLComponents(string: transcodingURL)?
+            .queryItems?
+            .first { $0.name.caseInsensitiveCompare("TranscodeReasons") == .orderedSame }?
+            .value?
+            .split(separator: ",")
+            .compactMap { TranscodeReason(rawValue: String($0)) } ?? []
+
+        if reasons.contains(where: \.requiresVideoTranscode) {
+            return .transcode
+        }
+        if reasons.contains(where: \.isAudioReason) {
+            return .audioTranscode
+        }
+        return .remux
+    }
+}
+
+private extension TranscodeReason {
+
+    var requiresVideoTranscode: Bool {
+        switch self {
+        case .videoCodecNotSupported, .videoProfileNotSupported, .videoLevelNotSupported,
+             .videoResolutionNotSupported, .videoBitDepthNotSupported, .videoFramerateNotSupported,
+             .refFramesNotSupported, .anamorphicVideoNotSupported, .interlacedVideoNotSupported,
+             .videoBitrateNotSupported, .videoRangeTypeNotSupported, .unknownVideoStreamInfo,
+             .videoRotationNotSupported, .containerBitrateExceedsLimit, .subtitleCodecNotSupported:
+            true
+        default:
+            false
+        }
+    }
+
+    var isAudioReason: Bool {
+        switch self {
+        case .audioCodecNotSupported, .audioIsExternal, .secondaryAudioNotSupported,
+             .audioChannelsNotSupported, .audioProfileNotSupported, .audioSampleRateNotSupported,
+             .audioBitDepthNotSupported, .audioBitrateNotSupported, .unknownAudioStreamInfo:
+            true
+        default:
+            false
         }
     }
 }
