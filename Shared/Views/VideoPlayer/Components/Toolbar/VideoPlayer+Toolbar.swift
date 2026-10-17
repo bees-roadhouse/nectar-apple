@@ -129,6 +129,10 @@ extension VideoPlayer.PlaybackControls.Toolbar {
                 Text(_titleSubtitle.title)
                     .font(.title2)
                     .fontWeight(.semibold)
+
+                if let itemID = item.id {
+                    PlaybackModeBadge(itemID: itemID)
+                }
             }
             .lineLimit(1)
         }
