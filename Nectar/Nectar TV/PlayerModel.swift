@@ -1,7 +1,11 @@
 import AVFoundation
 import Foundation
 import NectarKit
+import OSLog
 import VideoToolbox
+
+/// What playback did, for checking on a device: never a URL, so never the token in it.
+private let log = Logger(subsystem: "com.beesroadhouse.nectar.tv", category: "playback")
 
 /// One title playing: ask nectar how, open what it answers, resume, and keep nectar told where we are.
 @MainActor
@@ -21,7 +25,11 @@ final class PlayerModel: Identifiable {
     private let session: NectarSession
     private var timeObserver: Any?
     private var statusObservation: NSKeyValueObservation?
+    private var itemStatusObservation: NSKeyValueObservation?
     private var lastReported: Double = -1
+    private var started: ContinuousClock.Instant?
+    /// AVPlayer starts out paused; only a pause after playing is the viewer's.
+    private var hasPlayed = false
 
     /// How often progress goes to nectar while playing.
     private static let reportEvery: Double = 10
@@ -40,8 +48,11 @@ final class PlayerModel: Identifiable {
     func start() async {
         guard case .deciding = phase else { return }
         let resume = card.progressSeconds ?? 0
+        let started = ContinuousClock.now
+        log.info("play \(self.card.id, privacy: .public) resume=\(resume, privacy: .public)s hevc=\(Self.capabilities.videoCodecs.contains("hevc"), privacy: .public)")
         do {
             let decision = try await session.decide(card.id, capabilities: Self.capabilities, startOffset: resume > 0 ? resume : nil)
+            log.info("decide \(decision.strategy.rawValue, privacy: .public) \(decision.playMethod ?? "-", privacy: .public) reason=\(decision.reason ?? "-", privacy: .public) start_offset=\(decision.startOffsetSeconds, privacy: .public)s after \(started.duration(to: .now), privacy: .public)")
             // The URL carries the access token: it goes to AVPlayer and nowhere else.
             let player = AVPlayer(url: try await session.mediaURL(decision.streamPath))
             let seek = decision.seek(toResumeAt: resume)
@@ -51,7 +62,9 @@ final class PlayerModel: Identifiable {
             observe(player, decision)
             phase = .playing(player, decision)
             player.play()
+            self.started = started
         } catch {
+            log.error("play failed: \(String(describing: error), privacy: .public)")
             phase = .failed("Couldn't start this title.")
         }
     }
@@ -63,6 +76,7 @@ final class PlayerModel: Identifiable {
         if let timeObserver { player.removeTimeObserver(timeObserver) }
         timeObserver = nil
         statusObservation = nil
+        itemStatusObservation = nil
         let position = position(of: player, decision)
         let duration = decision.durationSeconds ?? card.runtimeSeconds
         let completed = duration.map { position >= $0 * 0.95 } ?? false
@@ -79,10 +93,24 @@ final class PlayerModel: Identifiable {
             }
         }
         statusObservation = player.observe(\.timeControlStatus) { [weak self] player, _ in
-            guard player.timeControlStatus == .paused else { return }
+            let status = player.timeControlStatus
             Task { @MainActor in
                 guard let self else { return }
-                self.report(self.position(of: player, decision), paused: true, force: true)
+                if status == .playing { self.hasPlayed = true }
+                if status == .playing, let started = self.started {
+                    log.info("playing at \(self.position(of: player, decision), privacy: .public)s, \(started.duration(to: .now), privacy: .public) after select")
+                    self.started = nil
+                }
+                if status == .paused, self.hasPlayed {
+                    self.report(self.position(of: player, decision), paused: true, force: true)
+                }
+            }
+        }
+        if let item = player.currentItem {
+            itemStatusObservation = item.observe(\.status) { item, _ in
+                if item.status == .failed {
+                    log.error("player item failed: \(String(describing: item.error), privacy: .public)")
+                }
             }
         }
     }
@@ -98,6 +126,13 @@ final class PlayerModel: Identifiable {
         guard force || abs(position - lastReported) >= 1 else { return }
         lastReported = position
         let session = session, itemID = card.id
-        Task { try? await session.reportProgress(itemID, positionSeconds: position, paused: paused, completed: completed) }
+        Task {
+            do {
+                try await session.reportProgress(itemID, positionSeconds: position, paused: paused, completed: completed)
+                log.info("progress \(position, privacy: .public)s paused=\(paused, privacy: .public) completed=\(completed ?? false, privacy: .public) saved")
+            } catch {
+                log.error("progress \(position, privacy: .public)s not saved: \(String(describing: error), privacy: .public)")
+            }
+        }
     }
 }
