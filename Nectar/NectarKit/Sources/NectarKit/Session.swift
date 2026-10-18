@@ -63,14 +63,14 @@ public actor NectarSession {
     }
 
     /// GET a path under the base URL, as the signed-in user.
-    public func get(_ path: String) async throws -> Data {
+    public func get(_ path: String, query: [URLQueryItem] = []) async throws -> Data {
         guard let tokens = store.tokens else { throw NectarSessionError.signedOut }
 
-        let (data, response) = try await send(path, with: tokens.accessToken)
+        let (data, response) = try await send(path, query: query, with: tokens.accessToken)
         guard response.statusCode == 401 else { return try Self.checked(data, response) }
 
         let fresh = try await refreshed(after: tokens)
-        let (retryData, retryResponse) = try await send(path, with: fresh.accessToken)
+        let (retryData, retryResponse) = try await send(path, query: query, with: fresh.accessToken)
         if retryResponse.statusCode == 401 {
             signOut()
             throw NectarSessionError.signedOut
@@ -119,8 +119,10 @@ public actor NectarSession {
 
     // MARK: - Helpers
 
-    private func send(_ path: String, with accessToken: String) async throws -> (Data, HTTPURLResponse) {
-        var request = URLRequest(url: baseURL.appending(path: path))
+    private func send(_ path: String, query: [URLQueryItem], with accessToken: String) async throws -> (Data, HTTPURLResponse) {
+        var url = baseURL.appending(path: path)
+        if !query.isEmpty { url.append(queryItems: query) }
+        var request = URLRequest(url: url)
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         return try await transport.send(request)

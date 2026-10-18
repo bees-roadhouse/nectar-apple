@@ -15,8 +15,8 @@ struct NectarTVApp: App {
                     ProgressView()
                 case let .signingIn(signIn):
                     SignInView(model: signIn)
-                case let .signedIn(user):
-                    HomeView(user: user) { model.signOut() }
+                case let .signedIn(user, home):
+                    HomeView(user: user, model: home) { model.signOut() }
                 }
             }
             .task { await model.start() }

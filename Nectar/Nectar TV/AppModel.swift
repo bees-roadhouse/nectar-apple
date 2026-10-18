@@ -10,7 +10,7 @@ final class AppModel {
     enum State {
         case starting
         case signingIn(SignInModel)
-        case signedIn(NectarUser)
+        case signedIn(NectarUser, HomeModel)
     }
 
     /// nectar's public address. Its discovery document names the device and token endpoints.
@@ -26,7 +26,7 @@ final class AppModel {
         guard case .starting = state else { return }
 
         if store.tokens != nil, let session = try? await makeSession(), let user = try? await session.currentUser() {
-            state = .signedIn(user)
+            state = .signedIn(user, home(session))
             return
         }
         beginSignIn()
@@ -52,10 +52,14 @@ final class AppModel {
         let session = NectarSession(baseURL: Self.server, tokenEndpoint: tokenEndpoint, clientID: Self.clientID, store: store)
         self.session = session
         if let user = try? await session.currentUser() {
-            state = .signedIn(user)
+            state = .signedIn(user, home(session))
         } else {
             beginSignIn()
         }
+    }
+
+    private func home(_ session: NectarSession) -> HomeModel {
+        HomeModel(session: session) { [weak self] in self?.signOut() }
     }
 
     private func makeSession() async throws -> NectarSession {
