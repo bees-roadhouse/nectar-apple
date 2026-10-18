@@ -8,6 +8,8 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
     public let id: String
     public let itemType: String?
     public let title: String?
+    /// An episode's series (nectar#393); nil for anything else.
+    public let seriesTitle: String?
     public let year: Int?
     public let runtimeSeconds: Double?
     public let seasonNumber: Int?
@@ -22,6 +24,7 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
         id: String,
         itemType: String? = nil,
         title: String? = nil,
+        seriesTitle: String? = nil,
         year: Int? = nil,
         runtimeSeconds: Double? = nil,
         seasonNumber: Int? = nil,
@@ -33,6 +36,7 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
         self.id = id
         self.itemType = itemType
         self.title = title
+        self.seriesTitle = seriesTitle
         self.year = year
         self.runtimeSeconds = runtimeSeconds
         self.seasonNumber = seasonNumber
@@ -46,6 +50,7 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
         case id
         case itemType = "item_type"
         case title
+        case seriesTitle = "series_title"
         case year
         case runtimeSeconds = "runtime_seconds"
         case seasonNumber = "season_number"

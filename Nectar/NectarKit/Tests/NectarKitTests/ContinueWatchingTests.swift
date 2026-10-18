@@ -33,7 +33,7 @@ private let continueBody = #"""
   "season_number":null,"episode_number":null,
   "poster_url":"/api/v1/images/aa11","backdrop_url":"/api/v1/images/bb22","logo_url":null,
   "genres":["Drama","Science Fiction"],"progress_seconds":1740.5},
- {"id":"9e2d","library_id":"lib2","parent_id":"s1","item_type":"episode","title":"The Pilot",
+ {"id":"9e2d","library_id":"lib2","parent_id":"s1","item_type":"episode","title":"The Pilot","series_title":"Severance",
   "runtime_seconds":null,"season_number":1,"episode_number":1,
   "poster_url":null,"backdrop_url":null,"genres":[],"progress_seconds":300}
 ],"total":2}
@@ -59,6 +59,8 @@ struct ContinueWatchingTests {
             id: "6f1c", itemType: "movie", title: "Arrival", year: 2016, runtimeSeconds: 6960,
             posterPath: "/api/v1/images/aa11", backdropPath: "/api/v1/images/bb22", progressSeconds: 1740.5
         ))
+        #expect(cards[0].seriesTitle == nil)
+        #expect(cards[1].seriesTitle == "Severance")
         #expect(cards[1].seasonNumber == 1)
         #expect(cards[1].artworkPath == nil)
     }
