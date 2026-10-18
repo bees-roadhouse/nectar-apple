@@ -2,7 +2,7 @@ import Foundation
 import NectarKit
 import UIKit
 
-/// Where the app is: deciding, signing in on this TV, or signed in.
+/// Where the app is: deciding, signing in on this TV, signed in, or unable to reach nectar.
 @MainActor
 @Observable
 final class AppModel {
@@ -11,6 +11,8 @@ final class AppModel {
         case starting
         case signingIn(SignInModel)
         case signedIn(NectarUser, HomeModel)
+        /// Signed in, as far as we know, but nectar didn't answer. Retry, never the sign-in code.
+        case unreachable
     }
 
     /// nectar's public address. Its discovery document names the device and token endpoints.
@@ -24,12 +26,37 @@ final class AppModel {
 
     func start() async {
         guard case .starting = state else { return }
+        await resume()
+    }
 
-        if store.tokens != nil, let session = try? await makeSession(), let user = try? await session.currentUser() {
-            state = .signedIn(user, home(session))
-            return
+    func retry() async {
+        guard case .unreachable = state else { return }
+        state = .starting
+        await resume()
+    }
+
+    /// Picks up a stored sign-in. Only nectar refusing it leads to the sign-in code (#19).
+    private func resume() async {
+        var resumed: NectarSession?
+        let check = await LaunchCheck.run(
+            hasTokens: store.tokens != nil,
+            discover: { try await DeviceFlowClient(issuer: Self.server, clientID: Self.clientID, deviceName: "").discover().token },
+            currentUser: { [session, store] tokenEndpoint in
+                let candidate = session ?? NectarSession(baseURL: Self.server, tokenEndpoint: tokenEndpoint, clientID: Self.clientID, store: store)
+                resumed = candidate
+                return try await candidate.currentUser()
+            }
+        )
+        switch check {
+        case let .signedIn(user):
+            guard let resumed else { return beginSignIn() }
+            session = resumed
+            state = .signedIn(user, home(resumed))
+        case .signedOut:
+            beginSignIn()
+        case .unreachable:
+            state = .unreachable
         }
-        beginSignIn()
     }
 
     func signOut() {
@@ -60,13 +87,5 @@ final class AppModel {
 
     private func home(_ session: NectarSession) -> HomeModel {
         HomeModel(session: session) { [weak self] in self?.signOut() }
-    }
-
-    private func makeSession() async throws -> NectarSession {
-        if let session { return session }
-        let endpoints = try await DeviceFlowClient(issuer: Self.server, clientID: Self.clientID, deviceName: "").discover()
-        let session = NectarSession(baseURL: Self.server, tokenEndpoint: endpoints.token, clientID: Self.clientID, store: store)
-        self.session = session
-        return session
     }
 }

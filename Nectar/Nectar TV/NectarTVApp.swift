@@ -17,6 +17,8 @@ struct NectarTVApp: App {
                     SignInView(model: signIn)
                 case let .signedIn(user, home):
                     HomeView(user: user, model: home) { model.signOut() }
+                case .unreachable:
+                    UnreachableView { await model.retry() }
                 }
             }
             .task { await model.start() }
