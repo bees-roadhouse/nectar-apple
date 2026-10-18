@@ -22,6 +22,8 @@ public enum NectarSessionError: Error, Equatable {
     /// No tokens, or the refresh token was refused: the user has to sign in again.
     case signedOut
     case unexpectedStatus(Int)
+    /// A path nectar handed out that doesn't form a URL on this server.
+    case invalidPath(String)
 }
 
 /// The signed-in connection to nectar's own API.
@@ -64,13 +66,33 @@ public actor NectarSession {
 
     /// GET a path under the base URL, as the signed-in user.
     public func get(_ path: String, query: [URLQueryItem] = []) async throws -> Data {
+        try await request("GET", path, query: query, body: nil)
+    }
+
+    /// POST a JSON body to a path under the base URL, as the signed-in user.
+    public func post(_ path: String, json body: some Encodable & Sendable) async throws -> Data {
+        try await request("POST", path, query: [], body: try JSONEncoder().encode(body))
+    }
+
+    /// A media URL AVPlayer can open on its own: it can't add headers, so the access token
+    /// rides in the query (nectar#379 takes `?access_token=` on streaming and image paths only).
+    /// The URL is a credential; don't log it.
+    public func mediaURL(_ path: String) throws -> URL {
+        guard let tokens = store.tokens else { throw NectarSessionError.signedOut }
+        guard let url = resolve(path) else { throw NectarSessionError.invalidPath(path) }
+        var components = URLComponents(url: url, resolvingAgainstBaseURL: true)!
+        components.queryItems = (components.queryItems ?? []) + [URLQueryItem(name: "access_token", value: tokens.accessToken)]
+        return components.url!
+    }
+
+    private func request(_ method: String, _ path: String, query: [URLQueryItem], body: Data?) async throws -> Data {
         guard let tokens = store.tokens else { throw NectarSessionError.signedOut }
 
-        let (data, response) = try await send(path, query: query, with: tokens.accessToken)
+        let (data, response) = try await send(method, path, query: query, body: body, with: tokens.accessToken)
         guard response.statusCode == 401 else { return try Self.checked(data, response) }
 
         let fresh = try await refreshed(after: tokens)
-        let (retryData, retryResponse) = try await send(path, query: query, with: fresh.accessToken)
+        let (retryData, retryResponse) = try await send(method, path, query: query, body: body, with: fresh.accessToken)
         if retryResponse.statusCode == 401 {
             signOut()
             throw NectarSessionError.signedOut
@@ -119,12 +141,17 @@ public actor NectarSession {
 
     // MARK: - Helpers
 
-    private func send(_ path: String, query: [URLQueryItem], with accessToken: String) async throws -> (Data, HTTPURLResponse) {
+    private func send(_ method: String, _ path: String, query: [URLQueryItem], body: Data?, with accessToken: String) async throws -> (Data, HTTPURLResponse) {
         var url = baseURL.appending(path: path)
         if !query.isEmpty { url.append(queryItems: query) }
         var request = URLRequest(url: url)
+        request.httpMethod = method
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let body {
+            request.httpBody = body
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
         return try await transport.send(request)
     }
 
