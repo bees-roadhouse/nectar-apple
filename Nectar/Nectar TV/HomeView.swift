@@ -29,9 +29,16 @@ struct HomeView: View {
     var body: some View {
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 48) {
+                HeroBillboard(slides: model.hero, session: model.session, focusScope: focusScope) { slide in
+                    Task { await model.play(slide) }
+                } open: { card in
+                    model.open(card)
+                }
+
                 NowDownloadingRow(model: activity) { showingActivity = true }
 
-                ContinueWatchingRow(row: model.continueWatching, session: model.session, focusScope: focusScope, play: model.play)
+                // Focus starts on the billboard when there is one, else on the first card here.
+                ContinueWatchingRow(row: model.continueWatching, session: model.session, focusScope: focusScope, prefersFocus: model.hero.isEmpty, play: model.play)
 
                 if !model.forYou.isEmpty {
                     PosterShelf(title: "For you", kind: .movies, session: model.session,
@@ -83,6 +90,7 @@ private struct ContinueWatchingRow: View {
     let row: HomeModel.Row
     let session: NectarSession
     let focusScope: Namespace.ID
+    let prefersFocus: Bool
     let play: (MediaCard) -> Void
 
     /// 2 on an Apple TV 4K, so a 480 pt card asks nectar for 960 px artwork (#26).
@@ -113,7 +121,7 @@ private struct ContinueWatchingRow: View {
                                 card: card,
                                 artwork: artwork(card),
                                 maxPixelSize: Int(CardView.size.width * displayScale),
-                                isDefaultFocus: card.id == cards.first?.id,
+                                isDefaultFocus: prefersFocus && card.id == cards.first?.id,
                                 focusScope: focusScope
                             ) { play(card) }
                         }

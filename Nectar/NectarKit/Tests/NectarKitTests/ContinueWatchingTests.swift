@@ -57,7 +57,8 @@ struct ContinueWatchingTests {
         #expect(cards.count == 2)
         #expect(cards[0] == MediaCard(
             id: "6f1c", itemType: "movie", title: "Arrival", year: 2016, runtimeSeconds: 6960,
-            posterPath: "/api/v1/images/aa11", backdropPath: "/api/v1/images/bb22", progressSeconds: 1740.5
+            posterPath: "/api/v1/images/aa11", backdropPath: "/api/v1/images/bb22", progressSeconds: 1740.5,
+            genres: ["Drama", "Science Fiction"]
         ))
         #expect(cards[0].seriesTitle == nil)
         #expect(cards[1].seriesTitle == "Severance")
