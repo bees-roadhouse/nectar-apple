@@ -21,6 +21,8 @@ final class PlayerModel: Identifiable {
     nonisolated let id: String
     let card: MediaCard
     private(set) var phase: Phase = .deciding
+    /// What the file is, once the item route answers: for Playback info (#82).
+    private(set) var source: PlaybackSource?
 
     private let session: NectarSession
     private var timeObserver: Any?
@@ -80,12 +82,16 @@ final class PlayerModel: Identifiable {
         guard let item else { return }
         item.externalMetadata = NowPlaying.metadata(for: card, detail: nil, artwork: nil)
         let session = session, card = card
-        Task { [weak item] in
+        Task { [weak self, weak item] in
             async let detail = try? session.detail(card.id)
             let poster = session.resolve(card.posterPath, pixelWidth: 600)
             let artwork = await (poster != nil ? try? ImageCache.shared.data(for: poster!) : nil)
-            let full = NowPlaying.metadata(for: card, detail: await detail, artwork: artwork)
-            await MainActor.run { item?.externalMetadata = full }
+            let fetched = await detail
+            let full = NowPlaying.metadata(for: card, detail: fetched, artwork: artwork)
+            await MainActor.run {
+                item?.externalMetadata = full
+                self?.source = fetched?.source
+            }
         }
     }
 
