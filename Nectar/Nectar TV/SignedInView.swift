@@ -14,6 +14,8 @@ struct SignedInView: View {
     private var playlists: PlaylistsModel
     @State
     private var search: SearchModel
+    @State
+    private var activity: ActivityModel
     /// Every library this user can see, each its own tab, as nectar lists them; none until it answers.
     @State
     private var libraries: [Library] = []
@@ -25,12 +27,13 @@ struct SignedInView: View {
         _discover = State(initialValue: DiscoverModel(session: home.session, userID: user.id))
         _playlists = State(initialValue: PlaylistsModel(session: home.session))
         _search = State(initialValue: SearchModel(session: home.session))
+        _activity = State(initialValue: ActivityModel(session: home.session))
     }
 
     var body: some View {
         TabView {
             Tab("Home", systemImage: "house") {
-                HomeView(user: user, model: home, discover: discover, signOut: signOut)
+                HomeView(user: user, model: home, discover: discover, activity: activity, signOut: signOut)
             }
             ForEach(libraries) { library in
                 Tab(library.name, systemImage: library.kind.symbol) {
@@ -47,6 +50,8 @@ struct SignedInView: View {
                 PlaylistsView(model: playlists)
             }
         }
+        // One live event stream for the signed-in app; it ends with the session.
+        .task { await activity.follow() }
         .task {
             libraries = (try? await home.session.libraries()) ?? []
         }

@@ -10,6 +10,8 @@ struct HomeView: View {
     var model: HomeModel
     /// Discover's model, for a recommendation that isn't in the library yet.
     let discover: DiscoverModel
+    /// Downloads in flight, live.
+    let activity: ActivityModel
     let signOut: () -> Void
 
     /// Focus starts on the row, not on Sign out.
@@ -21,10 +23,14 @@ struct HomeView: View {
 
     @State
     private var showingAccount = false
+    @State
+    private var showingActivity = false
 
     var body: some View {
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 48) {
+                NowDownloadingRow(model: activity) { showingActivity = true }
+
                 ContinueWatchingRow(row: model.continueWatching, session: model.session, focusScope: focusScope, play: model.play)
 
                 if !model.forYou.isEmpty {
@@ -42,6 +48,7 @@ struct HomeView: View {
                     Text("Signed in as \(user.username)")
                         .foregroundStyle(.secondary)
                     Button("Account", systemImage: "person.crop.circle") { showingAccount = true }
+                    Button("Activity", systemImage: "arrow.down.circle") { showingActivity = true }
                     Button("Sign out", action: signOut)
                 }
             }
@@ -59,6 +66,9 @@ struct HomeView: View {
         }
         .fullScreenCover(isPresented: $showingAccount) {
             AccountView(user: user, session: model.session)
+        }
+        .fullScreenCover(isPresented: $showingActivity) {
+            ActivityView(model: activity)
         }
         .task {
             await model.load()
