@@ -54,7 +54,8 @@
     trailingCommas,         \
     yodaConditions
 
---exclude Shared/Strings/Strings.swift, \
+--exclude Nectar, \
+  Shared/Strings/Strings.swift, \
     fastlane/,				\
 	build/
 
