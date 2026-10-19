@@ -26,6 +26,34 @@ public enum NectarSessionError: Error, Equatable {
     case invalidPath(String)
 }
 
+/// Who is calling, sent on every request so nectar's sessions and activity name the TV (nectar-apple#59).
+/// Native headers, not a Jellyfin `MediaBrowser` one: this is nectar's own client.
+public struct ClientInfo: Equatable, Sendable {
+    public let client: String
+    public let device: String
+    public let deviceID: String
+    public let version: String
+    /// A run driven by the developer's tools rather than a person: nectar can leave its plays out of
+    /// activity and history.
+    public let isTestRun: Bool
+
+    public init(client: String, device: String, deviceID: String, version: String, isTestRun: Bool = false) {
+        self.client = client
+        self.device = device
+        self.deviceID = deviceID
+        self.version = version
+        self.isTestRun = isTestRun
+    }
+
+    func stamp(_ request: inout URLRequest) {
+        request.setValue(client, forHTTPHeaderField: "X-Nectar-Client")
+        request.setValue(device, forHTTPHeaderField: "X-Nectar-Device")
+        request.setValue(deviceID, forHTTPHeaderField: "X-Nectar-Device-Id")
+        request.setValue(version, forHTTPHeaderField: "X-Nectar-Version")
+        if isTestRun { request.setValue("1", forHTTPHeaderField: "X-Nectar-Test") }
+    }
+}
+
 /// The signed-in connection to nectar's own API.
 ///
 /// Every request carries the access token. On a 401 it refreshes once and retries. Refresh tokens
@@ -38,15 +66,17 @@ public actor NectarSession {
     private let clientID: String
     private let store: any TokenStore
     private let transport: any HTTPTransport
+    private let client: ClientInfo?
 
     private var refreshing: Task<TokenSet, Error>?
 
-    public init(baseURL: URL, tokenEndpoint: URL, clientID: String, store: any TokenStore, transport: any HTTPTransport = URLSessionTransport()) {
+    public init(baseURL: URL, tokenEndpoint: URL, clientID: String, store: any TokenStore, transport: any HTTPTransport = URLSessionTransport(), client: ClientInfo? = nil) {
         self.baseURL = baseURL
         self.tokenEndpoint = tokenEndpoint
         self.clientID = clientID
         self.store = store
         self.transport = transport
+        self.client = client
     }
 
     public var isSignedIn: Bool {
@@ -115,8 +145,9 @@ public actor NectarSession {
             throw NectarSessionError.signedOut
         }
 
-        let task = Task { [transport, tokenEndpoint, clientID, store] in
+        let task = Task { [transport, tokenEndpoint, clientID, store, client] in
             var request = URLRequest(url: tokenEndpoint)
+            client?.stamp(&request)
             request.httpMethod = "POST"
             request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
             request.httpBody = Data(FormBody.encode([
@@ -148,6 +179,7 @@ public actor NectarSession {
         request.httpMethod = method
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        client?.stamp(&request)
         if let body {
             request.httpBody = body
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
