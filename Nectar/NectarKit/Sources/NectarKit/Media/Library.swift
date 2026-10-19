@@ -61,7 +61,8 @@ public struct LibraryQuery: Equatable, Sendable {
         case rating
     }
 
-    public let library: String
+    /// nil for a row across every library the user can see.
+    public let library: String?
     /// The kind of item listed, from the library's type; nil leaves it to nectar.
     public var itemType: String?
     public var sort: Sort = .title
@@ -71,7 +72,7 @@ public struct LibraryQuery: Equatable, Sendable {
     public var offset = 0
     public var limit = 60
 
-    public init(library: String, itemType: String? = nil) {
+    public init(library: String?, itemType: String? = nil) {
         self.library = library
         self.itemType = itemType
     }
@@ -81,8 +82,23 @@ public struct LibraryQuery: Equatable, Sendable {
         self.init(library: library.id, itemType: library.kind.topLevelType)
     }
 
+    /// A home row: the twenty newest in a library, of what it holds at the top level.
+    public static func recentlyAdded(in library: Library) -> LibraryQuery {
+        recentlyAdded(in: library.id, itemType: library.kind.topLevelType)
+    }
+
+    /// A home row: the twenty newest in a library.
+    public static func recentlyAdded(in library: String?, itemType: String? = nil) -> LibraryQuery {
+        var query = LibraryQuery(library: library, itemType: itemType)
+        query.sort = .dateAdded
+        query.descending = true
+        query.limit = 20
+        return query
+    }
+
     var queryItems: [URLQueryItem] {
-        var items = [URLQueryItem(name: "library", value: library)]
+        var items: [URLQueryItem] = []
+        if let library { items.append(URLQueryItem(name: "library", value: library)) }
         if let itemType { items.append(URLQueryItem(name: "type", value: itemType)) }
         items += [
             URLQueryItem(name: "sort", value: sort.rawValue),
@@ -143,8 +159,9 @@ extension NectarSession {
         try JSONDecoder().decode(LibraryPage.self, from: try await get("api/v1/media", query: query.queryItems))
     }
 
-    public func filters(library: String) async throws -> LibraryFilters {
-        let data = try await get("api/v1/media/filters", query: [URLQueryItem(name: "library", value: library)])
+    /// One library's facets, or nil for every library's.
+    public func filters(library: String?) async throws -> LibraryFilters {
+        let data = try await get("api/v1/media/filters", query: library.map { [URLQueryItem(name: "library", value: $0)] } ?? [])
         return try JSONDecoder().decode(LibraryFilters.self, from: data)
     }
 }
