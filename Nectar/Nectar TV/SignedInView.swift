@@ -1,7 +1,7 @@
 import NectarKit
 import SwiftUI
 
-/// The signed-in app: the tvOS top tab bar over Home and Discover.
+/// The signed-in app: the tvOS top tab bar over Home, a tab per library, Discover and Playlists.
 struct SignedInView: View {
 
     let user: NectarUser
@@ -12,6 +12,9 @@ struct SignedInView: View {
     private var discover: DiscoverModel
     @State
     private var playlists: PlaylistsModel
+    /// Every library this user can see, each its own tab, as nectar lists them; none until it answers.
+    @State
+    private var libraries: [Library] = []
 
     init(user: NectarUser, home: HomeModel, signOut: @escaping () -> Void) {
         self.user = user
@@ -26,12 +29,20 @@ struct SignedInView: View {
             Tab("Home", systemImage: "house") {
                 HomeView(user: user, model: home, signOut: signOut)
             }
+            ForEach(libraries) { library in
+                Tab(library.name, systemImage: library.kind.symbol) {
+                    LibraryView(library: library, session: home.session)
+                }
+            }
             Tab("Discover", systemImage: "sparkles") {
                 DiscoverView(model: discover)
             }
             Tab("Playlists", systemImage: "music.note.list") {
                 PlaylistsView(model: playlists)
             }
+        }
+        .task {
+            libraries = (try? await home.session.libraries()) ?? []
         }
     }
 }
