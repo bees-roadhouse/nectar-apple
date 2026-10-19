@@ -22,13 +22,6 @@ struct NowPlayingTests {
                                     year: 2022, seasonNumber: 1, episodeNumber: 1)
     private let movie = MediaCard(id: "m1", itemType: "movie", title: "Arrival", year: 2016)
 
-    @Test func theItemRouteDecodesWhatNowPlayingReads() throws {
-        let detail = try JSONDecoder().decode(MediaDetail.self, from: Data(detailJSON.utf8))
-        #expect(detail.overview == "Mark leads a team of office workers.")
-        #expect(detail.genres == ["Drama", "Mystery"])
-        #expect(detail.contentRating == "TV-MA")
-    }
-
     @Test func anEpisodeIsTitledByItselfAndSubtitledBySeriesAndNumber() async throws {
         let items = NowPlaying.metadata(for: episode, detail: nil, artwork: nil)
         #expect(try await value(items, .commonIdentifierTitle) as? String == "Good News About Hell")
@@ -42,7 +35,7 @@ struct NowPlayingTests {
     }
 
     @Test func theDetailAndArtworkFillTheRest() async throws {
-        let detail = try JSONDecoder().decode(MediaDetail.self, from: Data(detailJSON.utf8))
+        let detail = try JSONDecoder().decode(ItemDetail.self, from: Data(detailJSON.utf8))
         let jpeg = Data([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10])
         let items = NowPlaying.metadata(for: episode, detail: detail, artwork: jpeg)
         #expect(try await value(items, .commonIdentifierDescription) as? String == "Mark leads a team of office workers.")

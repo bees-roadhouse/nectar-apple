@@ -71,6 +71,11 @@ public actor ImageCache {
         return bitmap
     }
 
+    /// The file's bytes as served, from disk when it's there: for handing artwork on (Now Playing) rather than drawing it.
+    public func data(for url: URL) async throws -> Data {
+        try await bytes(for: url, key: Self.key(for: url))
+    }
+
     /// Fetch what isn't on disk yet, for rows about to come into view. Nothing is decoded.
     public func prefetch(_ urls: [URL]) async {
         await withTaskGroup(of: Void.self) { group in

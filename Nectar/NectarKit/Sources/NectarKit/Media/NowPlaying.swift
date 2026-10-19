@@ -1,45 +1,12 @@
 import AVFoundation
 import Foundation
 
-/// The parts of `GET /api/v1/media/{id}` the player's surroundings show: what the title is about.
-public struct MediaDetail: Decodable, Equatable, Sendable {
-    public let overview: String?
-    public let genres: [String]
-    public let contentRating: String?
-
-    public init(overview: String?, genres: [String] = [], contentRating: String? = nil) {
-        self.overview = overview
-        self.genres = genres
-        self.contentRating = contentRating
-    }
-
-    private enum Outer: String, CodingKey { case item }
-    private enum Keys: String, CodingKey {
-        case overview, genres
-        case contentRating = "content_rating"
-    }
-
-    public init(from decoder: Decoder) throws {
-        let item = try decoder.container(keyedBy: Outer.self).nestedContainer(keyedBy: Keys.self, forKey: .item)
-        overview = try item.decodeIfPresent(String.self, forKey: .overview)
-        genres = (try? item.decodeIfPresent([String].self, forKey: .genres)) ?? []
-        contentRating = try item.decodeIfPresent(String.self, forKey: .contentRating)
-    }
-}
-
-extension NectarSession {
-    /// One library item, as much as ``MediaDetail`` reads.
-    public func mediaDetail(_ id: String) async throws -> MediaDetail {
-        try JSONDecoder().decode(MediaDetail.self, from: try await get("api/v1/media/\(id)"))
-    }
-}
-
 /// What the system shows about the playing title (#42): the info panel when the viewer swipes down,
 /// Control Center's Now Playing, and what a paired iPhone sees. `AVPlayerViewController` publishes the
 /// player item's `externalMetadata` there; this builds it.
 public enum NowPlaying {
 
-    public static func metadata(for card: MediaCard, detail: MediaDetail?, artwork: Data?) -> [AVMetadataItem] {
+    public static func metadata(for card: MediaCard, detail: ItemDetail?, artwork: Data?) -> [AVMetadataItem] {
         var items: [AVMetadataItem] = []
         func add(_ identifier: AVMetadataIdentifier, _ text: String?) {
             guard let text, !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
