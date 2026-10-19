@@ -30,7 +30,7 @@ struct DiscoverView: View {
         .searchable(text: $model.query, prompt: "Movies and shows")
         .task(id: model.query) { await model.search() }
         .task { await model.loadTrending() }
-        .sheet(item: $model.selected) { item in
+        .fullScreenCover(item: $model.selected) { item in
             DiscoverDetail(item: item)
         }
     }
