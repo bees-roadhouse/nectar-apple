@@ -99,18 +99,26 @@ struct NectarShortcuts: AppShortcutsProvider {
 
 extension HomeModel {
 
-    /// Siri's titles: fetched again after Home loads when the catalog is missing or over a day old, then handed
-    /// to Siri so a title added since is heard.
+    /// Whether Siri has been told the titles since this launch.
+    private static var toldSiri = false
+
+    /// Siri's titles: fetched again after Home loads when the catalog is missing or over a day old. Siri is told
+    /// after a refresh, and once per launch besides, so an install or update with a fresh catalog is heard too.
     func refreshTitleCatalog() async {
         let store = TitleCatalogStore()
-        guard store.catalog?.isStale() ?? true else { return }
-        do {
-            let catalog = try await session.titleCatalog()
-            try store.save(catalog)
-            log.info("title catalog: \(catalog.titles.count, privacy: .public) titles")
-            NectarShortcuts.updateAppShortcutParameters()
-        } catch {
-            log.error("title catalog: \(error.localizedDescription, privacy: .public)")
+        var refreshed = false
+        if store.catalog?.isStale() ?? true {
+            do {
+                let catalog = try await session.titleCatalog()
+                try store.save(catalog)
+                refreshed = true
+                log.info("title catalog: \(catalog.titles.count, privacy: .public) titles")
+            } catch {
+                log.error("title catalog: \(error.localizedDescription, privacy: .public)")
+            }
         }
+        guard refreshed || (!Self.toldSiri && store.catalog != nil) else { return }
+        Self.toldSiri = true
+        NectarShortcuts.updateAppShortcutParameters()
     }
 }
