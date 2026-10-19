@@ -93,12 +93,32 @@ function authorized(req: Request, url: URL) {
   return access.has(bearer);
 }
 
+// Artwork for the Top Shelf (#74): STUB_MEDIA's <name>.png, any width asked for, with no token, as nectar serves images.
+const art = /^\/api\/v1\/images\/([a-z-]+)(?:\/w\d+)?$/;
+const card = (id: string, type: string, title: string, poster: string, extra: object = {}) =>
+  ({ id, item_type: type, title, year: 2026, runtime_seconds: 6, poster_url: `/api/v1/images/${poster}`, backdrop_url: null, ...extra });
+
 async function media(req: Request, url: URL): Promise<Response> {
   if (!url.pathname.startsWith("/api/v1/")) return json({ error: "not found" }, 404);
+  const image = art.exec(url.pathname);
+  if (image) {
+    const file = Bun.file(`${mediaDir}/${image[1]}.png`);
+    return (await file.exists()) ? new Response(file, { headers: { "content-type": "image/png" } }) : json({ error: "not found" }, 404);
+  }
   if (!authorized(req, url)) return json({ error: "unauthorized" }, 401);
   const path = url.pathname;
 
-  if (path === "/api/v1/media/continue") return json({ items: [], total: 0 });
+  // The red clip half watched, and the newest films and series: what Home and the Top Shelf are built from (#74).
+  if (path === "/api/v1/media/continue") {
+    return json({ items: [card("clip-a", "movie", "Red clip", "poster-red", { backdrop_url: "/api/v1/images/wide-red", progress_seconds: 3 })], total: 1 });
+  }
+  if (path === "/api/v1/media") {
+    const all = [card("clip-a", "movie", "Red clip", "poster-red"), card("clip-b", "movie", "Green clip", "poster-green"),
+      card("stub-series", "series", "Stub Show", "poster-blue")];
+    const type = url.searchParams.get("type");
+    const items = all.filter((item) => !type || item.item_type === type);
+    return json({ items, total: items.length });
+  }
   // A two-episode series of the stub clips, for episodes playing on into the next (#66).
   if (path === "/api/v1/media/stub-series") {
     return json({ item: { id: "stub-series", item_type: "series", title: "Stub Show", year: 2026, overview: "Two short episodes.", genres: [],
