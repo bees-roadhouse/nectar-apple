@@ -99,6 +99,17 @@ async function media(req: Request, url: URL): Promise<Response> {
   const path = url.pathname;
 
   if (path === "/api/v1/media/continue") return json({ items: [], total: 0 });
+  // A two-episode series of the stub clips, for episodes playing on into the next (#66).
+  if (path === "/api/v1/media/stub-series") {
+    return json({ item: { id: "stub-series", item_type: "series", title: "Stub Show", year: 2026, overview: "Two short episodes.", genres: [],
+      images: [], credits: { cast: [], crew: [] }, chapters: [], season_count: 1, episode_count: 2 }, progress: null });
+  }
+  if (path === "/api/v1/media/stub-series/children") {
+    const ep = (id: string, n: number, title: string) => ({ id, episode_number: n, season_number: 1, title, overview: null, runtime_seconds: 6,
+      air_date: null, watched: false, progress_seconds: 0, thumb_url: null });
+    return json({ seasons: [{ season_number: 1, episodes: [ep("clip-a", 1, "Red"), ep("clip-b", 2, "Green")] }] });
+  }
+  if (path === "/api/v1/media/stub-series/similar") return json({ items: [], total: 0 });
   // Activity (#64): the queue an admin reads, then a live stream that grabs a second release, moves both,
   // and finishes the first at 60%. Keepalive comments between, as nectar sends them.
   if (path === "/api/v1/arr/queue") {

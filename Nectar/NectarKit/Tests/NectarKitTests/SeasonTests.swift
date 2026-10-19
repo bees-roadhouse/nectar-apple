@@ -98,6 +98,14 @@ struct SeasonTests {
         #expect(Season.nextUp(in: list) == nil)
     }
 
+    @Test func aQueueRunsOnFromTheChosenEpisodeAcrossSeasons() async throws {
+        let list = try await load(seasons([(0, [episode(0, 1)]), (1, [episode(1, 1), episode(1, 2)]), (2, [episode(2, 1)])]))
+        let fromMiddle = Season.queue(from: list[1].episodes[1], in: list)
+        #expect(fromMiddle.map(\.id) == ["s1e2", "s2e1"], "on into the next season, never back")
+        #expect(Season.queue(from: list[1].episodes[0], in: list).map(\.id) == ["s1e1", "s1e2", "s2e1"], "no specials when it starts in the season proper")
+        #expect(Season.queue(from: list[0].episodes[0], in: list).map(\.id) == ["s0e1", "s1e1", "s1e2", "s2e1"], "started in the specials, they come first")
+    }
+
     @Test func anEpisodePlaysAsItsOwnCardFromWhereItStopped() async throws {
         let list = try await load(seasons([(2, [episode(2, 4, at: 90)])]))
         let card = list[0].episodes[0].card(series: "Severance")

@@ -22,6 +22,8 @@ final class ItemDetailModel {
     private(set) var chapterThumbnails: [Int: URL] = [:]
     /// The title playing from this page.
     var playing: PlayerModel?
+    /// A series playing from an episode on, one into the next.
+    var queue: PlayQueue?
     /// The trailer playing, if one is.
     var trailer: TrailerPlayer?
     /// A "More like this" title opened on top of this one.
@@ -67,9 +69,15 @@ final class ItemDetailModel {
         playing = PlayerModel(card: detail.card(startingAt: seconds), session: session)
     }
 
-    /// An episode of this series, from where this user stopped in it.
+    /// An episode of this series, from where this user stopped in it, then on through the rest.
     func play(_ episode: Episode, of detail: ItemDetail) {
-        playing = PlayerModel(card: episode.card(series: detail.title), session: session)
+        queue = PlayQueue(cards: Season.queue(from: episode, in: seasons).map { $0.card(series: detail.title) })
+    }
+
+    /// Back from a queue: next-up and the marks have moved on.
+    func finishedQueue() {
+        queue = nil
+        Task { await load() }
     }
 
     /// Back from the player: the resume point has moved.
