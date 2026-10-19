@@ -8,6 +8,11 @@ on:
       - synchronize
       - ready_for_review
     branches: [ main ]
+    paths:
+      - '**'
+      # The Nectar TV app has its own gate (nectar-tv.yml); this one is Swiftfin's.
+      - '!Nectar/**'
+      - '!.github/workflows/nectar-tv.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
