@@ -25,6 +25,8 @@ struct HomeView: View {
     private var showingAccount = false
     @State
     private var showingActivity = false
+    @State
+    private var showingServer = false
 
     var body: some View {
         ScrollView(.vertical) {
@@ -56,6 +58,9 @@ struct HomeView: View {
                         .foregroundStyle(.secondary)
                     Button("Account", systemImage: "person.crop.circle") { showingAccount = true }
                     Button("Activity", systemImage: "arrow.down.circle") { showingActivity = true }
+                    if user.isAdmin {
+                        Button("Server", systemImage: "server.rack") { showingServer = true }
+                    }
                     Button("Sign out", action: signOut)
                 }
             }
@@ -76,6 +81,9 @@ struct HomeView: View {
         }
         .fullScreenCover(isPresented: $showingActivity) {
             ActivityView(model: activity)
+        }
+        .fullScreenCover(isPresented: $showingServer) {
+            ServerView(session: model.session, playlistAdding: model.playlistAdding)
         }
         .task {
             await model.load()
