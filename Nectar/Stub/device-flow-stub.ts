@@ -98,6 +98,18 @@ async function media(req: Request, url: URL): Promise<Response> {
   const path = url.pathname;
 
   if (path === "/api/v1/media/continue") return json({ items: [], total: 0 });
+  // As an admin sees it: everyone's requests. The TV's list keeps the stub user's own (#56).
+  if (path === "/api/v1/requests") {
+    const at = (d: number) => new Date(Date.now() - d * 3600_000).toISOString();
+    const ref = (kind: string, tmdb_id: number, title: string, year: number) => ({ kind, tmdb_id, title, year });
+    return json({ requests: [
+      { id: "q1", media_ref: ref("movie", 399106, "Piper", 2016), requested_by: "stub-user", requested_by_name: "pia", status: "approved", monitored_item_id: "mi1", created_at: at(1), decided_at: at(1), auto_approved: true },
+      { id: "q2", media_ref: ref("series", 1399, "Game of Thrones", 2011), requested_by: "someone-else", requested_by_name: "maggie", status: "pending", monitored_item_id: null, created_at: at(5), decided_at: null, auto_approved: false },
+      { id: "q3", media_ref: ref("series", 95396, "Severance", 2022), requested_by: "stub-user", requested_by_name: "pia", status: "pending", monitored_item_id: null, created_at: at(26), decided_at: null, auto_approved: false },
+      { id: "q4", media_ref: ref("movie", 5, "Four Rooms", 1995), requested_by: "stub-user", requested_by_name: "pia", status: "fulfilled", monitored_item_id: "mi2", created_at: at(200), decided_at: at(200), auto_approved: true },
+      { id: "q5", media_ref: ref("movie", 6, "Judgment Night", 1993), requested_by: "stub-user", requested_by_name: "pia", status: "denied", monitored_item_id: null, created_at: at(400), decided_at: at(390), auto_approved: false },
+    ] });
+  }
   if (path === "/api/v1/collections") {
     return json({ collections: [{ id: "stub-pl", user_id: "stub-user", name: "Stub playlist", description: "Two clips around a wanted title", kind: "playlist", item_count: "2" }] });
   }

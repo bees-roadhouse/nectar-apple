@@ -22,7 +22,7 @@ struct SignedInView: View {
         self.user = user
         self.home = home
         self.signOut = signOut
-        _discover = State(initialValue: DiscoverModel(session: home.session))
+        _discover = State(initialValue: DiscoverModel(session: home.session, userID: user.id))
         _playlists = State(initialValue: PlaylistsModel(session: home.session))
         _search = State(initialValue: SearchModel(session: home.session))
     }
