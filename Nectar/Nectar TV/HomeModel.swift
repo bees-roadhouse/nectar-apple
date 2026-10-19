@@ -14,11 +14,23 @@ final class HomeModel {
 
     let session: NectarSession
     private(set) var continueWatching: Row = .loading
+    /// The title on screen, if one is playing.
+    var playing: PlayerModel?
     private let signedOut: () -> Void
 
     init(session: NectarSession, signedOut: @escaping () -> Void) {
         self.session = session
         self.signedOut = signedOut
+    }
+
+    func play(_ card: MediaCard) {
+        playing = PlayerModel(card: card, session: session)
+    }
+
+    /// Back from the player: the row's order and progress have moved.
+    func finishedPlaying() {
+        playing = nil
+        Task { await load() }
     }
 
     func load() async {

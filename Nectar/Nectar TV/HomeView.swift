@@ -5,7 +5,8 @@ import SwiftUI
 struct HomeView: View {
 
     let user: NectarUser
-    let model: HomeModel
+    @Bindable
+    var model: HomeModel
     let signOut: () -> Void
 
     /// Focus starts on the row, not on Sign out.
@@ -18,7 +19,7 @@ struct HomeView: View {
     var body: some View {
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 48) {
-                ContinueWatchingRow(row: model.continueWatching, session: model.session, focusScope: focusScope)
+                ContinueWatchingRow(row: model.continueWatching, session: model.session, focusScope: focusScope, play: model.play)
 
                 HStack(spacing: 24) {
                     Text("Signed in as \(user.username)")
@@ -28,6 +29,9 @@ struct HomeView: View {
             }
             .padding(.vertical, 40)
             .focusScope(focusScope)
+        }
+        .fullScreenCover(item: $model.playing, onDismiss: model.finishedPlaying) { player in
+            PlayerView(model: player) { model.playing = nil }
         }
         .task {
             await model.load()
@@ -42,6 +46,7 @@ private struct ContinueWatchingRow: View {
     let row: HomeModel.Row
     let session: NectarSession
     let focusScope: Namespace.ID
+    let play: (MediaCard) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -64,7 +69,7 @@ private struct ContinueWatchingRow: View {
                                 artwork: session.resolve(card.artworkPath),
                                 isDefaultFocus: card.id == cards.first?.id,
                                 focusScope: focusScope
-                            )
+                            ) { play(card) }
                         }
                     }
                     .padding(.vertical, 20)
@@ -86,11 +91,12 @@ private struct CardView: View {
     let artwork: URL?
     let isDefaultFocus: Bool
     let focusScope: Namespace.ID
+    let select: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Playback is slice 3; until then a card only takes focus. The card style lifts the artwork alone.
-            Button {} label: { artworkView }
+            // The card style lifts the artwork alone; the caption stays put.
+            Button(action: select) { artworkView }
                 .buttonStyle(.card)
                 .prefersDefaultFocus(isDefaultFocus, in: focusScope)
 
