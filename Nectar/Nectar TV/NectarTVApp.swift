@@ -6,6 +6,9 @@ struct NectarTVApp: App {
 
     @State
     private var model = AppModel()
+    /// Hands back pre-load downloads that finished while the app was away (#85).
+    @UIApplicationDelegateAdaptor(AppDelegate.self)
+    private var appDelegate
 
     var body: some Scene {
         WindowGroup {
@@ -24,6 +27,7 @@ struct NectarTVApp: App {
                 }
             }
             .task { await model.start() }
+            .task { PreloadManager.shared.reconnect() }
             .onOpenURL { model.open($0) }
         }
     }
