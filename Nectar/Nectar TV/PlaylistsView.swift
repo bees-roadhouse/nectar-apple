@@ -85,6 +85,8 @@ private struct PlaylistPage: View {
             }
             .padding(80)
         }
+        // A full-screen cover is transparent on tvOS; without this the playlist grid shows through.
+        .background(Color.black.ignoresSafeArea())
         .task { detail = await model.detail(playlist) }
         .fullScreenCover(item: $playing) { queue in
             QueuePlayer(queue: queue, session: model.session) { playing = nil }
