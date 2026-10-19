@@ -30,6 +30,13 @@ struct SearchView: View {
         .fullScreenCover(item: $model.playing) { player in
             PlayerView(model: player) { model.playing = nil }
         }
+        .fullScreenCover(item: $model.openedGenre) { genre in
+            GenreView(genre: genre.name, session: model.session, playlistAdding: model.playlistAdding)
+        }
+        .fullScreenCover(item: $model.openedCollection) { collection in
+            CollectionView(collection: collection, session: model.session, playlistAdding: model.playlistAdding)
+        }
+        .task { await model.loadBrowse() }
     }
 
     private var prompt: String {
@@ -46,6 +53,7 @@ struct SearchView: View {
         switch model.results {
         case .idle:
             Text(hint).foregroundStyle(.secondary)
+            if model.mode == .titles { browse }
         case .searching:
             ProgressView()
         case let .titles(hits) where hits.isEmpty:
@@ -77,6 +85,34 @@ struct SearchView: View {
         case .failed:
             Text("Couldn't search right now.").foregroundStyle(.secondary)
         }
+    }
+
+    /// Before typing: collections, if the server has any, then every genre.
+    @ViewBuilder
+    private var browse: some View {
+        if !model.collections.isEmpty {
+            Text("Collections").font(.title3.bold())
+            ScrollView(.horizontal) {
+                LazyHStack(spacing: 40) {
+                    ForEach(model.collections) { collection in
+                        Button { model.openedCollection = collection } label: {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Image(systemName: "square.stack").font(.largeTitle)
+                                Text(collection.name).font(.headline).lineLimit(2)
+                                Text(collection.titleCount == 1 ? "1 title" : "\(collection.titleCount) titles").font(.caption).foregroundStyle(.secondary)
+                            }
+                            .frame(width: 320, height: 180, alignment: .bottomLeading)
+                            .padding(20)
+                        }
+                        .buttonStyle(.card)
+                    }
+                }
+                .padding(.vertical, 20)
+            }
+            .scrollClipDisabled()
+        }
+        GenreChips(title: "Genres", genres: model.genres) { model.openedGenre = .init(name: $0) }
+        GenreChips(title: "Music genres", genres: model.musicGenres) { model.openedGenre = .init(name: $0) }
     }
 
     private var hint: String {
@@ -123,5 +159,25 @@ private struct MomentCard: View {
     private var caption: String {
         guard let seconds = hit.seconds else { return hit.title }
         return "\(hit.title) · at \(ItemDetailView.clock(seconds))"
+    }
+}
+
+/// A titled grid of genre buttons; nothing when there are none.
+private struct GenreChips: View {
+
+    let title: String
+    let genres: [String]
+    let open: (String) -> Void
+
+    var body: some View {
+        if !genres.isEmpty {
+            Text(title).font(.title3.bold())
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 30), count: 5), alignment: .leading, spacing: 30) {
+                ForEach(genres, id: \.self) { genre in
+                    Button(genre) { open(genre) }
+                        .lineLimit(1)
+                }
+            }
+        }
     }
 }

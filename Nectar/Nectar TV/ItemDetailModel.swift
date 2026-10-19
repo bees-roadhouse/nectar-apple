@@ -26,6 +26,8 @@ final class ItemDetailModel {
     var trailer: TrailerPlayer?
     /// A "More like this" title opened on top of this one.
     var opened: MediaCard?
+    /// Someone from the cast, opened on top.
+    var person: ItemDetail.CastMember?
     /// A series' episodes by season; empty for anything else.
     private(set) var seasons: [Season] = []
     /// The season whose episodes are showing.

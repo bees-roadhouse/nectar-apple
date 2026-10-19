@@ -27,6 +27,40 @@ final class SearchModel {
     var opened: MediaCard?
     /// A moment playing.
     var playing: PlayerModel?
+    /// What to browse before typing: the film and TV genres, the biggest music genres, and the server's collections.
+    private(set) var genres: [String] = []
+    private(set) var musicGenres: [String] = []
+    private(set) var collections: [Playlist] = []
+    var openedGenre: GenreRef?
+    var openedCollection: Playlist?
+
+    /// A genre, to open as a page.
+    struct GenreRef: Identifiable, Hashable {
+        let name: String
+        var id: String { name }
+    }
+
+    /// Every genre stays reachable, but a music library brings hundreds; they get their own, shorter section.
+    private static let musicGenreLimit = 30
+
+    func loadBrowse() async {
+        guard genres.isEmpty, musicGenres.isEmpty, collections.isEmpty else { return }
+        async let collections = try? session.collections(kind: "collection")
+        let libraries = (try? await session.libraries()) ?? []
+        var video: [String] = [], music: [String] = []
+        for library in libraries {
+            // nectar sends each library's genres biggest first.
+            let found = (try? await session.filters(library: library.id).genres) ?? []
+            if library.kind == .music {
+                music += found.filter { !music.contains($0) }
+            } else {
+                video += found.filter { !video.contains($0) }
+            }
+        }
+        genres = video
+        musicGenres = Array(music.filter { !video.contains($0) }.prefix(Self.musicGenreLimit))
+        self.collections = await collections ?? []
+    }
 
     init(session: NectarSession) {
         self.session = session

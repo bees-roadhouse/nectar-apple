@@ -108,9 +108,6 @@ public struct PlaylistDetail: Equatable, Sendable {
     }
 }
 
-private struct PlaylistPage: Decodable {
-    let collections: [Playlist]
-}
 
 private struct PlaylistDetailPage: Decodable {
     let collection: Playlist
@@ -121,8 +118,7 @@ extension NectarSession {
 
     /// The user's playlists (and global ones), `GET /api/v1/collections?kind=playlist`.
     public func playlists() async throws -> [Playlist] {
-        let data = try await get("api/v1/collections", query: [URLQueryItem(name: "kind", value: "playlist")])
-        return try JSONDecoder().decode(PlaylistPage.self, from: data).collections
+        try await collections(kind: "playlist")
     }
 
     /// One playlist with its owned and wanted members in order.
