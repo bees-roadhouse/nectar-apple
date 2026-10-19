@@ -127,8 +127,7 @@ async function media(req: Request, url: URL): Promise<Response> {
       "content-type": "video/mp4", "accept-ranges": "bytes", "content-range": `bytes ${start}-${end}/${size}`, "content-length": String(end - start + 1) } });
   }
   if (/^\/api\/v1\/media\/[^/]+\/progress$/.test(path) && req.method === "POST") {
-    console.log("  progress", await req.text());
-    return json({});
+    return json({}); // the body was read (and logged) by the handler above
   }
   return json({ error: "not found" }, 404);
 }
