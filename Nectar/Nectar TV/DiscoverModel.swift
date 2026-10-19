@@ -29,6 +29,12 @@ final class DiscoverModel {
     private(set) var wants: [String: WantState] = [:]
     /// The title being asked for right now.
     private(set) var asking: String?
+    /// The title whose playlist picker is open.
+    var adding: DiscoverItem?
+    /// Where each title was added this session, by ``DiscoverItem/id``: the playlist's name.
+    private(set) var addedTo: [String: String] = [:]
+    /// Why the last add didn't happen, for the picker to say.
+    private(set) var addFailure: String?
 
     init(session: NectarSession) {
         self.session = session
@@ -83,6 +89,38 @@ final class DiscoverModel {
         defer { asking = nil }
         if let state = try? await session.want(item) {
             wants[item.id] = state
+        }
+    }
+
+    /// The playlists a title can go in. Every playlist holds video today; when nectar gives playlists
+    /// a media type (#39), this keeps the ones matching the title's.
+    func playlists() async -> [Playlist]? {
+        try? await session.playlists()
+    }
+
+    /// Adds the title (owned or not: nectar decides) and closes the picker; on failure the picker stays and says why.
+    func add(_ item: DiscoverItem, to playlist: Playlist) async {
+        addFailure = nil
+        do {
+            try await session.add(item, toPlaylist: playlist.id)
+            addedTo[item.id] = playlist.name
+            adding = nil
+        } catch NectarSessionError.unexpectedStatus(400) {
+            addFailure = "That playlist can't hold this title."
+        } catch {
+            addFailure = "Couldn't add it. Try again in a moment."
+        }
+    }
+
+    /// A new playlist, then the title in it.
+    func add(_ item: DiscoverItem, toNewPlaylistNamed name: String) async {
+        addFailure = nil
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        do {
+            let playlist = try await session.createPlaylist(named: name)
+            await add(item, to: playlist)
+        } catch {
+            addFailure = "Couldn't make that playlist."
         }
     }
 
