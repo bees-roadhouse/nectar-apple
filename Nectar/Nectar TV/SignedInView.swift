@@ -30,7 +30,7 @@ struct SignedInView: View {
     var body: some View {
         TabView {
             Tab("Home", systemImage: "house") {
-                HomeView(user: user, model: home, signOut: signOut)
+                HomeView(user: user, model: home, discover: discover, signOut: signOut)
             }
             ForEach(libraries) { library in
                 Tab(library.name, systemImage: library.kind.symbol) {

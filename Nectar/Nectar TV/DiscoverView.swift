@@ -155,7 +155,7 @@ private struct StateTag: View {
 }
 
 /// A title's detail: what it is, where it stands, and "Want it" when it's neither owned nor asked for.
-private struct DiscoverDetail: View {
+struct DiscoverDetail: View {
 
     let item: DiscoverItem
     let model: DiscoverModel

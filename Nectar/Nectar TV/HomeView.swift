@@ -1,12 +1,15 @@
 import NectarKit
 import SwiftUI
 
-/// The signed-in home: one row, continue watching, under who is signed in.
+/// The signed-in home: continue watching, for you, recently added in each library, the top genres,
+/// then who is signed in.
 struct HomeView: View {
 
     let user: NectarUser
     @Bindable
     var model: HomeModel
+    /// Discover's model, for a recommendation that isn't in the library yet.
+    let discover: DiscoverModel
     let signOut: () -> Void
 
     /// Focus starts on the row, not on Sign out.
@@ -21,6 +24,17 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 48) {
                 ContinueWatchingRow(row: model.continueWatching, session: model.session, focusScope: focusScope, play: model.play)
 
+                if !model.forYou.isEmpty {
+                    PosterShelf(title: "For you", kind: .movies, session: model.session,
+                                cards: model.forYou.map { MediaCard(id: $0.id, itemType: $0.kind, title: $0.title, year: $0.year, posterPath: $0.posterPath) }) { card in
+                        if let recommendation = model.forYou.first(where: { $0.id == card.id }) { model.open(recommendation) }
+                    }
+                }
+
+                ForEach(model.shelves) { shelf in
+                    PosterShelf(title: shelf.title, kind: shelf.kind, session: model.session, cards: shelf.cards) { model.open($0) }
+                }
+
                 HStack(spacing: 24) {
                     Text("Signed in as \(user.username)")
                         .foregroundStyle(.secondary)
@@ -32,6 +46,12 @@ struct HomeView: View {
         }
         .fullScreenCover(item: $model.playing, onDismiss: model.finishedPlaying) { player in
             PlayerView(model: player) { model.playing = nil }
+        }
+        .fullScreenCover(item: $model.opened, onDismiss: { Task { await model.load() } }) { card in
+            ItemDetailView(id: card.id, session: model.session, playlistAdding: model.playlistAdding)
+        }
+        .fullScreenCover(item: $model.discovering) { item in
+            DiscoverDetail(item: item, model: discover)
         }
         .task {
             await model.load()
@@ -146,11 +166,49 @@ private struct CardView: View {
         let title = card.title ?? "Untitled"
         if let season = card.seasonNumber, let episode = card.episodeNumber {
             let numbered = "S\(season) E\(episode) · \(title)"
-            return card.seriesTitle.map { "\($0) · \(numbered)" } ?? numbered
+            return (card.seriesTitle.map { "\($0) · \(numbered)" } ?? numbered) + left
         }
         if let year = card.year {
-            return "\(title) (\(String(year)))"
+            return "\(title) (\(String(year)))" + left
         }
-        return title
+        return title + left
+    }
+
+    /// " · 42m left", from nectar's runtime and this user's progress.
+    private var left: String {
+        guard let runtime = card.runtimeSeconds, let progress = card.progressSeconds, runtime > progress else { return "" }
+        return " · \(ItemDetailView.duration(runtime - progress)) left"
+    }
+}
+
+/// A titled row of posters, in the shape of what's in it; prefetches its artwork as it appears.
+private struct PosterShelf: View {
+
+    let title: String
+    let kind: Library.Kind
+    let session: NectarSession
+    let cards: [MediaCard]
+    let select: (MediaCard) -> Void
+
+    private var shape: LibraryPoster.Shape { .init(kind) }
+
+    private func artwork(_ card: MediaCard) -> URL? {
+        session.resolve(card.posterPath, pixelWidth: shape.size.width * 2)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text(title).font(.title3.bold())
+            ScrollView(.horizontal) {
+                LazyHStack(alignment: .top, spacing: 40) {
+                    ForEach(cards) { card in
+                        LibraryPoster(card: card, shape: shape, artwork: artwork(card)) { select(card) }
+                    }
+                }
+                .padding(.vertical, 20)
+            }
+            .scrollClipDisabled()
+            .onAppear { ImageCache.shared.prefetch(cards.map(artwork)) }
+        }
     }
 }
