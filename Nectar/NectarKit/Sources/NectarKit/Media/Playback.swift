@@ -66,6 +66,33 @@ struct DecideBody: Encodable, Sendable {
     }
 }
 
+/// Why nectar played the audio track it did (nectar #411). Unknown reasons are kept, not refused.
+public enum AudioReason: Equatable, Sendable, Decodable {
+    /// The client asked for this track.
+    case requested
+    /// The title's own language, by the user's preference.
+    case originalLanguage
+    /// The user's playback language.
+    case preferredLanguage
+    /// The file's default track; nothing better matched.
+    case fileDefault
+    /// The first track; the file names no default.
+    case first
+    case other(String)
+
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = switch raw {
+        case "requested": .requested
+        case "original_language": .originalLanguage
+        case "preferred_language": .preferredLanguage
+        case "file_default": .fileDefault
+        case "first": .first
+        default: .other(raw)
+        }
+    }
+}
+
 /// nectar's answer: what to open, and how it got there.
 public struct PlaybackDecision: Decodable, Equatable, Sendable {
 
@@ -84,14 +111,29 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
     public let durationSeconds: Double?
     /// Where the stream actually starts: an HLS copy starts on a keyframe, so it can be before what was asked.
     public let startOffsetSeconds: Double
+    /// Why this audio track; absent on a nectar older than #411.
+    public let audioReason: AudioReason?
+    /// The source's audio stream nectar picked, when it isn't the file's default. Such a pick always
+    /// comes as HLS carrying that one track, so there's nothing to switch on the client.
+    public let audioStreamIndex: Int?
 
-    public init(strategy: Strategy, streamPath: String, playMethod: String? = nil, reason: String? = nil, durationSeconds: Double? = nil, startOffsetSeconds: Double = 0) {
+    public init(strategy: Strategy, streamPath: String, playMethod: String? = nil, reason: String? = nil, durationSeconds: Double? = nil, startOffsetSeconds: Double = 0, audioReason: AudioReason? = nil, audioStreamIndex: Int? = nil) {
         self.strategy = strategy
         self.streamPath = streamPath
         self.playMethod = playMethod
         self.reason = reason
         self.durationSeconds = durationSeconds
         self.startOffsetSeconds = startOffsetSeconds
+        self.audioReason = audioReason
+        self.audioStreamIndex = audioStreamIndex
+    }
+
+    private struct Selected: Decodable {
+        let audioStreamIndex: Int?
+
+        enum CodingKeys: String, CodingKey {
+            case audioStreamIndex = "audio_stream_index"
+        }
     }
 
     enum CodingKeys: String, CodingKey {
@@ -101,6 +143,8 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
         case reason
         case durationSeconds = "duration_seconds"
         case startOffsetSeconds = "start_offset_seconds"
+        case audioReason = "audio_reason"
+        case selected
     }
 
     public init(from decoder: Decoder) throws {
@@ -111,6 +155,8 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
         reason = try c.decodeIfPresent(String.self, forKey: .reason)
         durationSeconds = try c.decodeIfPresent(Double.self, forKey: .durationSeconds)
         startOffsetSeconds = try c.decodeIfPresent(Double.self, forKey: .startOffsetSeconds) ?? 0
+        audioReason = try c.decodeIfPresent(AudioReason.self, forKey: .audioReason)
+        audioStreamIndex = try c.decodeIfPresent(Selected.self, forKey: .selected)?.audioStreamIndex
     }
 
     /// Where to seek once the player is ready. A direct file starts at zero, so seek to the resume

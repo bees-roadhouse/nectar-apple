@@ -58,10 +58,25 @@ private struct MethodBadge: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            if let audio {
+                Text(audio)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    /// Why this audio, when nectar chose by preference; quiet when it's simply the file's default.
+    private var audio: String? {
+        switch decision.audioReason {
+        case .preferredLanguage: "Audio in your language"
+        case .originalLanguage: "Audio in the original language"
+        case .requested: "The audio you chose"
+        case .fileDefault, .first, .other, nil: nil
+        }
     }
 
     private var label: String {
