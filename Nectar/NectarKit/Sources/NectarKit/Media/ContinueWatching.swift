@@ -91,4 +91,15 @@ extension NectarSession {
         guard let path, !path.isEmpty else { return nil }
         return URL(string: path, relativeTo: baseURL)?.absoluteURL
     }
+
+    /// Artwork at the width it's drawn, in pixels (nectar #413): `…/w{N}` gets the smallest copy
+    /// nectar made at or above N, so a tile downloads kilobytes instead of the original.
+    /// Rounded up, so never a blurrier copy than asked; a path that already names a size is left alone.
+    public nonisolated func resolve(_ path: String?, pixelWidth: Double) -> URL? {
+        guard let path, !path.isEmpty else { return nil }
+        let last = path.split(separator: "/").last.map(String.init) ?? ""
+        let alreadySized = last.range(of: #"^w?\d{1,5}$"#, options: .regularExpression) != nil && path.split(separator: "/").count > 4
+        guard pixelWidth >= 1, pixelWidth.isFinite, !alreadySized else { return resolve(path) }
+        return resolve("\(path)/w\(Int(pixelWidth.rounded(.up)))")
+    }
 }

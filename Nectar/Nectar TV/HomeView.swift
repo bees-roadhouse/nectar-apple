@@ -48,6 +48,10 @@ private struct ContinueWatchingRow: View {
     let focusScope: Namespace.ID
     let play: (MediaCard) -> Void
 
+    /// 2 on an Apple TV 4K, so a 480 pt card asks nectar for 960 px artwork (#26).
+    @Environment(\.displayScale)
+    private var displayScale
+
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Continue watching")
@@ -66,7 +70,7 @@ private struct ContinueWatchingRow: View {
                         ForEach(cards) { card in
                             CardView(
                                 card: card,
-                                artwork: session.resolve(card.artworkPath),
+                                artwork: session.resolve(card.artworkPath, pixelWidth: CardView.size.width * displayScale),
                                 isDefaultFocus: card.id == cards.first?.id,
                                 focusScope: focusScope
                             ) { play(card) }
