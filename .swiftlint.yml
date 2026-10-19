@@ -1,6 +1,8 @@
 excluded:
   - build
   - "**/.build"
+  # The Nectar TV app is our own code with its own conventions, not Swiftfin's (nectar-apple#68).
+  - Nectar
 
 only_rules:
   - custom_rules
