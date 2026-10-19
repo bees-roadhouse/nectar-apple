@@ -69,6 +69,7 @@ private struct DiscoverRow: View {
                 .padding(.vertical, 20)
             }
             .scrollClipDisabled()
+            .onAppear { ImageCache.shared.prefetch(items.map(\.posterURL)) }
         }
     }
 }
@@ -84,7 +85,8 @@ private struct PosterCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Button(action: select) {
-                AsyncImage(url: item.posterURL) { image in
+                // TMDB's poster is already a fixed width; decode it at the card's height.
+                CachedImage(url: item.posterURL, maxPixelSize: Int(Self.size.height * 2)) { image in
                     image.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {
                     ZStack {
@@ -160,7 +162,7 @@ private struct DiscoverDetail: View {
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
-            AsyncImage(url: item.backdropURL) { image in
+            CachedImage(url: item.backdropURL, maxPixelSize: 3840) { image in
                 image.resizable().aspectRatio(contentMode: .fill)
             } placeholder: {
                 Rectangle().fill(.black)
