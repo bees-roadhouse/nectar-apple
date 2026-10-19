@@ -20,7 +20,7 @@ struct PlayerView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             case let .playing(player, decision):
-                SystemPlayer(player: player, title: model.card.title)
+                SystemPlayer(player: player)
                     .ignoresSafeArea()
                 if showsMethod {
                     MethodBadge(decision: decision)
@@ -92,18 +92,11 @@ private struct MethodBadge: View {
 private struct SystemPlayer: UIViewControllerRepresentable {
 
     let player: AVPlayer
-    let title: String?
 
+    /// The player model sets the item's metadata (Now Playing, #42); the controller publishes it.
     func makeUIViewController(context: Context) -> AVPlayerViewController {
         let controller = AVPlayerViewController()
         controller.player = player
-        if let title, let item = player.currentItem {
-            let metadata = AVMutableMetadataItem()
-            metadata.identifier = .commonIdentifierTitle
-            metadata.value = title as NSString
-            metadata.extendedLanguageTag = "und"
-            item.externalMetadata = [metadata]
-        }
         return controller
     }
 

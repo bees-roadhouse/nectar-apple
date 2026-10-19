@@ -65,10 +65,27 @@ final class PlayerModel: Identifiable {
             observe(player, decision)
             phase = .playing(player, decision)
             player.play()
+            describe(player.currentItem)
             self.started = started
         } catch {
             log.error("play failed: \(String(describing: error), privacy: .public)")
             phase = .failed("Couldn't start this title.")
+        }
+    }
+
+    /// What the system's player surfaces show (#42): the info panel, Control Center, a paired iPhone. The card's
+    /// title at once; the overview, genres, rating and poster when nectar and the image cache answer, without
+    /// holding up the first frame.
+    private func describe(_ item: AVPlayerItem?) {
+        guard let item else { return }
+        item.externalMetadata = NowPlaying.metadata(for: card, detail: nil, artwork: nil)
+        let session = session, card = card
+        Task { [weak item] in
+            async let detail = try? session.detail(card.id)
+            let poster = session.resolve(card.posterPath, pixelWidth: 600)
+            let artwork = await (poster != nil ? try? ImageCache.shared.data(for: poster!) : nil)
+            let full = NowPlaying.metadata(for: card, detail: await detail, artwork: artwork)
+            await MainActor.run { item?.externalMetadata = full }
         }
     }
 
