@@ -181,7 +181,7 @@ private struct DiscoverDetail: View {
                 if let state = model.state(of: item) {
                     Text(state.detail).font(.headline)
                 }
-                if let playlist = model.addedTo[item.id] {
+                if let playlist = model.playlistAdding.addedTo[PlaylistAdding.Target.discover(item).id] {
                     Text("Added to \(playlist)").font(.headline)
                 }
                 HStack(spacing: 30) {
@@ -195,14 +195,14 @@ private struct DiscoverDetail: View {
                         }
                     }
                     Button("Add to playlist", systemImage: "text.badge.plus") {
-                        model.adding = item
+                        model.playlistAdding.target = .discover(item)
                     }
                 }
             }
             .padding(80)
         }
-        .fullScreenCover(item: Bindable(model).adding) { item in
-            PlaylistPicker(item: item, model: model)
+        .fullScreenCover(item: Bindable(model.playlistAdding).target) { target in
+            PlaylistPicker(target: target, model: model.playlistAdding)
         }
     }
 
@@ -211,85 +211,5 @@ private struct DiscoverDetail: View {
         if let year = item.year { parts.append(String(year)) }
         if let rating = item.rating, rating > 0 { parts.append(String(format: "★ %.1f", rating)) }
         return parts.joined(separator: " · ")
-    }
-}
-
-/// Which playlist a title goes in, or a new one.
-private struct PlaylistPicker: View {
-
-    let item: DiscoverItem
-    let model: DiscoverModel
-
-    @State
-    private var playlists: [Playlist]?
-    @State
-    private var loadFailed = false
-    @State
-    private var newName = ""
-    @State
-    private var working = false
-
-    var body: some View {
-        ScrollView(.vertical) {
-            VStack(alignment: .leading, spacing: 32) {
-                Text("Add \u{201C}\(item.title)\u{201D} to").font(.title2.bold())
-                if let failure = model.addFailure {
-                    Text(failure).foregroundStyle(.secondary)
-                }
-                if let playlists {
-                    ForEach(playlists) { playlist in
-                        Button {
-                            add { await model.add(item, to: playlist) }
-                        } label: {
-                            HStack {
-                                Image(systemName: "music.note.list")
-                                Text(playlist.name)
-                                Spacer()
-                                Text(playlist.itemCount == 1 ? "1 title" : "\(playlist.itemCount) titles").foregroundStyle(.secondary)
-                            }
-                            .frame(width: 900)
-                        }
-                    }
-                } else if loadFailed {
-                    Text("Couldn't load your playlists.").foregroundStyle(.secondary)
-                } else {
-                    ProgressView()
-                }
-                HStack(spacing: 30) {
-                    TextField("New playlist", text: $newName)
-                        .frame(width: 600)
-                        .onSubmit { addToNew() }
-                    Button("Create and add") { addToNew() }
-                        .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-                if working { ProgressView() }
-            }
-            .padding(80)
-            .disabled(working)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        // A full-screen cover is see-through and only as wide as its content; fill the screen.
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black.ignoresSafeArea())
-        .task {
-            if let lists = await model.playlists() {
-                playlists = lists
-            } else {
-                loadFailed = true
-            }
-        }
-    }
-
-    private func addToNew() {
-        let name = newName
-        add { await model.add(item, toNewPlaylistNamed: name) }
-    }
-
-    private func add(_ action: @escaping @MainActor () async -> Void) {
-        working = true
-        Task {
-            await action()
-            working = false
-        }
     }
 }

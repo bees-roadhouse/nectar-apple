@@ -5,19 +5,33 @@ public struct Playlist: Decodable, Equatable, Identifiable, Sendable {
     public let id: String
     public let name: String
     public let description: String?
-    /// Owned members only; wanted entries aren't counted by nectar.
+    /// Owned members only.
     public let itemCount: Int
+    /// Titles in it that aren't in the library yet (nectar #444).
+    public let wantedCount: Int
+    /// `video` or `audio`: a playlist holds one kind (nectar #444); rows from before that are video.
+    public let mediaType: String
 
-    public init(id: String, name: String, description: String?, itemCount: Int) {
+    public init(id: String, name: String, description: String?, itemCount: Int, wantedCount: Int = 0, mediaType: String = "video") {
         self.id = id
         self.name = name
         self.description = description
         self.itemCount = itemCount
+        self.wantedCount = wantedCount
+        self.mediaType = mediaType
     }
+
+    /// Everything in it, owned or on its way.
+    public var titleCount: Int { itemCount + wantedCount }
+
+    /// Whether a title of this media type can go in; nectar answers 400 otherwise.
+    public func holds(_ mediaType: String) -> Bool { self.mediaType == mediaType }
 
     enum CodingKeys: String, CodingKey {
         case id, name, description
         case itemCount = "item_count"
+        case wantedCount = "wanted_count"
+        case mediaType = "media_type"
     }
 
     /// `item_count` comes from SQL `COUNT()`, which postgres.js serialises as a string.
@@ -26,7 +40,9 @@ public struct Playlist: Decodable, Equatable, Identifiable, Sendable {
         id = try c.decode(String.self, forKey: .id)
         name = try c.decode(String.self, forKey: .name)
         description = try c.decodeIfPresent(String.self, forKey: .description)
-        itemCount = (try? c.decode(Int.self, forKey: .itemCount)) ?? Int((try? c.decode(String.self, forKey: .itemCount)) ?? "") ?? 0
+        itemCount = c.lenientInt(.itemCount) ?? 0
+        wantedCount = c.lenientInt(.wantedCount) ?? 0
+        mediaType = (try c.decodeIfPresent(String.self, forKey: .mediaType)) ?? "video"
     }
 }
 
@@ -134,6 +150,20 @@ private struct AddDiscoverItem: Encodable, Sendable {
 private struct NewPlaylist: Encodable, Sendable {
     let name: String
     let kind = "playlist"
+    let mediaType: String
+
+    enum CodingKeys: String, CodingKey {
+        case name, kind
+        case mediaType = "media_type"
+    }
+}
+
+private struct AddOwnedItem: Encodable, Sendable {
+    let mediaItemID: String
+
+    enum CodingKeys: String, CodingKey {
+        case mediaItemID = "media_item_id"
+    }
 }
 
 extension NectarSession {
@@ -146,8 +176,13 @@ extension NectarSession {
     }
 
     /// A new, empty playlist owned by the user.
-    public func createPlaylist(named name: String) async throws -> Playlist {
-        let data = try await post("api/v1/collections", json: NewPlaylist(name: name.trimmingCharacters(in: .whitespacesAndNewlines)))
-        return try JSONDecoder().decode(Playlist.self, from: data)
+    public func createPlaylist(named name: String, mediaType: String = "video") async throws -> Playlist {
+        let body = NewPlaylist(name: name.trimmingCharacters(in: .whitespacesAndNewlines), mediaType: mediaType)
+        return try JSONDecoder().decode(Playlist.self, from: try await post("api/v1/collections", json: body))
+    }
+
+    /// Adds a title already in the library; adding it twice changes nothing.
+    public func add(mediaItemID: String, toPlaylist playlistID: String) async throws {
+        _ = try await post("api/v1/collections/\(playlistID)/items", json: AddOwnedItem(mediaItemID: mediaItemID))
     }
 }

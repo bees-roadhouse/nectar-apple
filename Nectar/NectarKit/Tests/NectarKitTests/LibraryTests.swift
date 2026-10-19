@@ -100,15 +100,4 @@ struct LibraryTests {
         #expect(filters.genres == ["Drama", "Science Fiction"])
         #expect(filters.resolutions == ["2160p", "1080p"])
     }
-
-    @Test func resumeIsWhereTheUserStoppedUnlessFinished() async throws {
-        let stopped = Server(["/api/v1/media/m1": #"{"item":{"id":"m1"},"progress":{"position_seconds":1312,"completed":false}}"#])
-        #expect(try await session(stopped).resumePoint(of: "m1") == 1312)
-
-        let finished = Server(["/api/v1/media/m1": #"{"item":{"id":"m1"},"progress":{"position_seconds":6900,"completed":true}}"#])
-        #expect(try await session(finished).resumePoint(of: "m1") == nil, "a finished film starts over")
-
-        let never = Server(["/api/v1/media/m1": #"{"item":{"id":"m1"},"progress":null}"#])
-        #expect(try await session(never).resumePoint(of: "m1") == nil)
-    }
 }

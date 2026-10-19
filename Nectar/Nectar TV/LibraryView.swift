@@ -32,7 +32,7 @@ struct LibraryView: View {
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 48) {
                         ForEach(model.items) { card in
                             LibraryPoster(card: card, shape: shape, artwork: model.session.resolve(card.posterPath, pixelWidth: shape.size.width * 2)) {
-                                Task { await model.play(card) }
+                                model.open(card)
                             }
                             .onAppear { Task { await model.loadMore(after: card) } }
                         }
@@ -42,8 +42,8 @@ struct LibraryView: View {
             .padding(.vertical, 40)
         }
         .task { await model.start() }
-        .fullScreenCover(item: $model.playing) { player in
-            PlayerView(model: player) { model.playing = nil }
+        .fullScreenCover(item: $model.opened) { card in
+            ItemDetailView(id: card.id, session: model.session, playlistAdding: model.playlistAdding)
         }
     }
 
@@ -98,7 +98,7 @@ struct LibraryView: View {
     }
 }
 
-/// A poster and its title; a movie plays when chosen.
+/// A poster and its title; chosen, a film or series opens its detail.
 struct LibraryPoster: View {
 
     /// Posters for films, shows and books; squares for albums; landscape for photos.

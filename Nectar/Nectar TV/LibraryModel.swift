@@ -1,7 +1,7 @@
 import Foundation
 import NectarKit
 
-/// One library's grid: the query the viewer has set, the pages loaded so far, and what's playing.
+/// One library's grid: the query the viewer has set, the pages loaded so far, and the title opened from it.
 @MainActor
 @Observable
 final class LibraryModel {
@@ -19,14 +19,16 @@ final class LibraryModel {
     private(set) var total = 0
     private(set) var filters = LibraryFilters(genres: [], resolutions: [])
     private(set) var query: LibraryQuery
-    /// The title on screen, if one is playing.
-    var playing: PlayerModel?
+    /// The title whose detail is open.
+    var opened: MediaCard?
+    let playlistAdding: PlaylistAdding
     private var loadingMore = false
 
     init(library: Library, session: NectarSession) {
         self.library = library
         self.session = session
         query = LibraryQuery(library)
+        playlistAdding = PlaylistAdding(session: session)
     }
 
     /// The first page, and the filter choices once.
@@ -60,11 +62,10 @@ final class LibraryModel {
         prefetch(page.items)
     }
 
-    /// Movies play from where this user stopped; a list row doesn't say, so ask first.
-    func play(_ card: MediaCard) async {
-        guard card.itemType == "movie" else { return }
-        let resume = try? await session.resumePoint(of: card.id)
-        playing = PlayerModel(card: card.resuming(at: resume), session: session)
+    /// Films and series open their detail; albums, books and photos wait for their own slices.
+    func open(_ card: MediaCard) {
+        guard card.itemType == "movie" || card.itemType == "series" else { return }
+        opened = card
     }
 
     private func reload() async {
@@ -83,15 +84,6 @@ final class LibraryModel {
     private func prefetch(_ cards: [MediaCard]) {
         let width = LibraryPoster.Shape(library.kind).size.width * 2
         ImageCache.shared.prefetch(cards.map { session.resolve($0.posterPath, pixelWidth: width) })
-    }
-}
-
-extension MediaCard {
-    /// The same card, starting at `seconds` (or the start).
-    func resuming(at seconds: Double?) -> MediaCard {
-        MediaCard(id: id, itemType: itemType, title: title, seriesTitle: seriesTitle, year: year, runtimeSeconds: runtimeSeconds,
-                  seasonNumber: seasonNumber, episodeNumber: episodeNumber, posterPath: posterPath, backdropPath: backdropPath,
-                  progressSeconds: seconds)
     }
 }
 
