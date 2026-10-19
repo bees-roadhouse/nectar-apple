@@ -94,11 +94,13 @@ struct ContinueWatchingTests {
     /// nectar #413: `/api/v1/images/{id}/w{N}` serves the smallest copy at or above N pixels.
     @Test func artworkAsksForTheWidthItDraws() async throws {
         let nectar = session(RecordingTransport(body: "{}"))
-        #expect(nectar.resolve("/api/v1/images/aa11", pixelWidth: 960)?.absoluteString == "https://nectar.test/api/v1/images/aa11/w960")
-        #expect(nectar.resolve("/api/v1/images/aa11", pixelWidth: 479.4)?.absoluteString == "https://nectar.test/api/v1/images/aa11/w480", "rounded up, never a blurrier copy")
-        #expect(nectar.resolve("/api/v1/images/aa11/w342", pixelWidth: 960)?.absoluteString == "https://nectar.test/api/v1/images/aa11/w342", "a sized path isn't sized twice")
+        #expect(nectar.resolve("/api/v1/images/aa11", pixelWidth: 960)?.absoluteString == "https://nectar.test/api/v1/images/aa11/w960?v=2")
+        #expect(nectar.resolve("/api/v1/images/aa11", pixelWidth: 479.4)?.absoluteString == "https://nectar.test/api/v1/images/aa11/w480?v=2", "rounded up, never a blurrier copy")
+        #expect(nectar.resolve("/api/v1/images/aa11/w342", pixelWidth: 960)?.absoluteString == "https://nectar.test/api/v1/images/aa11/w342?v=2", "a sized path isn't sized twice")
         #expect(nectar.resolve(nil, pixelWidth: 960) == nil)
-        #expect(nectar.resolve("/api/v1/images/aa11", pixelWidth: 0)?.absoluteString == "https://nectar.test/api/v1/images/aa11", "no width, the original")
+        #expect(nectar.resolve("/api/v1/images/aa11", pixelWidth: 0)?.absoluteString == "https://nectar.test/api/v1/images/aa11?v=2", "no width, the original")
+        #expect(nectar.resolve("https://image.tmdb.org/t/p/w342/x.jpg", pixelWidth: 480)?.absoluteString == "https://image.tmdb.org/t/p/w342/x.jpg", "only nectar's images are versioned")
+        #expect(nectar.resolve("/api/v1/images/aa11/w342?v=2", pixelWidth: 960)?.absoluteString == "https://nectar.test/api/v1/images/aa11/w342?v=2", "never versioned twice")
     }
 
     @Test(arguments: [
