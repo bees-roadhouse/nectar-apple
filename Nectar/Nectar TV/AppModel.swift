@@ -42,7 +42,7 @@ final class AppModel {
             hasTokens: store.tokens != nil,
             discover: { try await DeviceFlowClient(issuer: Self.server, clientID: Self.clientID, deviceName: "").discover().token },
             currentUser: { [session, store] tokenEndpoint in
-                let candidate = session ?? NectarSession(baseURL: Self.server, tokenEndpoint: tokenEndpoint, clientID: Self.clientID, store: store)
+                let candidate = session ?? NectarSession(baseURL: Self.server, tokenEndpoint: tokenEndpoint, clientID: Self.clientID, store: store, client: .thisTV)
                 resumed = candidate
                 return try await candidate.currentUser()
             }
@@ -76,7 +76,7 @@ final class AppModel {
 
     private func finishSignIn(_ tokens: TokenSet, tokenEndpoint: URL) async {
         store.save(tokens)
-        let session = NectarSession(baseURL: Self.server, tokenEndpoint: tokenEndpoint, clientID: Self.clientID, store: store)
+        let session = NectarSession(baseURL: Self.server, tokenEndpoint: tokenEndpoint, clientID: Self.clientID, store: store, client: .thisTV)
         self.session = session
         if let user = try? await session.currentUser() {
             state = .signedIn(user, home(session))
@@ -87,5 +87,21 @@ final class AppModel {
 
     private func home(_ session: NectarSession) -> HomeModel {
         HomeModel(session: session) { [weak self] in self?.signOut() }
+    }
+}
+
+extension ClientInfo {
+    /// This Apple TV, as nectar names it in sessions and activity: its own name, its vendor id (stable while
+    /// the app stays installed), and the app's version. Launched by the developer's tools with
+    /// `NECTAR_TEST_RUN` set, every request says it's a test (nectar-apple#59).
+    @MainActor
+    static var thisTV: ClientInfo {
+        ClientInfo(
+            client: "Nectar TV",
+            device: UIDevice.current.name,
+            deviceID: UIDevice.current.identifierForVendor?.uuidString ?? "unknown",
+            version: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0",
+            isTestRun: ProcessInfo.processInfo.environment["NECTAR_TEST_RUN"] != nil
+        )
     }
 }

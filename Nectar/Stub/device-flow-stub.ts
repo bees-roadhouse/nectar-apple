@@ -26,7 +26,8 @@ Bun.serve({
   async fetch(req) {
     const url = new URL(req.url);
     const form = req.method === "POST" ? new URLSearchParams(await req.text()) : new URLSearchParams();
-    console.log(req.method, url.pathname, [...form.keys()].join(","));
+    const who = ["x-nectar-client", "x-nectar-device", "x-nectar-test"].map((h) => req.headers.get(h)).filter((v) => v !== null);
+    console.log(req.method, url.pathname, [...form.keys()].join(","), who.length ? `[${who.join(" | ")}]` : "");
 
     switch (url.pathname) {
       case "/.well-known/openid-configuration":
