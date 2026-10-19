@@ -96,9 +96,10 @@ final class PlayerModel: Identifiable {
             let status = player.timeControlStatus
             Task { @MainActor in
                 guard let self else { return }
+                if status == .playing, !self.hasPlayed { self.logAudio(player) }
                 if status == .playing { self.hasPlayed = true }
                 if status == .playing, let started = self.started {
-                    log.info("playing at \(self.position(of: player, decision), privacy: .public)s, \(started.duration(to: .now), privacy: .public) after select")
+                    log.info("playing at \(self.position(of: player, decision), privacy: .public)s (player time \(player.currentTime().seconds, privacy: .public)s), \(started.duration(to: .now), privacy: .public) after select")
                     self.started = nil
                 }
                 if status == .paused, self.hasPlayed {
@@ -112,6 +113,21 @@ final class PlayerModel: Identifiable {
                     log.error("player item failed: \(String(describing: item.error), privacy: .public)")
                 }
             }
+        }
+    }
+
+    /// Which audio tracks AVPlayer was offered and which it chose; the default-language question (Nate, 2026-10-18).
+    private func logAudio(_ player: AVPlayer) {
+        guard let item = player.currentItem else { return }
+        Task {
+            guard let group = try? await item.asset.loadMediaSelectionGroup(for: .audible) else {
+                log.info("audio: no selection group (one track muxed in)")
+                return
+            }
+            let describe: (AVMediaSelectionOption) -> String = { "\($0.displayName) [\($0.extendedLanguageTag ?? "und")]" }
+            let offered = group.options.map(describe).joined(separator: ", ")
+            let chosen = item.currentMediaSelection.selectedMediaOption(in: group).map(describe) ?? "none"
+            log.info("audio: chose \(chosen, privacy: .public) of \(offered, privacy: .public)")
         }
     }
 

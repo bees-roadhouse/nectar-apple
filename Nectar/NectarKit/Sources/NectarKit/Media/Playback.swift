@@ -124,7 +124,8 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
 }
 
 struct ProgressBody: Encodable, Sendable {
-    let positionSeconds: Double
+    /// Whole seconds: nectar's ProgressBody is `z.number().int()`, and a fraction is a 422.
+    let positionSeconds: Int
     let paused: Bool?
     let completed: Bool?
 
@@ -145,6 +146,6 @@ extension NectarSession {
 
     /// Save where this user is (`POST /api/v1/media/{id}/progress`). nectar keeps `completed` once set.
     public func reportProgress(_ itemID: String, positionSeconds: Double, paused: Bool? = nil, completed: Bool? = nil) async throws {
-        _ = try await post("api/v1/media/\(itemID)/progress", json: ProgressBody(positionSeconds: max(positionSeconds, 0), paused: paused, completed: completed))
+        _ = try await post("api/v1/media/\(itemID)/progress", json: ProgressBody(positionSeconds: positionSeconds.isFinite ? max(Int(positionSeconds.rounded(.down)), 0) : 0, paused: paused, completed: completed))
     }
 }

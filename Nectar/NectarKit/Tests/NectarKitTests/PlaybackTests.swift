@@ -129,11 +129,13 @@ struct PlaybackTests {
         let requests = await transport.requests
         let first = try json(requests[0].httpBody)
         #expect(requests[0].httpMethod == "POST")
-        #expect(first["position_seconds"] as? Double == 812.25)
+        // nectar's ProgressBody is z.number().int(): a fraction is a 422 (seen on the Apple TV, 2026-10-18).
+        #expect(first["position_seconds"] as? Int == 812)
+        #expect(String(decoding: try #require(requests[0].httpBody), as: UTF8.self).contains("\"position_seconds\":812"))
         #expect(first["paused"] as? Bool == true)
         #expect(first["completed"] == nil)
         let second = try json(requests[1].httpBody)
-        #expect(second["position_seconds"] as? Double == 0, "nectar rejects a negative position")
+        #expect(second["position_seconds"] as? Int == 0, "nectar rejects a negative position")
         #expect(second["completed"] as? Bool == true)
     }
 
