@@ -19,6 +19,9 @@ struct HomeView: View {
     @Environment(\.resetFocus)
     private var resetFocus
 
+    @State
+    private var showingAccount = false
+
     var body: some View {
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 48) {
@@ -38,6 +41,7 @@ struct HomeView: View {
                 HStack(spacing: 24) {
                     Text("Signed in as \(user.username)")
                         .foregroundStyle(.secondary)
+                    Button("Account", systemImage: "person.crop.circle") { showingAccount = true }
                     Button("Sign out", action: signOut)
                 }
             }
@@ -52,6 +56,9 @@ struct HomeView: View {
         }
         .fullScreenCover(item: $model.discovering) { item in
             DiscoverDetail(item: item, model: discover)
+        }
+        .fullScreenCover(isPresented: $showingAccount) {
+            AccountView(user: user, session: model.session)
         }
         .task {
             await model.load()

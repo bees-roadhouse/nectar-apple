@@ -104,6 +104,21 @@ public actor NectarSession {
         try await request("POST", path, query: [], body: try JSONEncoder().encode(body))
     }
 
+    /// POST with no body (an action, not a document).
+    public func post(_ path: String) async throws -> Data {
+        try await request("POST", path, query: [], body: nil)
+    }
+
+    /// PUT a JSON document, already encoded, to a path under the base URL.
+    public func put(_ path: String, data body: Data) async throws -> Data {
+        try await request("PUT", path, query: [], body: body)
+    }
+
+    /// DELETE a path under the base URL, as the signed-in user.
+    public func delete(_ path: String) async throws {
+        _ = try await request("DELETE", path, query: [], body: nil)
+    }
+
     /// A media URL AVPlayer can open on its own: it can't add headers, so the access token
     /// rides in the query (nectar#379 takes `?access_token=` on streaming and image paths only).
     /// The URL is a credential; don't log it.
