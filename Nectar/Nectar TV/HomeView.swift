@@ -52,6 +52,10 @@ private struct ContinueWatchingRow: View {
     @Environment(\.displayScale)
     private var displayScale
 
+    private func artwork(_ card: MediaCard) -> URL? {
+        session.resolve(card.artworkPath, pixelWidth: CardView.size.width * displayScale)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Continue watching")
@@ -70,7 +74,8 @@ private struct ContinueWatchingRow: View {
                         ForEach(cards) { card in
                             CardView(
                                 card: card,
-                                artwork: session.resolve(card.artworkPath, pixelWidth: CardView.size.width * displayScale),
+                                artwork: artwork(card),
+                                maxPixelSize: Int(CardView.size.width * displayScale),
                                 isDefaultFocus: card.id == cards.first?.id,
                                 focusScope: focusScope
                             ) { play(card) }
@@ -79,6 +84,7 @@ private struct ContinueWatchingRow: View {
                     .padding(.vertical, 20)
                 }
                 .scrollClipDisabled()
+                .onAppear { ImageCache.shared.prefetch(cards.map(artwork)) }
             case .failed:
                 Text("Couldn't load what you were watching.")
                     .foregroundStyle(.secondary)
@@ -93,6 +99,7 @@ private struct CardView: View {
 
     let card: MediaCard
     let artwork: URL?
+    let maxPixelSize: Int
     let isDefaultFocus: Bool
     let focusScope: Namespace.ID
     let select: () -> Void
@@ -113,7 +120,7 @@ private struct CardView: View {
     }
 
     private var artworkView: some View {
-        AsyncImage(url: artwork) { image in
+        CachedImage(url: artwork, maxPixelSize: maxPixelSize) { image in
             image.resizable().aspectRatio(contentMode: .fill)
         } placeholder: {
             ZStack {

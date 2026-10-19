@@ -109,7 +109,7 @@ private struct MemberCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Button {} label: {
-                AsyncImage(url: artwork) { image in
+                CachedImage(url: artwork, maxPixelSize: 720) { image in
                     image.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {
                     ZStack {
