@@ -17,11 +17,14 @@ struct NectarTVApp: App {
                     SignInView(model: signIn)
                 case let .signedIn(user, home):
                     SignedInView(user: user, home: home) { model.signOut() }
+                        // A new identity for each followed link: whatever any tab had open closes, and Home presents it.
+                        .id(model.linkGeneration)
                 case .unreachable:
                     UnreachableView { await model.retry() }
                 }
             }
             .task { await model.start() }
+            .onOpenURL { model.open($0) }
         }
     }
 }

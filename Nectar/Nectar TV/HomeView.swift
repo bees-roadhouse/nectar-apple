@@ -82,6 +82,7 @@ struct HomeView: View {
             // The row arrives after the first layout, when focus has already settled on Sign out.
             resetFocus(in: focusScope)
         }
+        .task { await model.followLink() }
     }
 }
 

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Merged with the generated Info.plist: what the build settings can't say. -->
+	<!-- nectar://item/{id} and nectar://play/{id}: the Top Shelf's tiles (#74), Siri (#77) and Play on TV open these. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.beesroadhouse.nectar.tv</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>nectar</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>
