@@ -26,6 +26,10 @@ final class ItemDetailModel {
     var trailer: TrailerPlayer?
     /// A "More like this" title opened on top of this one.
     var opened: MediaCard?
+    /// A series' episodes by season; empty for anything else.
+    private(set) var seasons: [Season] = []
+    /// The season whose episodes are showing.
+    var selectedSeason: Int?
 
     init(id: String, session: NectarSession, playlistAdding: PlaylistAdding) {
         self.id = id
@@ -42,6 +46,14 @@ final class ItemDetailModel {
                 thumbnails[chapter.index] = try? await session.mediaURL(chapter.thumbnailPath(item: id))
             }
             chapterThumbnails = thumbnails
+            if detail.itemType == "series" {
+                seasons = (try? await session.children(of: id)) ?? []
+                // Open on the season of what's next, or the first; keep the viewer's choice across reloads.
+                if selectedSeason == nil || !seasons.contains(where: { $0.id == selectedSeason }) {
+                    let next = Season.nextUp(in: seasons)?.episode
+                    selectedSeason = seasons.first { $0.episodes.contains { $0.id == next?.id } }?.id ?? seasons.first?.id
+                }
+            }
             self.detail = .loaded(detail)
         } catch {
             detail = .failed
@@ -51,6 +63,11 @@ final class ItemDetailModel {
 
     func play(_ detail: ItemDetail, from seconds: Double?) {
         playing = PlayerModel(card: detail.card(startingAt: seconds), session: session)
+    }
+
+    /// An episode of this series, from where this user stopped in it.
+    func play(_ episode: Episode, of detail: ItemDetail) {
+        playing = PlayerModel(card: episode.card(series: detail.title), session: session)
     }
 
     /// Back from the player: the resume point has moved.
