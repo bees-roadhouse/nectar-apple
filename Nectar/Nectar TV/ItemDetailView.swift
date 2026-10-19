@@ -46,8 +46,12 @@ struct ItemDetailView: View {
     private func page(_ detail: ItemDetail) -> some View {
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 60) {
+                // A series leaves room for its seasons and the top of the episode row to show below.
                 header(detail)
-                    .frame(minHeight: 820, alignment: .bottomLeading)
+                    .frame(minHeight: detail.itemType == "series" ? 560 : 820, alignment: .bottomLeading)
+                if !model.seasons.isEmpty {
+                    seasons(detail)
+                }
                 if !detail.chapters.isEmpty {
                     Row(title: "Chapters") {
                         ForEach(detail.chapters) { chapter in
@@ -107,6 +111,16 @@ struct ItemDetailView: View {
                 Text("Added to \(playlist)").font(.headline)
             }
             HStack(spacing: 30) {
+                if detail.itemType == "series", let next = Season.nextUp(in: model.seasons) {
+                    let code = next.episode.code ?? next.episode.title
+                    if let resume = next.resume {
+                        Button("Resume \(code) from \(Self.clock(resume))", systemImage: "play.fill") { model.play(next.episode, of: detail) }
+                    } else {
+                        Button("Play \(code)", systemImage: "play.fill") { model.play(next.episode, of: detail) }
+                    }
+                } else if detail.itemType == "series", let first = model.seasons.first?.episodes.first {
+                    Button("Watch again from \(first.code ?? first.title)", systemImage: "arrow.counterclockwise") { model.play(first, of: detail) }
+                }
                 if detail.itemType == "movie" || detail.itemType == "episode" {
                     if let resume = detail.resumeSeconds {
                         Button("Resume from \(Self.clock(resume))", systemImage: "play.fill") { model.play(detail, from: resume) }
@@ -120,6 +134,34 @@ struct ItemDetailView: View {
                 }
                 Button("Add to playlist", systemImage: "text.badge.plus") {
                     model.playlistAdding.target = .owned(id: detail.id, title: detail.title)
+                }
+            }
+        }
+    }
+
+    /// The season picker, then the chosen season's episodes.
+    private func seasons(_ detail: ItemDetail) -> some View {
+        VStack(alignment: .leading, spacing: 20) {
+            if model.seasons.count > 1 {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 20) {
+                        ForEach(model.seasons) { season in
+                            Button(season.title) { model.selectedSeason = season.id }
+                                .buttonStyle(.bordered)
+                                .tint(season.id == model.selectedSeason ? .white : nil)
+                        }
+                    }
+                    .padding(.vertical, 10)
+                }
+                .scrollClipDisabled()
+            }
+            if let season = model.seasons.first(where: { $0.id == model.selectedSeason }) {
+                Row(title: model.seasons.count > 1 ? "Episodes" : season.title) {
+                    ForEach(season.episodes) { episode in
+                        EpisodeCard(episode: episode, thumbnail: model.session.resolve(episode.thumbPath, pixelWidth: EpisodeCard.size.width * 2)) {
+                            model.play(episode, of: detail)
+                        }
+                    }
                 }
             }
         }
@@ -235,5 +277,56 @@ private struct CastCard: View {
 
     private var initials: String {
         person.name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
+    }
+}
+
+/// An episode: its still, a watched mark or how far in, its number and title, and what happens in it.
+private struct EpisodeCard: View {
+
+    static let size = CGSize(width: 400, height: 225)
+
+    let episode: Episode
+    let thumbnail: URL?
+    let select: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button(action: select) {
+                CachedImage(url: thumbnail, maxPixelSize: Int(Self.size.width * 2)) { image in
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    ZStack {
+                        Rectangle().fill(.quaternary)
+                        Text(episode.label).font(.caption).multilineTextAlignment(.center).padding()
+                    }
+                }
+                .frame(width: Self.size.width, height: Self.size.height)
+                .clipped()
+                .overlay(alignment: .topTrailing) {
+                    if episode.watched {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(.white, .black.opacity(0.6))
+                            .padding(10)
+                    }
+                }
+                .overlay(alignment: .bottom) {
+                    if episode.isInProgress, let runtime = episode.runtimeSeconds, runtime > 0 {
+                        ProgressView(value: min(episode.progressSeconds / runtime, 1)).tint(.white).padding(10)
+                    }
+                }
+            }
+            .buttonStyle(.card)
+            Text(episode.label).font(.caption).lineLimit(1).frame(width: Self.size.width, alignment: .leading)
+            Text(details).font(.caption2).foregroundStyle(.secondary).lineLimit(2, reservesSpace: true)
+                .frame(width: Self.size.width, alignment: .leading)
+        }
+    }
+
+    private var details: String {
+        var parts: [String] = []
+        if let runtime = episode.runtimeSeconds, runtime > 0 { parts.append(ItemDetailView.duration(runtime)) }
+        if let overview = episode.overview, !overview.isEmpty { parts.append(overview) }
+        return parts.joined(separator: " · ")
     }
 }
