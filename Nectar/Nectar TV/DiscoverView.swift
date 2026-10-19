@@ -20,7 +20,7 @@ struct DiscoverView: View {
                     Text("Nothing found for “\(model.query)”.")
                         .foregroundStyle(.secondary)
                 case let .found(items):
-                    DiscoverRow(title: "Results", items: items) { model.selected = $0 }
+                    DiscoverRow(title: "Results", items: items, state: model.state(of:)) { model.selected = $0 }
                 case let .failed(message):
                     Text(message).foregroundStyle(.secondary)
                 }
@@ -31,7 +31,7 @@ struct DiscoverView: View {
         .task(id: model.query) { await model.search() }
         .task { await model.loadTrending() }
         .fullScreenCover(item: $model.selected) { item in
-            DiscoverDetail(item: item)
+            DiscoverDetail(item: item, model: model)
         }
     }
 
@@ -42,8 +42,8 @@ struct DiscoverView: View {
             ProgressView()
                 .frame(maxWidth: .infinity, minHeight: PosterCard.size.height)
         case let .loaded(movies, shows):
-            DiscoverRow(title: "Trending movies", items: movies) { model.selected = $0 }
-            DiscoverRow(title: "Trending shows", items: shows) { model.selected = $0 }
+            DiscoverRow(title: "Trending movies", items: movies, state: model.state(of:)) { model.selected = $0 }
+            DiscoverRow(title: "Trending shows", items: shows, state: model.state(of:)) { model.selected = $0 }
         case let .failed(message):
             Text(message).foregroundStyle(.secondary)
         }
@@ -54,6 +54,7 @@ private struct DiscoverRow: View {
 
     let title: String
     let items: [DiscoverItem]
+    let state: (DiscoverItem) -> DiscoverState?
     let select: (DiscoverItem) -> Void
 
     var body: some View {
@@ -62,7 +63,7 @@ private struct DiscoverRow: View {
             ScrollView(.horizontal) {
                 LazyHStack(alignment: .top, spacing: 40) {
                     ForEach(items) { item in
-                        PosterCard(item: item) { select(item) }
+                        PosterCard(item: item, state: state(item)) { select(item) }
                     }
                 }
                 .padding(.vertical, 20)
@@ -77,6 +78,7 @@ private struct PosterCard: View {
     static let size = CGSize(width: 240, height: 360)
 
     let item: DiscoverItem
+    let state: DiscoverState?
     let select: () -> Void
 
     var body: some View {
@@ -93,7 +95,7 @@ private struct PosterCard: View {
                 .frame(width: Self.size.width, height: Self.size.height)
                 .clipped()
                 .overlay(alignment: .topTrailing) {
-                    if let state = DiscoverState(item) {
+                    if let state {
                         StateTag(state: state).padding(10)
                     }
                 }
@@ -108,25 +110,31 @@ private struct PosterCard: View {
     }
 }
 
-/// Where a title stands for this user. Slice 2 adds "Wanted · downloading" and "Requested · awaiting approval".
+/// Where a title stands for this user.
 enum DiscoverState {
     case inLibrary
+    /// Approved: nectar is downloading it.
+    case wanted
+    /// Pending: waiting for an admin.
     case requested
-
-    init?(_ item: DiscoverItem) {
-        if item.inLibrary {
-            self = .inLibrary
-        } else if item.alreadyRequested {
-            self = .requested
-        } else {
-            return nil
-        }
-    }
+    /// Someone has an open request for it and we don't know where it stands.
+    case alreadyRequested
 
     var label: String {
         switch self {
         case .inLibrary: "In library"
-        case .requested: "Requested"
+        case .wanted: "Wanted"
+        case .requested, .alreadyRequested: "Requested"
+        }
+    }
+
+    /// The longer line in the detail sheet.
+    var detail: String {
+        switch self {
+        case .inLibrary: "In your library"
+        case .wanted: "Wanted · downloading"
+        case .requested: "Requested · awaiting approval"
+        case .alreadyRequested: "Already requested"
         }
     }
 }
@@ -144,10 +152,11 @@ private struct StateTag: View {
     }
 }
 
-/// A title's detail: what it is and where it stands. The actions (want it, add to a playlist) arrive in later slices.
+/// A title's detail: what it is, where it stands, and "Want it" when it's neither owned nor asked for.
 private struct DiscoverDetail: View {
 
     let item: DiscoverItem
+    let model: DiscoverModel
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
@@ -167,8 +176,14 @@ private struct DiscoverDetail: View {
                         .frame(maxWidth: 1100, alignment: .leading)
                         .lineLimit(6)
                 }
-                if let state = DiscoverState(item) {
-                    StateTag(state: state)
+                if let state = model.state(of: item) {
+                    Text(state.detail).font(.headline)
+                } else if model.asking == item.id {
+                    ProgressView()
+                } else {
+                    Button("Want it") {
+                        Task { await model.want(item) }
+                    }
                 }
             }
             .padding(80)

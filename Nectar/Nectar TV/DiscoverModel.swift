@@ -25,6 +25,10 @@ final class DiscoverModel {
     var query = ""
     /// The title whose detail sheet is open.
     var selected: DiscoverItem?
+    /// This user's open requests, by ``DiscoverItem/id``; updated as they ask.
+    private(set) var wants: [String: WantState] = [:]
+    /// The title being asked for right now.
+    private(set) var asking: String?
 
     init(session: NectarSession) {
         self.session = session
@@ -32,6 +36,7 @@ final class DiscoverModel {
 
     func loadTrending() async {
         guard case .loading = trending else { return }
+        wants = (try? await session.myRequestStates()) ?? [:]
         do {
             async let movies = session.discoverTrending(.movie)
             async let shows = session.discoverTrending(.tv)
@@ -58,6 +63,26 @@ final class DiscoverModel {
         } catch {
             guard !Task.isCancelled else { return }
             results = .failed(Self.message(for: error))
+        }
+    }
+
+    /// Where a title stands for this user: owned, wanted (downloading), or awaiting approval.
+    func state(of item: DiscoverItem) -> DiscoverState? {
+        if item.inLibrary { return .inLibrary }
+        switch wants[item.id] {
+        case .wanted: return .wanted
+        case .awaitingApproval: return .requested
+        case .alreadyRequested: return .alreadyRequested
+        case nil: return item.alreadyRequested ? .alreadyRequested : nil
+        }
+    }
+
+    /// "Want it": a household member's title starts downloading; a guest's waits for an admin.
+    func want(_ item: DiscoverItem) async {
+        asking = item.id
+        defer { asking = nil }
+        if let state = try? await session.want(item) {
+            wants[item.id] = state
         }
     }
 
