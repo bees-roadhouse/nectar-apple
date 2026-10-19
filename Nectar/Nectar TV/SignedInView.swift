@@ -12,6 +12,8 @@ struct SignedInView: View {
     private var discover: DiscoverModel
     @State
     private var playlists: PlaylistsModel
+    @State
+    private var search: SearchModel
     /// Every library this user can see, each its own tab, as nectar lists them; none until it answers.
     @State
     private var libraries: [Library] = []
@@ -22,6 +24,7 @@ struct SignedInView: View {
         self.signOut = signOut
         _discover = State(initialValue: DiscoverModel(session: home.session))
         _playlists = State(initialValue: PlaylistsModel(session: home.session))
+        _search = State(initialValue: SearchModel(session: home.session))
     }
 
     var body: some View {
@@ -33,6 +36,9 @@ struct SignedInView: View {
                 Tab(library.name, systemImage: library.kind.symbol) {
                     LibraryView(library: library, session: home.session)
                 }
+            }
+            Tab("Search", systemImage: "magnifyingglass") {
+                SearchView(model: search)
             }
             Tab("Discover", systemImage: "sparkles") {
                 DiscoverView(model: discover)
