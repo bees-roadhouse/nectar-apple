@@ -76,7 +76,58 @@ Bun.serve({
         return json({ id: "stub-user", username: "pia", email: null, is_admin: true });
       }
     }
-    return json({ error: "not found" }, 404);
+    return media(req, url);
   },
 });
 console.log(`device-flow stub on ${issuer}`);
+
+// A little of nectar's media API, for the playlist slice (#33): one playlist with two playable
+// clips around a wanted entry, decide answering direct play, and the clips served with ranges.
+// Clips: STUB_MEDIA (default ~/scratch/nectar-apple/stub-media) holding clip-a.mp4 and clip-b.mp4.
+const mediaDir = process.env.STUB_MEDIA ?? `${process.env.HOME}/scratch/nectar-apple/stub-media`;
+const clips: Record<string, string> = { "clip-a": "clip-a.mp4", "clip-b": "clip-b.mp4" };
+
+function authorized(req: Request, url: URL) {
+  const bearer = req.headers.get("authorization")?.replace(/^Bearer /, "") ?? url.searchParams.get("access_token") ?? "";
+  return access.has(bearer);
+}
+
+async function media(req: Request, url: URL): Promise<Response> {
+  if (!url.pathname.startsWith("/api/v1/")) return json({ error: "not found" }, 404);
+  if (!authorized(req, url)) return json({ error: "unauthorized" }, 401);
+  const path = url.pathname;
+
+  if (path === "/api/v1/media/continue") return json({ items: [], total: 0 });
+  if (path === "/api/v1/collections") {
+    return json({ collections: [{ id: "stub-pl", user_id: "stub-user", name: "Stub playlist", description: "Two clips around a wanted title", kind: "playlist", item_count: "2" }] });
+  }
+  if (path === "/api/v1/collections/stub-pl") {
+    return json({
+      collection: { id: "stub-pl", name: "Stub playlist", description: "Two clips around a wanted title", kind: "playlist", item_count: "2" },
+      items: [
+        { id: "clip-a", item_type: "movie", title: "Red clip", year: 2026, sort_index: 0, poster_url: null, entry: "owned", media_item_id: "clip-a" },
+        { id: "w-piper", entry: "wanted", item_type: "movie", title: "Piper", year: 2016, sort_index: 1, poster_url: null, media_item_id: null, tmdb_id: "399106", request_status: "approved" },
+        { id: "clip-b", item_type: "movie", title: "Green clip", year: 2026, sort_index: 2, poster_url: null, entry: "owned", media_item_id: "clip-b" },
+      ],
+    });
+  }
+  const decide = path.match(/^\/api\/v1\/streaming\/([^/]+)\/decide$/);
+  if (decide && req.method === "POST") {
+    return json({ strategy: "direct", stream_url: `/api/v1/streaming/${decide[1]}/direct`, content_type: "video/mp4", job_id: null,
+      play_method: "DirectPlay", duration_seconds: 6, start_offset_seconds: 0, audio_reason: "first" });
+  }
+  const direct = path.match(/^\/api\/v1\/streaming\/([^/]+)\/direct$/);
+  if (direct && clips[direct[1]!]) {
+    const file = Bun.file(`${mediaDir}/${clips[direct[1]!]}`);
+    const size = file.size;
+    const range = req.headers.get("range")?.match(/bytes=(\d+)-(\d*)/);
+    if (!range) return new Response(file, { headers: { "content-type": "video/mp4", "accept-ranges": "bytes", "content-length": String(size) } });
+    const start = Number(range[1]), end = range[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
+    return new Response(file.slice(start, end + 1), { status: 206, headers: {
+      "content-type": "video/mp4", "accept-ranges": "bytes", "content-range": `bytes ${start}-${end}/${size}`, "content-length": String(end - start + 1) } });
+  }
+  if (/^\/api\/v1\/media\/[^/]+\/progress$/.test(path) && req.method === "POST") {
+    return json({}); // the body was read (and logged) by the handler above
+  }
+  return json({ error: "not found" }, 404);
+}

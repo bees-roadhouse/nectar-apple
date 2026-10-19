@@ -30,6 +30,9 @@ final class PlayerModel: Identifiable {
     private var started: ContinuousClock.Instant?
     /// AVPlayer starts out paused; only a pause after playing is the viewer's.
     private var hasPlayed = false
+    private var endObserver: NSObjectProtocol?
+    /// Called when the title plays to its end; a playlist moves on to the next.
+    var finished: (() -> Void)?
 
     /// How often progress goes to nectar while playing.
     private static let reportEvery: Double = 10
@@ -77,6 +80,8 @@ final class PlayerModel: Identifiable {
         timeObserver = nil
         statusObservation = nil
         itemStatusObservation = nil
+        if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
+        endObserver = nil
         let position = position(of: player, decision)
         let duration = decision.durationSeconds ?? card.runtimeSeconds
         let completed = duration.map { position >= $0 * 0.95 } ?? false
@@ -90,6 +95,11 @@ final class PlayerModel: Identifiable {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.report(self.position(of: player, decision), paused: false)
+            }
+        }
+        if let item = player.currentItem {
+            endObserver = NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: item, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.finished?() }
             }
         }
         statusObservation = player.observe(\.timeControlStatus) { [weak self] player, _ in
