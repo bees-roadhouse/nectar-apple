@@ -41,6 +41,9 @@ struct ItemDetailView: View {
         .fullScreenCover(item: $model.opened) { card in
             ItemDetailView(id: card.id, session: model.session, playlistAdding: model.playlistAdding)
         }
+        .fullScreenCover(item: $model.person) { person in
+            PersonView(id: person.id, session: model.session, playlistAdding: model.playlistAdding)
+        }
     }
 
     private func page(_ detail: ItemDetail) -> some View {
@@ -64,7 +67,7 @@ struct ItemDetailView: View {
                 if !detail.cast.isEmpty {
                     Row(title: "Cast") {
                         ForEach(detail.cast) { person in
-                            CastCard(person: person)
+                            CastCard(person: person) { model.person = person }
                         }
                     }
                 }
@@ -250,11 +253,11 @@ private struct ChapterCard: View {
 private struct CastCard: View {
 
     let person: ItemDetail.CastMember
+    let select: () -> Void
 
     var body: some View {
         VStack(spacing: 12) {
-            // Focusable so the row scrolls with the remote; people pages are slice 7.
-            Button {} label: {
+            Button(action: select) {
                 CachedImage(url: person.photo, maxPixelSize: 400) { image in
                     image.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {
