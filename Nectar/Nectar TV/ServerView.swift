@@ -2,52 +2,54 @@ import Charts
 import NectarKit
 import SwiftUI
 
-/// Server → Stats (#81), for admins: what the household has watched, as nectar counts it.
+/// The admin Server screen: **Stats** (#81), what the household has watched as nectar counts it, and **Now**
+/// (#83), who's watching and how the server is coping.
 struct ServerView: View {
+
+    enum Section: Hashable {
+        case stats
+        case now
+    }
 
     @State
     private var model: ServerModel
+    @State
+    private var now: NowModel
+    @State
+    private var section: Section = .stats
     let playlistAdding: PlaylistAdding
 
     init(session: NectarSession, playlistAdding: PlaylistAdding) {
         _model = State(initialValue: ServerModel(session: session))
+        _now = State(initialValue: NowModel(session: session))
         self.playlistAdding = playlistAdding
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // The title and the totals stay put; tvOS scrolls the rest to keep the focused row in view.
+            // The title, the section and Stats' totals stay put; tvOS scrolls the rest to keep the focused row in view.
             VStack(alignment: .leading, spacing: 32) {
-                Text("Server")
-                    .font(.title2.bold())
-                if case .loaded = model.state, let overview = model.overview {
+                HStack(spacing: 48) {
+                    Text("Server")
+                        .font(.title2.bold())
+                    Picker("Section", selection: $section) {
+                        Text("Stats").tag(Section.stats)
+                        Text("Now").tag(Section.now)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 420)
+                }
+                if section == .stats, case .loaded = model.state, let overview = model.overview {
                     Totals(overview: overview)
                 }
             }
             .padding(.horizontal, 80)
             .padding(.top, 60)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 56) {
-                    switch model.state {
-                    case .loading:
-                        ProgressView()
-                    case .refused:
-                        Text("Only an admin can see the server's stats.")
-                            .foregroundStyle(.secondary)
-                    case .failed:
-                        VStack(alignment: .leading, spacing: 24) {
-                            Text("Couldn't load the server's stats.")
-                                .foregroundStyle(.secondary)
-                            Button("Try again") { Task { await model.load() } }
-                        }
-                    case .loaded:
-                        LastThirtyDays(days: model.days)
-                        WhoWatches(users: model.users)
-                        MostWatched(items: model.mostWatched) { model.open($0) }
-                    }
-                }
-                .padding(80)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            switch section {
+            case .stats:
+                stats
+            case .now:
+                NowView(model: now)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -55,6 +57,32 @@ struct ServerView: View {
         .task { await model.load() }
         .fullScreenCover(item: $model.opened) { card in
             ItemDetailView(id: card.id, session: model.session, playlistAdding: playlistAdding)
+        }
+    }
+
+    private var stats: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 56) {
+                switch model.state {
+                case .loading:
+                    ProgressView()
+                case .refused:
+                    Text("Only an admin can see the server's stats.")
+                        .foregroundStyle(.secondary)
+                case .failed:
+                    VStack(alignment: .leading, spacing: 24) {
+                        Text("Couldn't load the server's stats.")
+                            .foregroundStyle(.secondary)
+                        Button("Try again") { Task { await model.load() } }
+                    }
+                case .loaded:
+                    LastThirtyDays(days: model.days)
+                    WhoWatches(users: model.users)
+                    MostWatched(items: model.mostWatched) { model.open($0) }
+                }
+            }
+            .padding(80)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
@@ -143,7 +171,7 @@ private struct WhoWatches: View {
 }
 
 /// A row the remote can rest on, lit while it has focus, so the screen scrolls and shows where you are.
-private struct FocusRow: ViewModifier {
+struct FocusRow: ViewModifier {
     @FocusState
     private var focused: Bool
 
