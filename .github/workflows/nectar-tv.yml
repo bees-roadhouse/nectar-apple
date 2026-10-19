@@ -1,0 +1,51 @@
+# The Nectar TV app (Nectar/), on the household's macOS runner: a fresh Tart VM per job,
+# fenced off the LAN (nectar-apple#68). Upstream Swiftfin's workflows build Swiftfin and
+# stay as they are.
+name: "Nectar TV"
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - "Nectar/**"
+      - ".github/workflows/nectar-tv.yml"
+  push:
+    branches: [ main ]
+    paths:
+      - "Nectar/**"
+      - ".github/workflows/nectar-tv.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: nectar-tv-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-build:
+    name: NectarKit tests and the tvOS build
+    runs-on: [ self-hosted, macOS, ARM64, roadhouse-macos ]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+          xcodebuild -showsdks | grep -i tvos || true
+
+      - name: NectarKit tests
+        working-directory: Nectar/NectarKit
+        run: swift test
+
+      # Unsigned: CI only proves it compiles; signing is the TV's, with Nate's personal team.
+      - name: Build NectarTV for the tvOS Simulator
+        working-directory: Nectar
+        run: |
+          xcodebuild build \
+            -project Nectar.xcodeproj \
+            -scheme NectarTV \
+            -destination 'generic/platform=tvOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            -skipMacroValidation -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM=""
