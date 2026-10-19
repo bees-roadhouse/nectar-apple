@@ -99,6 +99,33 @@ async function media(req: Request, url: URL): Promise<Response> {
   const path = url.pathname;
 
   if (path === "/api/v1/media/continue") return json({ items: [], total: 0 });
+  // Activity (#64): the queue an admin reads, then a live stream that grabs a second release, moves both,
+  // and finishes the first at 60%. Keepalive comments between, as nectar sends them.
+  if (path === "/api/v1/arr/queue") {
+    return json({ queue: [{ id: "q1", download_id: "d1", state: "downloading", release_title: "Charade.1963.1080p.BluRay", title: "Charade",
+      media_type: "movie", bytes_done: 4000, bytes_total: 10000, percent: 40, download_state: "downloading", eta_seconds: 300, phase: null, error: null }], failed: [] });
+  }
+  if (path === "/api/v1/events") {
+    const enc = new TextEncoder();
+    let timer: ReturnType<typeof setInterval>;
+    const body = new ReadableStream({
+      start(controller) {
+        const send = (type: string, data: object) => controller.enqueue(enc.encode(`event: ${type}\ndata: ${JSON.stringify({ type, ...data })}\n\n`));
+        let tick = 0;
+        send("release_grabbed", { media_item_id: "m2", download_id: "d2", title: "Piper.2016.1080p.WEB", size_bytes: 900000000 });
+        timer = setInterval(() => {
+          tick++;
+          controller.enqueue(enc.encode(":\n\n"));
+          const d1 = 40 + tick * 2, d2 = Math.min(tick * 7, 100);
+          if (d1 <= 60) send("download_progress", { download_id: "d1", percent: d1, bytes_per_sec: 5242880, eta_seconds: (100 - d1) * 6 });
+          if (d1 === 60) send("import_completed", { media_item_id: "m1", download_id: "d1" });
+          send("download_progress", { download_id: "d2", percent: d2, bytes_per_sec: 2097152, eta_seconds: Math.max(0, (100 - d2) * 2) });
+        }, 1000);
+      },
+      cancel() { clearInterval(timer); },
+    });
+    return new Response(body, { headers: { "content-type": "text/event-stream", "cache-control": "no-cache" } });
+  }
   // As an admin sees it: everyone's requests. The TV's list keeps the stub user's own (#56).
   if (path === "/api/v1/requests") {
     const at = (d: number) => new Date(Date.now() - d * 3600_000).toISOString();

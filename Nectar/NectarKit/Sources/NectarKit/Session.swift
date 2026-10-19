@@ -145,6 +145,20 @@ public actor NectarSession {
         return try Self.checked(retryData, retryResponse)
     }
 
+    /// A request for a long-lived stream under the base URL: the bearer and client headers, with a token
+    /// refreshed first if the current one is refused (the stream itself can't be retried mid-flight).
+    func streamRequest(_ path: String) async throws -> URLRequest {
+        guard var tokens = store.tokens else { throw NectarSessionError.signedOut }
+        let probe = try await send("GET", "api/v1/users/me", query: [], body: nil, with: tokens.accessToken).1
+        if probe.statusCode == 401 { tokens = try await refreshed(after: tokens) }
+        var request = URLRequest(url: baseURL.appending(path: path))
+        request.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        request.timeoutInterval = 24 * 3600
+        client?.stamp(&request)
+        return request
+    }
+
     // MARK: - Refresh
 
     private func refreshed(after stale: TokenSet) async throws -> TokenSet {
