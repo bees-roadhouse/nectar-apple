@@ -71,8 +71,9 @@ final class DiscoverModel {
         if item.inLibrary { return .inLibrary }
         switch wants[item.id] {
         case .wanted: return .wanted
-        case .awaitingApproval, .alreadyRequested: return .requested
-        case nil: return item.alreadyRequested ? .requested : nil
+        case .awaitingApproval: return .requested
+        case .alreadyRequested: return .alreadyRequested
+        case nil: return item.alreadyRequested ? .alreadyRequested : nil
         }
     }
 

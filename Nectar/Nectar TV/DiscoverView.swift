@@ -117,12 +117,14 @@ enum DiscoverState {
     case wanted
     /// Pending: waiting for an admin.
     case requested
+    /// Someone has an open request for it and we don't know where it stands.
+    case alreadyRequested
 
     var label: String {
         switch self {
         case .inLibrary: "In library"
         case .wanted: "Wanted"
-        case .requested: "Requested"
+        case .requested, .alreadyRequested: "Requested"
         }
     }
 
@@ -132,6 +134,7 @@ enum DiscoverState {
         case .inLibrary: "In your library"
         case .wanted: "Wanted · downloading"
         case .requested: "Requested · awaiting approval"
+        case .alreadyRequested: "Already requested"
         }
     }
 }
