@@ -51,11 +51,12 @@ public struct PreloadIndex: Codable, Equatable, Sendable {
     }
 
     /// The titles to remove so `incoming` bytes fit: under the budget, and leaving the margin free on disk.
-    /// Nil when it can't fit even with everything removed.
-    public func evictions(for incoming: Int64, budget: Int64, freeSpace: Int64) -> [String]? {
-        guard incoming <= budget, incoming + Self.margin <= freeSpace + usedBytes else { return nil }
-        var used = usedBytes
-        var free = freeSpace
+    /// `pending` is what downloads already under way will add, counted as used. Nil when it can't fit even
+    /// with everything removed.
+    public func evictions(for incoming: Int64, budget: Int64, freeSpace: Int64, pending: Int64 = 0) -> [String]? {
+        guard incoming + pending <= budget, incoming + pending + Self.margin <= freeSpace + usedBytes else { return nil }
+        var used = usedBytes + pending
+        var free = freeSpace - pending
         var out: [String] = []
         for entry in entries.values.sorted(by: { $0.lastTouched < $1.lastTouched }) {
             if used + incoming <= budget, free - incoming >= Self.margin { break }
@@ -64,6 +65,12 @@ public struct PreloadIndex: Codable, Equatable, Sendable {
             free += entry.bytes
         }
         return out
+    }
+
+    /// "Pre-load the next 3": from the episode a series would play next, the next `count` in order.
+    public static func nextEpisodes(in seasons: [Season], count: Int = 3) -> [Episode] {
+        guard let next = Season.nextUp(in: seasons)?.episode else { return [] }
+        return Array(Season.queue(from: next, in: seasons).prefix(count))
     }
 
     /// Whether the TV's own player plays this file as it is: a container, video codec and default audio it

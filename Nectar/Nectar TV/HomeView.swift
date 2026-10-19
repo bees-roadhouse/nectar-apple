@@ -187,6 +187,7 @@ private struct CardView: View {
         }
         .frame(width: Self.size.width, height: Self.size.height)
         .clipped()
+        .preloadBadge(card.id)
         .overlay(alignment: .bottom) {
             if let progress = card.progress {
                 ProgressView(value: progress)
