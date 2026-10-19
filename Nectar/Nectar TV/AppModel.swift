@@ -63,9 +63,15 @@ final class AppModel {
         }
     }
 
-    /// A `nectar://` link: followed now when someone is signed in, or once they are.
+    /// A `nectar://` URL from the system, as a link.
     func open(_ url: URL) {
-        guard let link = NectarLink(url: url) else { return }
+        if let link = NectarLink(url: url) {
+            follow(link)
+        }
+    }
+
+    /// A link, from a URL or from Siri (#77): followed now when someone is signed in, or once they are.
+    func follow(_ link: NectarLink) {
         guard case let .signedIn(_, home) = state else {
             pendingLink = link
             return
