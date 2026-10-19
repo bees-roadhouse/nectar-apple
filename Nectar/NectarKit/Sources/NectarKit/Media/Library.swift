@@ -125,20 +125,6 @@ private struct Libraries: Decodable {
     let libraries: [Library]
 }
 
-private struct ItemProgress: Decodable {
-    struct Progress: Decodable {
-        let positionSeconds: Double?
-        let completed: Bool?
-
-        enum CodingKeys: String, CodingKey {
-            case positionSeconds = "position_seconds"
-            case completed
-        }
-    }
-
-    let progress: Progress?
-}
-
 extension KeyedDecodingContainer {
     /// SQL `COUNT()` comes through postgres.js as a string; anything else as a number.
     func lenientInt(_ key: Key) -> Int? {
@@ -160,13 +146,5 @@ extension NectarSession {
     public func filters(library: String) async throws -> LibraryFilters {
         let data = try await get("api/v1/media/filters", query: [URLQueryItem(name: "library", value: library)])
         return try JSONDecoder().decode(LibraryFilters.self, from: data)
-    }
-
-    /// Where this user stopped, from the item route: nil when they haven't started or finished it.
-    /// A list row doesn't carry progress, and playing from 0 would overwrite the real resume point.
-    public func resumePoint(of id: String) async throws -> Double? {
-        let progress = try JSONDecoder().decode(ItemProgress.self, from: try await get("api/v1/media/\(id)")).progress
-        guard let progress, progress.completed != true, let position = progress.positionSeconds, position > 0 else { return nil }
-        return position
     }
 }
