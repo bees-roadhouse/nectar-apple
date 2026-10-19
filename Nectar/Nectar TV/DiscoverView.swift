@@ -12,6 +12,7 @@ struct DiscoverView: View {
             VStack(alignment: .leading, spacing: 56) {
                 switch model.results {
                 case .idle:
+                    Button("Your requests", systemImage: "tray.full") { model.showingRequests = true }
                     trending
                 case .searching:
                     ProgressView()
@@ -32,6 +33,9 @@ struct DiscoverView: View {
         .task { await model.loadTrending() }
         .fullScreenCover(item: $model.selected) { item in
             DiscoverDetail(item: item, model: model)
+        }
+        .fullScreenCover(isPresented: $model.showingRequests) {
+            RequestsView(model: model)
         }
     }
 

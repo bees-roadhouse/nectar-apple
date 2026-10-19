@@ -81,3 +81,47 @@ struct RequestTests {
         #expect(mine.count == 2, "denied, fulfilled and tmdb-less requests aren't open")
     }
 }
+
+/// An admin's `GET /requests` is everyone's; these are nate's and Maggie's.
+private let everyone = #"""
+{"requests":[
+  {"id":"a","media_ref":{"kind":"movie","tmdb_id":399106,"title":"Piper","year":2016},"requested_by":"u-nate","requested_by_name":"nate",
+   "status":"approved","monitored_item_id":"mi1","created_at":"2026-10-19T14:43:05.123Z","decided_at":"2026-10-19T14:43:05.200Z","auto_approved":true},
+  {"id":"b","media_ref":{"kind":"series","tmdb_id":"1399","title":"Game of Thrones","year":2011},"requested_by":"u-maggie","requested_by_name":"maggie",
+   "status":"pending","monitored_item_id":null,"created_at":"2026-10-18T20:00:00Z","decided_at":null,"auto_approved":false},
+  {"id":"c","media_ref":{"kind":"movie","tmdb_id":5,"title":"Four Rooms","year":1995},"requested_by":"u-nate","requested_by_name":"nate",
+   "status":"fulfilled","monitored_item_id":"mi2","created_at":"2026-10-01T09:30:00Z","decided_at":"2026-10-01T09:30:01Z","auto_approved":true},
+  {"id":"d","media_ref":{"kind":"movie","tmdb_id":6,"title":"Judgment Night","year":1993},"requested_by":"u-nate","requested_by_name":"nate",
+   "status":"denied","monitored_item_id":null,"created_at":"2026-09-30T09:30:00Z","decided_at":"2026-09-30T10:00:00Z","auto_approved":false}
+]}
+"""#
+
+@Suite("My requests")
+struct MyRequestTests {
+
+    @Test func onlyTheCallersOwnEvenForAnAdmin() async throws {
+        let mine = try await session(Routes(["/api/v1/requests": (200, everyone)])).myRequests(userID: "u-nate")
+        #expect(mine.map(\.title) == ["Piper", "Four Rooms", "Judgment Night"], "Maggie's request isn't nate's")
+        #expect(mine[0].year == 2016 && mine[0].kind == .movie && mine[0].autoApproved)
+    }
+
+    @Test func eachStatusSaysWhereItStands() async throws {
+        let mine = try await session(Routes(["/api/v1/requests": (200, everyone)])).myRequests(userID: "u-nate")
+        #expect(mine.map(\.status) == [.approved, .fulfilled, .denied])
+        #expect(mine.map(\.status.label) == ["Wanted · downloading", "In your library", "Declined"])
+        #expect(MyRequest.Status(rawValue: "pending")?.label == "Awaiting approval")
+    }
+
+    @Test func whenItWasAskedFor() async throws {
+        let mine = try await session(Routes(["/api/v1/requests": (200, everyone)])).myRequests(userID: "u-nate")
+        let expected = ISO8601DateFormatter().date(from: "2026-10-19T14:43:05Z")!.addingTimeInterval(0.123)
+        #expect(abs(try #require(mine[0].requestedAt).timeIntervalSince(expected)) < 0.001, "fractional seconds kept")
+        #expect(mine[1].requestedAt == ISO8601DateFormatter().date(from: "2026-10-01T09:30:00Z"), "with or without fractions")
+    }
+
+    @Test func discoverTagsCountOnlyTheCallersRequests() async throws {
+        let states = try await session(Routes(["/api/v1/requests": (200, everyone)])).myRequestStates(userID: "u-nate")
+        #expect(states[DiscoverItem(tmdbID: 1399, kind: .series, title: "").id] == nil, "Maggie's pending request isn't nate's to show")
+        #expect(states[DiscoverItem(tmdbID: 399106, kind: .movie, title: "").id] == .wanted)
+    }
+}

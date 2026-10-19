@@ -20,6 +20,8 @@ final class DiscoverModel {
     }
 
     let session: NectarSession
+    /// The signed-in user: their own requests, out of an admin's list of everyone's.
+    let userID: String
     private(set) var trending: Rows = .loading
     private(set) var results: Results = .idle
     var query = ""
@@ -31,15 +33,19 @@ final class DiscoverModel {
     private(set) var asking: String?
     /// Add to playlist, shared with the item detail.
     let playlistAdding: PlaylistAdding
+    /// This user's requests, newest first; nil until asked for.
+    private(set) var requests: [MyRequest]?
+    var showingRequests = false
 
-    init(session: NectarSession) {
+    init(session: NectarSession, userID: String) {
         self.session = session
+        self.userID = userID
         playlistAdding = PlaylistAdding(session: session)
     }
 
     func loadTrending() async {
         guard case .loading = trending else { return }
-        wants = (try? await session.myRequestStates()) ?? [:]
+        wants = (try? await session.myRequestStates(userID: userID)) ?? [:]
         do {
             async let movies = session.discoverTrending(.movie)
             async let shows = session.discoverTrending(.tv)
@@ -78,6 +84,11 @@ final class DiscoverModel {
         case .alreadyRequested: return .alreadyRequested
         case nil: return item.alreadyRequested ? .alreadyRequested : nil
         }
+    }
+
+    /// This user's requests, for the list; failing leaves an empty list rather than an error page.
+    func loadRequests() async {
+        requests = (try? await session.myRequests(userID: userID)) ?? []
     }
 
     /// "Want it": a household member's title starts downloading; a guest's waits for an admin.
