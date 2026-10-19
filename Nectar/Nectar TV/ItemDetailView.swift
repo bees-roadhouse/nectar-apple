@@ -29,6 +29,9 @@ struct ItemDetailView: View {
         .fullScreenCover(item: $model.playing, onDismiss: model.finishedPlaying) { player in
             PlayerView(model: player) { model.playing = nil }
         }
+        .fullScreenCover(item: $model.queue, onDismiss: model.finishedQueue) { queue in
+            QueuePlayer(queue: queue, session: model.session) { model.queue = nil }
+        }
         .fullScreenCover(item: $model.trailer) { trailer in
             VideoPlayer(player: trailer.player)
                 .ignoresSafeArea()

@@ -102,6 +102,17 @@ public struct Season: Decodable, Equatable, Identifiable, Sendable {
     }
 }
 
+extension Season {
+    /// What plays from `episode` on: it, then every later episode in order. Specials only when the
+    /// queue starts in them, because nectar sorts them first and a season's last episode mustn't lead into one.
+    public static func queue(from episode: Episode, in seasons: [Season]) -> [Episode] {
+        let inSpecials = episode.seasonNumber == 0
+        let all = seasons.filter { inSpecials || $0.number != 0 }.flatMap(\.episodes)
+        guard let start = all.firstIndex(where: { $0.id == episode.id }) else { return [episode] }
+        return Array(all[start...])
+    }
+}
+
 private struct Children: Decodable {
     let seasons: [Season]
 }
