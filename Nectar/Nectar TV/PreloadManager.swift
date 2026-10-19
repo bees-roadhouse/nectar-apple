@@ -83,7 +83,8 @@ final class PreloadManager {
     }
 
     /// Starts a pre-load: only a file the TV plays as it is, made room for within the budget.
-    func preload(itemID: String, title: String, source: PlaybackSource, session: NectarSession) async {
+    /// `posters` are the artwork paths Now Playing may ask for (an episode's still and its item poster).
+    func preload(itemID: String, title: String, source: PlaybackSource, posters: [String?], session: NectarSession) async {
         guard PreloadIndex.canPlayLocally(source, capabilities: PlayerModel.capabilities) else {
             states[itemID] = .unavailable("Can't pre-load this one yet")
             return
@@ -105,6 +106,12 @@ final class PreloadManager {
             pending[itemID] = size
             revision += 1
             task.resume()
+            // Now Playing's artwork, cached at the width it asks for, so a pre-loaded title has its poster
+            // even when nectar can't be reached.
+            let artwork = posters.compactMap { session.resolve($0, pixelWidth: PlayerModel.nowPlayingArtworkWidth) }
+            if !artwork.isEmpty {
+                Task.detached { await ImageCache.shared.prefetch(artwork) }
+            }
             log.info("preload \(itemID, privacy: .public): \(size, privacy: .public) bytes, evicted \(evicted.count, privacy: .public)")
         } catch {
             states[itemID] = .unavailable("Couldn't start the download")
@@ -145,7 +152,8 @@ final class PreloadManager {
                 skipped += 1
                 continue
             }
-            await preload(itemID: episode.id, title: "\(series) · \(episode.code ?? episode.title)", source: detail.source, session: session)
+            await preload(itemID: episode.id, title: "\(series) · \(episode.code ?? episode.title)", source: detail.source,
+                          posters: [episode.thumbPath, detail.posterPath], session: session)
         }
         return skipped
     }

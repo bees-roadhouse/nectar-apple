@@ -39,7 +39,7 @@ struct PreloadButton: View {
     }
 
     private func start() {
-        Task { await manager.preload(itemID: detail.id, title: detail.title, source: detail.source, session: session) }
+        Task { await manager.preload(itemID: detail.id, title: detail.title, source: detail.source, posters: [detail.posterPath], session: session) }
     }
 }
 
