@@ -138,6 +138,9 @@ struct ItemDetailView: View {
                 if detail.trailerPath != nil {
                     Button("Trailer", systemImage: "film") { Task { await model.playTrailer(detail) } }
                 }
+                if detail.itemType == "movie" || detail.itemType == "episode" {
+                    PreloadButton(detail: detail, session: model.session)
+                }
                 Button("Add to playlist", systemImage: "text.badge.plus") {
                     model.playlistAdding.target = .owned(id: detail.id, title: detail.title)
                 }

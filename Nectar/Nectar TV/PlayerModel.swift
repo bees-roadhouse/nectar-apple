@@ -55,6 +55,22 @@ final class PlayerModel: Identifiable {
         let resume = card.progressSeconds ?? 0
         let started = ContinuousClock.now
         log.info("play \(self.card.id, privacy: .public) resume=\(resume, privacy: .public)s hevc=\(Self.capabilities.videoCodecs.contains("hevc"), privacy: .public)")
+        // Pre-loaded (#85): the TV's own copy plays without asking nectar how to send it.
+        if let file = PreloadManager.shared.store.file(for: card.id) {
+            log.info("playing the pre-loaded copy")
+            let decision = PlaybackDecision.local(file)
+            let player = AVPlayer(url: file)
+            if resume > 0 {
+                await player.seek(to: CMTime(seconds: resume, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .positiveInfinity)
+            }
+            observe(player, decision)
+            phase = .playing(player, decision)
+            player.play()
+            describe(player.currentItem)
+            self.started = started
+            PreloadManager.shared.store.markPlayed(card.id)
+            return
+        }
         do {
             let decision = try await session.decide(card.id, capabilities: Self.capabilities, startOffset: resume > 0 ? resume : nil)
             log.info("decide \(decision.strategy.rawValue, privacy: .public) \(decision.playMethod ?? "-", privacy: .public) reason=\(decision.reason ?? "-", privacy: .public) start_offset=\(decision.startOffsetSeconds, privacy: .public)s audio=\(decision.audioStreamIndex.map(String.init) ?? "file default", privacy: .public) because \(String(describing: decision.audioReason), privacy: .public) after \(started.duration(to: .now), privacy: .public)")

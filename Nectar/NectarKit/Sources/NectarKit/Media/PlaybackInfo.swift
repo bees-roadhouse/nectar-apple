@@ -115,6 +115,8 @@ public enum PlaybackInfo {
         case "DirectPlay": "Direct play"
         case "DirectStream": "Remux"
         case "Transcode": "Transcode"
+        // The TV's own copy (#85): nectar wasn't asked how to send it.
+        case PlaybackDecision.preloaded: "Pre-loaded"
         case let other?: other
         case nil: decision.strategy == .direct ? "Direct play" : "Streaming"
         }

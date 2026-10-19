@@ -23,6 +23,7 @@ struct AccountView: View {
                     Text(problem).foregroundStyle(.orange)
                 }
                 playback
+                storage
                 devices
                 jellyfin
             }
@@ -84,6 +85,13 @@ struct AccountView: View {
     }
 
     @ViewBuilder
+    /// Space on this TV for pre-loaded titles (#85); a per-TV setting, not nectar's.
+    private var storage: some View {
+        Section("Pre-loaded on this TV") {
+            PreloadStorage()
+        }
+    }
+
     private var devices: some View {
         Section("Devices") {
             if let devices = model.devices {
