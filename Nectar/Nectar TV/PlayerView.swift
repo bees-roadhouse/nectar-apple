@@ -10,6 +10,8 @@ struct PlayerView: View {
 
     @State
     private var showsMethod = true
+    @Environment(\.isAdmin)
+    private var isAdmin
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -20,7 +22,7 @@ struct PlayerView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             case let .playing(player, decision):
-                SystemPlayer(player: player)
+                SystemPlayer(player: player, info: isAdmin ? PlaybackInfoPanel(model: model, player: player) : nil)
                     .ignoresSafeArea()
                 if showsMethod {
                     MethodBadge(decision: decision)
@@ -54,7 +56,7 @@ private struct MethodBadge: View {
         VStack(alignment: .trailing, spacing: 4) {
             Text(label).font(.headline)
             if let reason = decision.reason, decision.playMethod != "DirectPlay" {
-                Text(reason.replacingOccurrences(of: "_", with: " "))
+                Text(PlaybackInfo.reason(reason))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -80,23 +82,26 @@ private struct MethodBadge: View {
     }
 
     private var label: String {
-        switch decision.playMethod {
-        case "DirectPlay": "Direct play"
-        case "DirectStream": "Remux"
-        case "Transcode": "Transcode"
-        default: decision.strategy == .direct ? "Direct play" : "Streaming"
-        }
+        PlaybackInfo.method(decision)
     }
 }
 
 private struct SystemPlayer: UIViewControllerRepresentable {
 
     let player: AVPlayer
+    /// An admin's Playback tab in the info panel (#82); nil for everyone else.
+    let info: PlaybackInfoPanel?
 
     /// The player model sets the item's metadata (Now Playing, #42); the controller publishes it.
     func makeUIViewController(context: Context) -> AVPlayerViewController {
         let controller = AVPlayerViewController()
         controller.player = player
+        if let info {
+            let tab = UIHostingController(rootView: info)
+            tab.title = "Playback"
+            tab.preferredContentSize = CGSize(width: 0, height: 280)
+            controller.customInfoViewControllers = [tab]
+        }
         return controller
     }
 

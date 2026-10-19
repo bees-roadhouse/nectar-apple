@@ -50,6 +50,8 @@ public struct ItemDetail: Decodable, Equatable, Identifiable, Sendable {
     public let episodeCount: Int?
     /// Where this user stopped; nil when they haven't started, or finished.
     public let resumeSeconds: Double?
+    /// What the file is, for Playback info (#82).
+    public let source: PlaybackSource
 
     /// The card the player takes, starting at `seconds` (or the start).
     public func card(startingAt seconds: Double?) -> MediaCard {
@@ -140,6 +142,8 @@ public struct ItemDetail: Decodable, Equatable, Identifiable, Sendable {
         chapters = (try? c.decodeIfPresent([Chapter].self, forKey: .chapters)) ?? []
         seasonCount = c.lenientInt(.seasonCount)
         episodeCount = c.lenientInt(.episodeCount)
+        source = (try? outer.decode(PlaybackSource.self, forKey: .item))
+            ?? PlaybackSource(container: nil, videoCodec: nil, resolution: nil, hdr: nil, bitrate: nil, sizeBytes: nil, audioTracks: [])
         let progress = try? outer.decodeIfPresent(Progress.self, forKey: .progress)
         if let progress, progress.completed != true, let position = progress.positionSeconds, position > 0 {
             resumeSeconds = position

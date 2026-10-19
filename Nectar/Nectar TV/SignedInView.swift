@@ -50,10 +50,17 @@ struct SignedInView: View {
                 PlaylistsView(model: playlists)
             }
         }
+        // Admin-only parts deep in the app read this rather than being handed the user (Playback info, #82).
+        .environment(\.isAdmin, user.isAdmin)
         // One live event stream for the signed-in app; it ends with the session.
         .task { await activity.follow() }
         .task {
             libraries = (try? await home.session.libraries()) ?? []
         }
     }
+}
+
+extension EnvironmentValues {
+    /// Whether the signed-in user is an admin.
+    @Entry var isAdmin = false
 }
