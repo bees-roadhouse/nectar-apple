@@ -116,3 +116,38 @@ extension NectarSession {
         return PlaylistDetail(playlist: page.collection, members: page.items)
     }
 }
+
+private struct AddDiscoverItem: Encodable, Sendable {
+    let tmdbID: Int
+    let kind: String
+    let title: String
+    let year: Int?
+    let posterURL: String?
+
+    enum CodingKeys: String, CodingKey {
+        case kind, title, year
+        case tmdbID = "tmdb_id"
+        case posterURL = "poster_url"
+    }
+}
+
+private struct NewPlaylist: Encodable, Sendable {
+    let name: String
+    let kind = "playlist"
+}
+
+extension NectarSession {
+
+    /// Adds a Discover title to a playlist (nectar #433). nectar adds the library item when the title is
+    /// owned and a wanted entry when it isn't; adding it twice changes nothing.
+    public func add(_ item: DiscoverItem, toPlaylist playlistID: String) async throws {
+        let body = AddDiscoverItem(tmdbID: item.tmdbID, kind: item.kind.rawValue, title: item.title, year: item.year, posterURL: item.posterURL?.absoluteString)
+        _ = try await post("api/v1/collections/\(playlistID)/items", json: body)
+    }
+
+    /// A new, empty playlist owned by the user.
+    public func createPlaylist(named name: String) async throws -> Playlist {
+        let data = try await post("api/v1/collections", json: NewPlaylist(name: name.trimmingCharacters(in: .whitespacesAndNewlines)))
+        return try JSONDecoder().decode(Playlist.self, from: data)
+    }
+}
