@@ -19,6 +19,10 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
     public let backdropPath: String?
     /// How far in this user is, on the continue row only.
     public let progressSeconds: Double?
+    public let overview: String?
+    /// The title's logo art, when nectar has one; root-relative.
+    public let logoPath: String?
+    public let genres: [String]?
 
     public init(
         id: String,
@@ -31,7 +35,10 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
         episodeNumber: Int? = nil,
         posterPath: String? = nil,
         backdropPath: String? = nil,
-        progressSeconds: Double? = nil
+        progressSeconds: Double? = nil,
+        overview: String? = nil,
+        logoPath: String? = nil,
+        genres: [String]? = nil
     ) {
         self.id = id
         self.itemType = itemType
@@ -44,6 +51,9 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
         self.posterPath = posterPath
         self.backdropPath = backdropPath
         self.progressSeconds = progressSeconds
+        self.overview = overview
+        self.logoPath = logoPath
+        self.genres = genres
     }
 
     enum CodingKeys: String, CodingKey {
@@ -58,6 +68,8 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
         case posterPath = "poster_url"
         case backdropPath = "backdrop_url"
         case progressSeconds = "progress_seconds"
+        case overview, genres
+        case logoPath = "logo_url"
     }
 
     /// How far through, 0...1, or nil when nectar doesn't know the runtime.

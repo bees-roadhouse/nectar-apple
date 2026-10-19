@@ -25,6 +25,8 @@ final class HomeModel {
     let playlistAdding: PlaylistAdding
     private(set) var continueWatching: Row = .loading
     private(set) var forYou: [Recommendation] = []
+    /// The billboard: what's being watched, then what's new.
+    private(set) var hero: [HeroSlide] = []
     private(set) var shelves: [Shelf] = []
     /// The title on screen, if one is playing.
     var playing: PlayerModel?
@@ -62,6 +64,16 @@ final class HomeModel {
         playing = PlayerModel(card: card, session: session)
     }
 
+    /// A billboard slide: from Continue Watching it resumes as the row does; anything else asks nectar where
+    /// this user stopped first, since a list row doesn't say and playing from 0 would overwrite it.
+    func play(_ slide: HeroSlide) async {
+        if slide.resumable { return play(slide.card) }
+        let resume = (try? await session.detail(slide.card.id))?.resumeSeconds
+        let card = slide.card
+        play(MediaCard(id: card.id, itemType: card.itemType, title: card.title, year: card.year, runtimeSeconds: card.runtimeSeconds,
+                       posterPath: card.posterPath, backdropPath: card.backdropPath, progressSeconds: resume))
+    }
+
     /// Back from the player: the row's order and progress have moved.
     func finishedPlaying() {
         playing = nil
@@ -80,6 +92,14 @@ final class HomeModel {
         }
         async let recommendations = try? session.recommendations()
         async let shelves = loadShelves()
+        // The newest films and series asked for apart: across all libraries the newest twenty are mostly albums here.
+        async let films = try? session.media(.recentlyAdded(in: nil, itemType: "movie"))
+        async let series = try? session.media(.recentlyAdded(in: nil, itemType: "series"))
+        let (newFilms, newSeries) = await ((films)?.items ?? [], (series)?.items ?? [])
+        let recent = zip(newFilms, newSeries).flatMap { [$0, $1] } + newFilms.dropFirst(newSeries.count) + newSeries.dropFirst(newFilms.count)
+        if case let .loaded(watching) = continueWatching {
+            hero = HeroSlide.pick(watching: watching, recent: recent)
+        }
         forYou = await recommendations ?? []
         self.shelves = await shelves
     }
