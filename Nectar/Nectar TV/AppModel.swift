@@ -20,6 +20,10 @@ final class AppModel {
     static let clientID = "nectar-tv"
 
     private(set) var state: State = .starting
+    /// Bumped for each `nectar://` link followed while signed in, to rebuild the signed-in app (see `NectarTVApp`).
+    private(set) var linkGeneration = 0
+    /// A link that arrived before anyone was signed in (a cold launch from a link, #78).
+    private var pendingLink: NectarLink?
 
     private let store = KeychainTokenStore(server: AppModel.server)
     private var session: NectarSession?
@@ -51,12 +55,23 @@ final class AppModel {
         case let .signedIn(user):
             guard let resumed else { return beginSignIn() }
             session = resumed
-            state = .signedIn(user, home(resumed))
+            signedIn(user, resumed)
         case .signedOut:
             beginSignIn()
         case .unreachable:
             state = .unreachable
         }
+    }
+
+    /// A `nectar://` link: followed now when someone is signed in, or once they are.
+    func open(_ url: URL) {
+        guard let link = NectarLink(url: url) else { return }
+        guard case let .signedIn(_, home) = state else {
+            pendingLink = link
+            return
+        }
+        home.follow(link)
+        linkGeneration += 1
     }
 
     func signOut() {
@@ -79,14 +94,19 @@ final class AppModel {
         let session = NectarSession(baseURL: Self.server, tokenEndpoint: tokenEndpoint, clientID: Self.clientID, store: store, client: .thisTV)
         self.session = session
         if let user = try? await session.currentUser() {
-            state = .signedIn(user, home(session))
+            signedIn(user, session)
         } else {
             beginSignIn()
         }
     }
 
-    private func home(_ session: NectarSession) -> HomeModel {
-        HomeModel(session: session) { [weak self] in self?.signOut() }
+    private func signedIn(_ user: NectarUser, _ session: NectarSession) {
+        let home = HomeModel(session: session) { [weak self] in self?.signOut() }
+        if let pendingLink {
+            home.follow(pendingLink)
+            self.pendingLink = nil
+        }
+        state = .signedIn(user, home)
     }
 }
 

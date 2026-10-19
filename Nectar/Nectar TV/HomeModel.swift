@@ -35,6 +35,9 @@ final class HomeModel {
     /// A recommendation not in the library, opened as Discover shows it.
     var discovering: DiscoverItem?
 
+    /// A `nectar://` link to open or play once Home is on screen (#78).
+    private var link: NectarLink?
+
     /// How many genre rows, as the web's home.
     private static let genreRows = 4
     private let signedOut: () -> Void
@@ -72,6 +75,34 @@ final class HomeModel {
         let card = slide.card
         play(MediaCard(id: card.id, itemType: card.itemType, title: card.title, year: card.year, runtimeSeconds: card.runtimeSeconds,
                        posterPath: card.posterPath, backdropPath: card.backdropPath, progressSeconds: resume))
+    }
+
+    /// A link to follow: whatever Home had open closes, and the link's title opens when Home next appears.
+    func follow(_ link: NectarLink) {
+        playing = nil
+        opened = nil
+        discovering = nil
+        self.link = link
+    }
+
+    /// Home is on screen: open or play what a link asked for. A title being watched plays as its Continue
+    /// Watching card would; anything else from where nectar says this user stopped, so playing never resets it.
+    func followLink() async {
+        guard let link else { return }
+        self.link = nil
+        switch link {
+        case let .item(id):
+            opened = MediaCard(id: id)
+        case let .play(id):
+            if let card = (try? await session.continueWatching())?.first(where: { $0.id == id }) {
+                return play(card)
+            }
+            guard let detail = try? await session.detail(id), detail.itemType != "series" else {
+                opened = MediaCard(id: id)
+                return
+            }
+            play(detail.card(startingAt: detail.resumeSeconds))
+        }
     }
 
     /// Back from the player: the row's order and progress have moved.
