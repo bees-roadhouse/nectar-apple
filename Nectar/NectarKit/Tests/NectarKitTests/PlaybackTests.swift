@@ -88,6 +88,33 @@ struct PlaybackTests {
         #expect(body["start_offset"] == nil)
     }
 
+    /// nectar #411: with no track asked for, nectar picks by the user's language and says why.
+    @Test func decodesNectarsAudioPickAndWhy() async throws {
+        let answer = #"""
+        {"strategy":"hls","stream_url":"/api/v1/streaming/x/hls/copy-a2-acopy/stream.m3u8","content_type":"application/vnd.apple.mpegurl",
+         "job_id":"j","play_method":"DirectStream","reason":"container","audio_reason":"preferred_language",
+         "selected":{"quality":"original","audio_stream_index":2},"start_offset_seconds":0}
+        """#
+        let transport = PathTransport(["/api/v1/streaming/x/decide": (200, answer)])
+        let decision = try await session(transport).decide("x", capabilities: .avPlayer(hevcHardwareDecode: true), startOffset: nil)
+        #expect(decision.audioReason == .preferredLanguage)
+        #expect(decision.audioStreamIndex == 2)
+
+        let body = try json(await transport.requests.first?.httpBody)
+        #expect(body["audio_stream_index"] == nil, "the first decide leaves the choice to nectar")
+    }
+
+    @Test func aFileDefaultPickCarriesNoIndexAndAnUnknownReasonStillDecodes() async throws {
+        let answer = #"{"strategy":"direct","stream_url":"/d","content_type":"video/mp4","job_id":null,"audio_reason":"file_default","selected":{"quality":"original"},"start_offset_seconds":0}"#
+        let decision = try await session(PathTransport(["/api/v1/streaming/y/decide": (200, answer)])).decide("y", capabilities: .avPlayer(hevcHardwareDecode: false), startOffset: nil)
+        #expect(decision.audioReason == .fileDefault)
+        #expect(decision.audioStreamIndex == nil)
+
+        let newer = #"{"strategy":"direct","stream_url":"/d","content_type":"video/mp4","job_id":null,"audio_reason":"something_new","start_offset_seconds":0}"#
+        let future = try await session(PathTransport(["/api/v1/streaming/z/decide": (200, newer)])).decide("z", capabilities: .avPlayer(hevcHardwareDecode: false), startOffset: nil)
+        #expect(future.audioReason == .other("something_new"), "a reason nectar adds later mustn't break playback")
+    }
+
     @Test func decodesADirectDecision() async throws {
         let transport = PathTransport(["/api/v1/streaming/6f1c/decide": (200, directAnswer)])
         let decision = try await session(transport).decide("6f1c", capabilities: .avPlayer(hevcHardwareDecode: false), startOffset: 30)
