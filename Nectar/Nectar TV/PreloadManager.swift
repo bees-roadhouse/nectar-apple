@@ -27,6 +27,9 @@ final class PreloadManager {
 
     let store = PreloadStore()
     private(set) var states: [String: State] = [:]
+    /// The sizes of downloads under way, counted against the budget before they land.
+    @ObservationIgnored
+    private var pending: [String: Int64] = [:]
     /// Bumped when the store changes, so views reading it redraw.
     private(set) var revision = 0
     /// The system's handler for a background session's events, called once they're delivered.
@@ -67,6 +70,12 @@ final class PreloadManager {
         }
     }
 
+    /// Whether this TV has the title pre-loaded: what a poster's badge asks, so no disk check per poster.
+    func isPreloaded(_ itemID: String) -> Bool {
+        _ = revision
+        return store.index.entries[itemID] != nil
+    }
+
     func state(for itemID: String) -> State {
         _ = revision
         if store.file(for: itemID) != nil { return .loaded }
@@ -74,14 +83,16 @@ final class PreloadManager {
     }
 
     /// Starts a pre-load: only a file the TV plays as it is, made room for within the budget.
-    func preload(itemID: String, title: String, source: PlaybackSource, session: NectarSession) async {
+    /// `posters` are the artwork paths Now Playing may ask for (an episode's still and its item poster).
+    func preload(itemID: String, title: String, source: PlaybackSource, posters: [String?], session: NectarSession) async {
         guard PreloadIndex.canPlayLocally(source, capabilities: PlayerModel.capabilities) else {
             states[itemID] = .unavailable("Can't pre-load this one yet")
             return
         }
         let size = Int64(source.sizeBytes ?? 0)
         let budget = Int64(budgetGB) * 1_000_000_000
-        guard let evicted = store.index.evictions(for: size, budget: budget, freeSpace: Self.freeSpace()) else {
+        let underWay = pending.values.reduce(0, +)
+        guard let evicted = store.index.evictions(for: size, budget: budget, freeSpace: Self.freeSpace(), pending: underWay) else {
             states[itemID] = .unavailable("Too big for the pre-load space")
             return
         }
@@ -92,8 +103,15 @@ final class PreloadManager {
             let task = downloads.downloadTask(with: url)
             task.taskDescription = Job(itemID: itemID, title: title, fileExtension: source.container?.lowercased() ?? "mp4").encoded
             states[itemID] = .downloading(nil)
+            pending[itemID] = size
             revision += 1
             task.resume()
+            // Now Playing's artwork, cached at the width it asks for, so a pre-loaded title has its poster
+            // even when nectar can't be reached.
+            let artwork = posters.compactMap { session.resolve($0, pixelWidth: PlayerModel.nowPlayingArtworkWidth) }
+            if !artwork.isEmpty {
+                Task.detached { await ImageCache.shared.prefetch(artwork) }
+            }
             log.info("preload \(itemID, privacy: .public): \(size, privacy: .public) bytes, evicted \(evicted.count, privacy: .public)")
         } catch {
             states[itemID] = .unavailable("Couldn't start the download")
@@ -107,6 +125,7 @@ final class PreloadManager {
         }
         store.remove(itemID)
         states[itemID] = nil
+        pending[itemID] = nil
         revision += 1
     }
 
@@ -114,6 +133,7 @@ final class PreloadManager {
         downloads.getAllTasks { tasks in tasks.forEach { $0.cancel() } }
         store.removeAll()
         states = [:]
+        pending = [:]
         revision += 1
     }
 
@@ -121,7 +141,25 @@ final class PreloadManager {
         states[itemID] = .downloading(fraction)
     }
 
+    /// "Pre-load the next 3" on a series: each episode's file facts come from its item route, and those the
+    /// TV can't play as they are are skipped. Returns how many were skipped.
+    func preloadNext(_ episodes: [Episode], series: String, session: NectarSession) async -> Int {
+        var skipped = 0
+        for episode in episodes where !isPreloaded(episode.id) {
+            if case .downloading = states[episode.id] { continue }
+            guard let detail = try? await session.detail(episode.id),
+                  PreloadIndex.canPlayLocally(detail.source, capabilities: PlayerModel.capabilities) else {
+                skipped += 1
+                continue
+            }
+            await preload(itemID: episode.id, title: "\(series) · \(episode.code ?? episode.title)", source: detail.source,
+                          posters: [episode.thumbPath, detail.posterPath], session: session)
+        }
+        return skipped
+    }
+
     fileprivate func finished(_ itemID: String, error: String?) {
+        pending[itemID] = nil
         states[itemID] = error.map(State.unavailable)
         revision += 1
         if let error {

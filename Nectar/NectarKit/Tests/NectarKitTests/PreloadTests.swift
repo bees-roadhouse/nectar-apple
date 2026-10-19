@@ -59,6 +59,22 @@ struct PreloadTests {
         #expect(index.evictions(for: 30 * gb, budget: 25 * gb, freeSpace: 500 * gb) == nil)
     }
 
+    @Test func downloadsUnderWayCountAgainstTheBudget() {
+        let index = PreloadIndex(entries: [entry("old", gigabytes: 5, completed: 1)])
+        // 5 GB stored and 8 GB already coming: a 6 GB title still fits 20 GB, a 9 GB one needs the old one gone.
+        #expect(index.evictions(for: 6 * gb, budget: 20 * gb, freeSpace: 500 * gb, pending: 8 * gb) == [])
+        #expect(index.evictions(for: 9 * gb, budget: 20 * gb, freeSpace: 500 * gb, pending: 8 * gb) == ["old"])
+        // 8 GB coming and 14 GB more can't fit 20 GB at all.
+        #expect(index.evictions(for: 14 * gb, budget: 20 * gb, freeSpace: 500 * gb, pending: 8 * gb) == nil)
+    }
+
+    @Test func theNextThreeStartWhereTheSeriesWouldPlay() throws {
+        let json = #"{"seasons":[{"season_number":1,"episodes":[\#((1 ... 4).map { n in #"{"id":"e\#(n)","episode_number":\#(n),"season_number":1,"title":"E\#(n)","overview":null,"runtime_seconds":60,"air_date":null,"watched":\#(n == 1),"progress_seconds":0,"thumb_url":null}"# }.joined(separator: ","))]},{"season_number":2,"episodes":[{"id":"s2e1","episode_number":1,"season_number":2,"title":"S2E1","overview":null,"runtime_seconds":60,"air_date":null,"watched":false,"progress_seconds":0,"thumb_url":null}]}]}"#
+        let seasons = try JSONDecoder().decode(SeasonList.self, from: Data(json.utf8)).seasons
+        #expect(PreloadIndex.nextEpisodes(in: seasons).map(\.id) == ["e2", "e3", "e4"])
+        #expect(PreloadIndex.nextEpisodes(in: seasons, count: 5).map(\.id) == ["e2", "e3", "e4", "s2e1"])
+    }
+
     @Test func theStoreKeepsFilesAndTheirIndexTogether() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -93,4 +109,9 @@ struct PreloadTests {
         #expect(store.file(for: "x") == nil)
         #expect(store.index.entries["x"] == nil)
     }
+}
+
+/// The children route's shape, for decoding seasons in a test.
+private struct SeasonList: Decodable {
+    let seasons: [Season]
 }

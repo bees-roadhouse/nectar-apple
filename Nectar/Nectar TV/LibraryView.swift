@@ -133,6 +133,7 @@ struct LibraryPoster: View {
                 }
                 .frame(width: shape.size.width, height: shape.size.height)
                 .clipped()
+                .preloadBadge(card.id)
             }
             .buttonStyle(.card)
             Text(caption)

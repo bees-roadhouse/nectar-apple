@@ -127,6 +127,9 @@ struct ItemDetailView: View {
                 } else if detail.itemType == "series", let first = model.seasons.first?.episodes.first {
                     Button("Watch again from \(first.code ?? first.title)", systemImage: "arrow.counterclockwise") { model.play(first, of: detail) }
                 }
+                if detail.itemType == "series" {
+                    PreloadNextButton(series: detail, seasons: model.seasons, session: model.session)
+                }
                 if detail.itemType == "movie" || detail.itemType == "episode" {
                     if let resume = detail.resumeSeconds {
                         Button("Resume from \(Self.clock(resume))", systemImage: "play.fill") { model.play(detail, from: resume) }
@@ -311,6 +314,7 @@ private struct EpisodeCard: View {
                 }
                 .frame(width: Self.size.width, height: Self.size.height)
                 .clipped()
+                .preloadBadge(episode.id)
                 .overlay(alignment: .topTrailing) {
                     if episode.watched {
                         Image(systemName: "checkmark.circle.fill")

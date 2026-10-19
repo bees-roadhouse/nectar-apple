@@ -46,6 +46,9 @@ final class PlayerModel: Identifiable {
     }
 
     /// AVPlayer on this device, HEVC only when the hardware decodes it (an Apple TV 4K yes, the simulator no).
+    /// The poster width Now Playing hands the system; pre-loading warms the cache at this width too (#85).
+    static let nowPlayingArtworkWidth: Double = 600
+
     static var capabilities: PlaybackCapabilities {
         .avPlayer(hevcHardwareDecode: VTIsHardwareDecodeSupported(kCMVideoCodecType_HEVC))
     }
@@ -100,7 +103,7 @@ final class PlayerModel: Identifiable {
         let session = session, card = card
         Task { [weak self, weak item] in
             async let detail = try? session.detail(card.id)
-            let poster = session.resolve(card.posterPath, pixelWidth: 600)
+            let poster = session.resolve(card.posterPath, pixelWidth: Self.nowPlayingArtworkWidth)
             let artwork = await (poster != nil ? try? ImageCache.shared.data(for: poster!) : nil)
             let fetched = await detail
             let full = NowPlaying.metadata(for: card, detail: fetched, artwork: artwork)

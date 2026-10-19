@@ -39,7 +39,7 @@ struct PreloadButton: View {
     }
 
     private func start() {
-        Task { await manager.preload(itemID: detail.id, title: detail.title, source: detail.source, session: session) }
+        Task { await manager.preload(itemID: detail.id, title: detail.title, source: detail.source, posters: [detail.posterPath], session: session) }
     }
 }
 
@@ -85,5 +85,71 @@ struct PreloadStorage: View {
 
     private static func size(_ bytes: Int64) -> String {
         ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+    }
+}
+
+/// "Pre-load next 3" on a series' page: the episodes it would play next, with how they're coming along.
+struct PreloadNextButton: View {
+
+    let series: ItemDetail
+    let seasons: [Season]
+    let session: NectarSession
+
+    @State
+    private var skipped: Int?
+
+    private var manager: PreloadManager { .shared }
+
+    var body: some View {
+        let next = PreloadIndex.nextEpisodes(in: seasons)
+        if !next.isEmpty {
+            Button(label(next), systemImage: icon(next)) {
+                Task { skipped = await manager.preloadNext(next, series: series.title, session: session) }
+            }
+        }
+    }
+
+    private func label(_ next: [Episode]) -> String {
+        let states = next.map { manager.state(for: $0.id) }
+        let loaded = states.filter { $0 == .loaded }.count
+        let coming = states.compactMap { state -> Double? in
+            if case let .downloading(fraction) = state { return fraction ?? 0 }
+            return nil
+        }
+        if !coming.isEmpty {
+            return "Pre-loading next \(next.count) · \(Int(coming.reduce(0, +) / Double(coming.count) * 100))%"
+        }
+        if loaded == next.count { return "Next \(next.count) pre-loaded" }
+        if let skipped, skipped > 0 {
+            return loaded > 0 ? "\(loaded) pre-loaded · \(skipped) can't be yet" : "Can't pre-load these yet"
+        }
+        return "Pre-load next \(next.count)"
+    }
+
+    private func icon(_ next: [Episode]) -> String {
+        next.allSatisfy { manager.isPreloaded($0.id) } ? "checkmark.circle.fill" : "arrow.down.circle"
+    }
+}
+
+extension View {
+    /// A small mark on a title's artwork when this TV has it pre-loaded (#85).
+    func preloadBadge(_ itemID: String) -> some View {
+        modifier(PreloadBadge(itemID: itemID))
+    }
+}
+
+private struct PreloadBadge: ViewModifier {
+    let itemID: String
+
+    func body(content: Content) -> some View {
+        content.overlay(alignment: .topLeading) {
+            if PreloadManager.shared.isPreloaded(itemID) {
+                Image(systemName: "arrow.down.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(.white, .black.opacity(0.6))
+                    .padding(10)
+                    .accessibilityLabel("Pre-loaded")
+            }
+        }
     }
 }
