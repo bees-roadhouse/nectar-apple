@@ -117,6 +117,26 @@ final class PlayerModel: Identifiable {
     /// The player is going away: say where it stopped, and whether that's the end.
     func stop() {
         guard case let .playing(player, decision) = phase else { return }
+        tearDown(player)
+        let position = position(of: player, decision)
+        let duration = decision.durationSeconds ?? card.runtimeSeconds
+        let completed = duration.map { position >= $0 * 0.95 } ?? false
+        report(position, paused: true, completed: completed ? true : nil, force: true)
+    }
+
+    /// AVPlayer gave up on the item (#91): say so, instead of leaving a dead player on screen. Where it had got to
+    /// is saved as a stop would save it; a start that never played reports nothing, so the old resume point stands.
+    private func failed() {
+        guard case let .playing(player, _) = phase else { return }
+        if hasPlayed {
+            stop()
+        } else {
+            tearDown(player)
+        }
+        phase = .failed("Couldn't play this title.")
+    }
+
+    private func tearDown(_ player: AVPlayer) {
         player.pause()
         if let timeObserver { player.removeTimeObserver(timeObserver) }
         timeObserver = nil
@@ -124,10 +144,6 @@ final class PlayerModel: Identifiable {
         itemStatusObservation = nil
         if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
         endObserver = nil
-        let position = position(of: player, decision)
-        let duration = decision.durationSeconds ?? card.runtimeSeconds
-        let completed = duration.map { position >= $0 * 0.95 } ?? false
-        report(position, paused: true, completed: completed ? true : nil, force: true)
     }
 
     // MARK: - Progress
@@ -160,10 +176,10 @@ final class PlayerModel: Identifiable {
             }
         }
         if let item = player.currentItem {
-            itemStatusObservation = item.observe(\.status) { item, _ in
-                if item.status == .failed {
-                    log.error("player item failed: \(String(describing: item.error), privacy: .public)")
-                }
+            itemStatusObservation = item.observe(\.status) { [weak self] item, _ in
+                guard item.status == .failed else { return }
+                log.error("player item failed: \(String(describing: item.error), privacy: .public)")
+                Task { @MainActor in self?.failed() }
             }
         }
     }
