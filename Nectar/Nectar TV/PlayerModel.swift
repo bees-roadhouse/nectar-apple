@@ -60,6 +60,10 @@ final class PlayerModel: Identifiable {
     /// background) is not a failure, and on the TV that pause looked like one.
     private static let firstFrameDeadline: Duration = .seconds(45)
 
+    /// A burned start gets less. A DVD burn shows its first frame in about 5 s, and a 4K one never keeps up (nectar
+    /// #644); the fallback plays the film unburned, so waiting the full deadline would only hold the film back.
+    private static let burnedStartDeadline: Duration = .seconds(15)
+
     init(card: MediaCard, session: NectarSession) {
         id = card.id
         self.card = card
@@ -223,10 +227,11 @@ final class PlayerModel: Identifiable {
             return
         }
         guard startDeadline == nil else { return }
+        let deadline = burned != nil ? Self.burnedStartDeadline : Self.firstFrameDeadline
         startDeadline = Task { [weak self, weak player] in
-            try? await Task.sleep(for: Self.firstFrameDeadline)
+            try? await Task.sleep(for: deadline)
             guard let self, let player, !Task.isCancelled, !self.hasPlayed else { return }
-            log.error("no first frame after \(Self.firstFrameDeadline, privacy: .public) of waiting: \(player.reasonForWaitingToPlay?.rawValue ?? "-", privacy: .public), item status \(player.currentItem?.status.rawValue ?? -1, privacy: .public)")
+            log.error("no first frame after \(deadline, privacy: .public) of waiting: \(player.reasonForWaitingToPlay?.rawValue ?? "-", privacy: .public), item status \(player.currentItem?.status.rawValue ?? -1, privacy: .public)")
             self.failed()
         }
     }
