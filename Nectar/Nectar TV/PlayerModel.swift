@@ -42,6 +42,8 @@ final class PlayerModel: Identifiable {
     private(set) var switching = false
     /// One line after a subtitle switch that didn't work; playback carries on.
     private(set) var notice: String?
+    /// A burned start that never showed a frame has fallen back to the unburned stream; a second failure is final.
+    private var fellBack = false
     /// The rendition to select once the stream is ready: the person's default, or the AVKit track picked while burned.
     private var pendingRendition: String?
     private var selectionObserver: NSObjectProtocol?
@@ -52,9 +54,10 @@ final class PlayerModel: Identifiable {
     private static let reportEvery: Double = 10
 
     /// How long AVPlayer may wait to start, with no first frame, before the TV says so (#91). It can wait forever,
-    /// never failing, when the server answers the playlists but not the media; real starts on the TV take under 5 s,
-    /// and the slowest transcode seen took about 25. Only waiting counts: a start the system paused (a screensaver
-    /// over the app, the app in the background) is not a failure, and on the TV that pause looked like one.
+    /// never failing, when the server answers the playlists but not the media; real starts on the TV take under 5 s.
+    /// A cold transcode of a 4K source took 52 s to its first segment (nectar #644), and AVPlayer gave up on it at
+    /// 43 s by itself. Only waiting counts: a start the system paused (a screensaver over the app, the app in the
+    /// background) is not a failure, and on the TV that pause looked like one.
     private static let firstFrameDeadline: Duration = .seconds(45)
 
     init(card: MediaCard, session: NectarSession) {
@@ -98,16 +101,7 @@ final class PlayerModel: Identifiable {
             subtitles = await tracks ?? []
             decision = await applyDefault(to: decision, resume: resume)
             log.info("decide \(decision.strategy.rawValue, privacy: .public) \(decision.playMethod ?? "-", privacy: .public) reason=\(decision.reason ?? "-", privacy: .public) start_offset=\(decision.startOffsetSeconds, privacy: .public)s audio=\(decision.audioStreamIndex.map(String.init) ?? "file default", privacy: .public) because \(String(describing: decision.audioReason), privacy: .public) after \(started.duration(to: .now), privacy: .public)")
-            // The URL carries the access token: it goes to AVPlayer and nowhere else.
-            let player = AVPlayer(url: try await session.mediaURL(decision.streamPath))
-            let seek = decision.seek(toResumeAt: resume)
-            if seek > 0 {
-                await player.seek(to: CMTime(seconds: seek, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .positiveInfinity)
-            }
-            observe(player, decision)
-            phase = .playing(player, decision)
-            player.play()
-            describe(player.currentItem)
+            try await begin(decision, at: resume)
             self.started = started
         } catch {
             log.error("play failed: \(String(describing: error), privacy: .public)")
@@ -135,6 +129,20 @@ final class PlayerModel: Identifiable {
         }
     }
 
+    /// Opens what nectar decided at the resume point and plays it.
+    private func begin(_ decision: PlaybackDecision, at resume: Double) async throws {
+        // The URL carries the access token: it goes to AVPlayer and nowhere else.
+        let player = AVPlayer(url: try await session.mediaURL(decision.streamPath))
+        let seek = decision.seek(toResumeAt: resume)
+        if seek > 0 {
+            await player.seek(to: CMTime(seconds: seek, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .positiveInfinity)
+        }
+        observe(player, decision)
+        phase = .playing(player, decision)
+        player.play()
+        describe(player.currentItem)
+    }
+
     /// The player is going away: say where it stopped, and whether that's the end.
     func stop() {
         guard case let .playing(player, decision) = phase else { return }
@@ -150,12 +158,45 @@ final class PlayerModel: Identifiable {
     /// resume point stands.
     private func failed() {
         guard case let .playing(player, _) = phase else { return }
+        if let track = burned, !hasPlayed, !fellBack {
+            tearDown(player)
+            Task { await playUnburned(instead: track) }
+            return
+        }
         if hasPlayed {
             stop()
         } else {
             tearDown(player)
         }
         phase = .failed("Couldn't play this title.")
+    }
+
+    /// A burned start that never showed a frame (a burn nectar can't encode in time, nectar #644): the title plays
+    /// unburned rather than not at all, and says which subtitles it couldn't show.
+    private func playUnburned(instead track: SubtitleTrack) async {
+        fellBack = true
+        burned = nil
+        phase = .deciding
+        let resume = card.progressSeconds ?? 0
+        log.error("subtitles: the stream burning \(track.label, privacy: .public) never started; playing unburned")
+        do {
+            let decision = try await session.decide(card.id, capabilities: Self.capabilities, startOffset: resume > 0 ? resume : nil, subtitle: .off)
+            started = .now
+            try await begin(decision, at: resume)
+            show("Couldn't turn on \(track.menuTitle()) subtitles")
+        } catch {
+            log.error("play failed: \(String(describing: error), privacy: .public)")
+            phase = .failed("Couldn't play this title.")
+        }
+    }
+
+    /// One line over the picture for a few seconds.
+    private func show(_ line: String) {
+        notice = line
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(6))
+            if self?.notice == line { self?.notice = nil }
+        }
     }
 
     private func tearDown(_ player: AVPlayer) {
@@ -359,18 +400,14 @@ final class PlayerModel: Identifiable {
             log.info("subtitles: switched to \(track?.label ?? "unburned", privacy: .public) at \(at, privacy: .public)s")
         } catch {
             log.error("subtitles: switch to \(track?.label ?? "unburned", privacy: .public) failed: \(String(describing: error), privacy: .public)")
-            notice = track.map { "Couldn't turn on \($0.menuTitle()) subtitles" } ?? "Couldn't turn off subtitles"
+            show(track.map { "Couldn't turn on \($0.menuTitle()) subtitles" } ?? "Couldn't turn off subtitles")
             old.play()
-            let shown = notice
-            Task { [weak self] in
-                try? await Task.sleep(for: .seconds(6))
-                if self?.notice == shown { self?.notice = nil }
-            }
         }
     }
 
     /// How long a burned stream may take to be ready before the switch gives up and the old stream carries on:
-    /// a burn is a transcode, and the slowest transcode start seen was about 25 s.
+    /// a burn is a transcode, a DVD burn starts in about 3 s, and a 4K one in 52 s (nectar #644), which this
+    /// deliberately doesn't wait out: the picture is held meanwhile, and a 4K burn can't keep up once it starts.
     private static let switchDeadline: Duration = .seconds(40)
 
     private struct NotReady: Error {}
