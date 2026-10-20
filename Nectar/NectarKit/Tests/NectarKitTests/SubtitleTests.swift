@@ -222,3 +222,33 @@ struct SubtitleMenuNameTests {
         #expect(unknown.menuTitle(locale: english) == "Track 8")
     }
 }
+
+/// nectar#627: the TV says it can't draw bitmaps, and nectar burns a bitmap default in the same answer.
+@Suite("Subtitle capabilities")
+struct SubtitleCapabilityTests {
+
+    private let tracks = [
+        SubtitleTrack(id: "embedded-2", kind: .embedded, streamIndex: 2, language: "en", label: "English"),
+        SubtitleTrack(id: "embedded-11", kind: .embedded, streamIndex: 11, language: "fr", label: "French", canSidecar: false),
+        SubtitleTrack(id: "5b6e", kind: .external, language: "de", label: "Deutsch", canSidecar: false),
+    ]
+
+    @Test func everyDecideSaysAVPlayerCantDrawBitmaps() throws {
+        let body = try JSONSerialization.jsonObject(with: JSONEncoder().encode(DecideBody(.avPlayer(hevcHardwareDecode: true), startOffset: nil))) as? [String: Any]
+        #expect((body?["subtitle_capabilities"] as? [String: Bool])?["bitmap"] == false)
+    }
+
+    @Test func aDefaultNectarAlreadyBurnedIsTakenAsIs() {
+        let embedded = PlaybackDecision(strategy: .hls, streamPath: "/s.m3u8", reason: "subtitle_burn", subtitleStreamIndex: 11)
+        let external = PlaybackDecision(strategy: .hls, streamPath: "/s.m3u8", reason: "subtitle_burn", subtitleID: "5b6e")
+        #expect(SubtitleStart.plan(embedded, tracks) == .burned(tracks[1]))
+        #expect(SubtitleStart.plan(external, tracks) == .burned(tracks[2]))
+    }
+
+    @Test func otherwiseTheDefaultDecides() {
+        let text = PlaybackDecision(strategy: .hls, streamPath: "/s.m3u8", reason: "container", subtitleDefault: SubtitleDefault(streamIndex: 2, reason: .always))
+        let oldServer = PlaybackDecision(strategy: .hls, streamPath: "/s.m3u8", reason: "container", subtitleDefault: SubtitleDefault(streamIndex: 11, reason: .always))
+        #expect(SubtitleStart.plan(text, tracks) == .rendition(tracks[0]))
+        #expect(SubtitleStart.plan(oldServer, tracks) == .burn(tracks[1]), "a nectar without #627 still gets the burn, by a second decide")
+    }
+}

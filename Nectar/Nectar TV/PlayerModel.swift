@@ -273,11 +273,16 @@ final class PlayerModel: Identifiable {
     // MARK: - Subtitles (#97, Capping's spec)
 
     /// The person's default does the work at start: their language as an image track only is burned from the
-    /// first frame (a second decide, before anything plays); as a text track, AVKit's rendition is selected once
-    /// the stream is ready. A burn that can't be had plays the stream unburned rather than not at all.
+    /// first frame (by nectar in the same answer since #627, else by a second decide before anything plays); as a
+    /// text track, AVKit's rendition is selected once the stream is ready. A burn that can't be had plays the
+    /// stream unburned rather than not at all.
     private func applyDefault(to decision: PlaybackDecision, resume: Double) async -> PlaybackDecision {
-        switch SubtitleStart.plan(decision.subtitleDefault, subtitles) {
+        switch SubtitleStart.plan(decision, subtitles) {
         case .none:
+            return decision
+        case let .burned(track):
+            burned = track
+            log.info("subtitles: nectar burned the default \(track.label, privacy: .public) from the first frame")
             return decision
         case let .rendition(track):
             pendingRendition = track.label

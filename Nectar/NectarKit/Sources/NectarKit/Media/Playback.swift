@@ -12,14 +12,18 @@ public struct PlaybackCapabilities: Equatable, Sendable {
     public var hlsVideoCodecs: [String]
     public var hlsAudioCodecs: [String]
     public var maxBitrate: Int?
+    /// Whether the player draws picture subtitles (PGS, VobSub) itself. AVPlayer can't, so nectar burns a bitmap
+    /// default into the stream in the same answer (nectar#627).
+    public var drawsBitmapSubtitles: Bool
 
-    public init(containers: [String], videoCodecs: [String], audioCodecs: [String], hlsVideoCodecs: [String], hlsAudioCodecs: [String], maxBitrate: Int? = nil) {
+    public init(containers: [String], videoCodecs: [String], audioCodecs: [String], hlsVideoCodecs: [String], hlsAudioCodecs: [String], maxBitrate: Int? = nil, drawsBitmapSubtitles: Bool = false) {
         self.containers = containers
         self.videoCodecs = videoCodecs
         self.audioCodecs = audioCodecs
         self.hlsVideoCodecs = hlsVideoCodecs
         self.hlsAudioCodecs = hlsAudioCodecs
         self.maxBitrate = maxBitrate
+        self.drawsBitmapSubtitles = drawsBitmapSubtitles
     }
 
     /// AVPlayer on tvOS. HEVC only when the hardware decodes it: true on an Apple TV 4K, false in the simulator.
@@ -42,6 +46,10 @@ struct DecideBody: Encodable, Sendable {
         let audio: [String]
     }
 
+    struct SubtitleCapabilities: Encodable, Sendable {
+        let bitmap: Bool
+    }
+
     let containers: [String]
     let codecs: Codecs
     let hlsCodecs: Codecs
@@ -49,6 +57,7 @@ struct DecideBody: Encodable, Sendable {
     let startOffset: Int?
     /// Left out when the player didn't choose, so nectar applies the person's default.
     let subtitle: SubtitleChoice?
+    let subtitleCapabilities: SubtitleCapabilities
 
     init(_ capabilities: PlaybackCapabilities, startOffset: Double?, subtitle: SubtitleChoice? = nil) {
         containers = capabilities.containers
@@ -58,6 +67,7 @@ struct DecideBody: Encodable, Sendable {
         // nectar takes whole seconds; resuming a second early beats a second late.
         self.startOffset = startOffset.map { max(Int($0.rounded(.down)), 0) }
         self.subtitle = subtitle
+        subtitleCapabilities = SubtitleCapabilities(bitmap: capabilities.drawsBitmapSubtitles)
     }
 
     enum CodingKeys: String, CodingKey {
@@ -67,6 +77,7 @@ struct DecideBody: Encodable, Sendable {
         case maxBitrate = "max_bitrate"
         case startOffset = "start_offset"
         case subtitle
+        case subtitleCapabilities = "subtitle_capabilities"
     }
 }
 

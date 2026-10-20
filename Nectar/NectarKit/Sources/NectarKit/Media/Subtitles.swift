@@ -189,7 +189,22 @@ public struct SubtitleChoice: Encodable, Equatable, Sendable {
 public enum SubtitleStart: Equatable, Sendable {
     case none
     case rendition(SubtitleTrack)
+    /// Burn it with a second decide: a nectar older than #627.
     case burn(SubtitleTrack)
+    /// nectar burned it already, in the answer to the first decide (#627, the TV's `bitmap: false`).
+    case burned(SubtitleTrack)
+
+    /// The plan for a decision: a track nectar already burned is taken as is; otherwise the person's default.
+    public static func plan(_ decision: PlaybackDecision, _ tracks: [SubtitleTrack]) -> SubtitleStart {
+        if decision.reason == "subtitle_burn" {
+            let track = tracks.first { track in
+                if let index = decision.subtitleStreamIndex { return track.kind == .embedded && track.streamIndex == index }
+                return decision.subtitleID == track.id
+            }
+            if let track { return .burned(track) }
+        }
+        return plan(decision.subtitleDefault, tracks)
+    }
 
     /// `subtitle_default` names an embedded stream; nil, or a track the list doesn't have, leaves it to AVKit.
     public static func plan(_ fallback: SubtitleDefault?, _ tracks: [SubtitleTrack]) -> SubtitleStart {
