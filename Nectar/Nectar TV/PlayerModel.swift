@@ -40,9 +40,10 @@ final class PlayerModel: Identifiable {
     /// How often progress goes to nectar while playing.
     private static let reportEvery: Double = 10
 
-    /// How long a start may go without a first frame before the TV says so (#91). AVPlayer waits forever, never
-    /// failing, when the server answers the playlists but not the media; real starts on the TV take under 5 s, and
-    /// the slowest transcode seen took about 25.
+    /// How long AVPlayer may wait to start, with no first frame, before the TV says so (#91). It can wait forever,
+    /// never failing, when the server answers the playlists but not the media; real starts on the TV take under 5 s,
+    /// and the slowest transcode seen took about 25. Only waiting counts: a start the system paused (a screensaver
+    /// over the app, the app in the background) is not a failure, and on the TV that pause looked like one.
     private static let firstFrameDeadline: Duration = .seconds(45)
 
     init(card: MediaCard, session: NectarSession) {
@@ -157,13 +158,23 @@ final class PlayerModel: Identifiable {
 
     // MARK: - Progress
 
-    private func observe(_ player: AVPlayer, _ decision: PlaybackDecision) {
+    /// Runs the first-frame deadline while AVPlayer is waiting to start, and stops it when it plays or is paused.
+    private func waitingToStart(_ waiting: Bool, _ player: AVPlayer) {
+        guard waiting else {
+            startDeadline?.cancel()
+            startDeadline = nil
+            return
+        }
+        guard startDeadline == nil else { return }
         startDeadline = Task { [weak self, weak player] in
             try? await Task.sleep(for: Self.firstFrameDeadline)
             guard let self, let player, !Task.isCancelled, !self.hasPlayed else { return }
-            log.error("no first frame after \(Self.firstFrameDeadline, privacy: .public): waiting \(player.reasonForWaitingToPlay?.rawValue ?? "-", privacy: .public), item status \(player.currentItem?.status.rawValue ?? -1, privacy: .public)")
+            log.error("no first frame after \(Self.firstFrameDeadline, privacy: .public) of waiting: \(player.reasonForWaitingToPlay?.rawValue ?? "-", privacy: .public), item status \(player.currentItem?.status.rawValue ?? -1, privacy: .public)")
             self.failed()
         }
+    }
+
+    private func observe(_ player: AVPlayer, _ decision: PlaybackDecision) {
         timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: Self.reportEvery, preferredTimescale: 1), queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self else { return }
@@ -179,6 +190,7 @@ final class PlayerModel: Identifiable {
             let status = player.timeControlStatus
             Task { @MainActor in
                 guard let self else { return }
+                self.waitingToStart(status == .waitingToPlayAtSpecifiedRate && !self.hasPlayed, player)
                 if status == .playing, !self.hasPlayed { self.logAudio(player) }
                 if status == .playing { self.hasPlayed = true }
                 if status == .playing, let started = self.started {
