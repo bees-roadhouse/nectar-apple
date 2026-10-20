@@ -6,6 +6,9 @@ struct LibraryView: View {
 
     @State
     private var model: LibraryModel
+    /// The library's own search, pushed over the grid so Back returns to it as it was (#96).
+    @State
+    private var searching = false
 
     init(library: Library, session: NectarSession) {
         _model = State(initialValue: LibraryModel(library: library, session: session))
@@ -17,6 +20,15 @@ struct LibraryView: View {
     }
 
     var body: some View {
+        NavigationStack {
+            grid
+                .navigationDestination(isPresented: $searching) {
+                    LibrarySearchView(library: model.library, session: model.session, playlistAdding: model.playlistAdding)
+                }
+        }
+    }
+
+    private var grid: some View {
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 32) {
                 controls
@@ -47,9 +59,13 @@ struct LibraryView: View {
         }
     }
 
-    /// Sort, order, genre and resolution; a count of what the filters leave.
+    /// Search first, then sort, order, genre and resolution; a count of what the filters leave.
     private var controls: some View {
         HStack(spacing: 30) {
+            Button { searching = true } label: {
+                Image(systemName: "magnifyingglass")
+            }
+            .accessibilityLabel("Search \(model.library.name)")
             Menu {
                 ForEach(LibraryQuery.Sort.allCases, id: \.self) { sort in
                     Button(label(sort)) { Task { await model.change { $0.sort = sort } } }

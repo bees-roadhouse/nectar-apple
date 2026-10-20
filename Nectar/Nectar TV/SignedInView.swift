@@ -19,6 +19,17 @@ struct SignedInView: View {
     /// Every library this user can see, each its own tab, as nectar lists them; none until it answers.
     @State
     private var libraries: [Library] = []
+    @State
+    private var tab: TabID = .home
+
+    /// Which tab is showing, so a library's search can hand its query to the Search tab (#96).
+    enum TabID: Hashable {
+        case home
+        case library(String)
+        case search
+        case discover
+        case playlists
+    }
 
     init(user: NectarUser, home: HomeModel, signOut: @escaping () -> Void) {
         self.user = user
@@ -31,27 +42,32 @@ struct SignedInView: View {
     }
 
     var body: some View {
-        TabView {
-            Tab("Home", systemImage: "house") {
+        TabView(selection: $tab) {
+            Tab("Home", systemImage: "house", value: .home) {
                 HomeView(user: user, model: home, discover: discover, activity: activity, signOut: signOut)
             }
             ForEach(libraries) { library in
-                Tab(library.name, systemImage: library.kind.symbol) {
+                Tab(library.name, systemImage: library.kind.symbol, value: TabID.library(library.id)) {
                     LibraryView(library: library, session: home.session)
                 }
             }
-            Tab("Search", systemImage: "magnifyingglass") {
+            Tab("Search", systemImage: "magnifyingglass", value: .search) {
                 SearchView(model: search)
             }
-            Tab("Discover", systemImage: "sparkles") {
+            Tab("Discover", systemImage: "sparkles", value: .discover) {
                 DiscoverView(model: discover)
             }
-            Tab("Playlists", systemImage: "music.note.list") {
+            Tab("Playlists", systemImage: "music.note.list", value: .playlists) {
                 PlaylistsView(model: playlists)
             }
         }
         // Admin-only parts deep in the app read this rather than being handed the user (Playback info, #82).
         .environment(\.isAdmin, user.isAdmin)
+        .environment(\.searchEverywhere) { query in
+            search.mode = .titles
+            search.query = query
+            tab = .search
+        }
         // One live event stream for the signed-in app; it ends with the session.
         .task { await activity.follow() }
         .task {

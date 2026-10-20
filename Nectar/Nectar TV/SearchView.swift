@@ -125,8 +125,8 @@ struct SearchView: View {
     }
 }
 
-/// A moment: the frame (or the poster), the title, when, and the line.
-private struct MomentCard: View {
+/// A moment: the frame (or the poster), the title, when, and the line. A library's search shows them too (#96).
+struct MomentCard: View {
 
     let hit: SearchHit
     let size: CGSize

@@ -42,6 +42,15 @@ public struct TitleHit: Decodable, Equatable, Identifiable, Sendable {
         case posterPath = "poster_url"
     }
 
+    public init(id: String, itemType: String, title: String, year: Int? = nil, overview: String? = nil, posterPath: String? = nil) {
+        self.id = id
+        self.itemType = itemType
+        self.title = title
+        self.year = year
+        self.overview = overview
+        self.posterPath = posterPath
+    }
+
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(String.self, forKey: .id)
@@ -65,6 +74,8 @@ public struct SearchHit: Decodable, Equatable, Identifiable, Sendable {
     public let seconds: Double?
     /// The line, for dialogue.
     public let snippet: String?
+    /// Which library the title is in: a library's own search keeps only its lines (#96).
+    public let libraryID: String?
 
     /// One title can match at several moments.
     public var id: String { "\(itemID)@\(seconds ?? -1)" }
@@ -81,6 +92,7 @@ public struct SearchHit: Decodable, Equatable, Identifiable, Sendable {
         case posterPath = "poster_url"
         case thumbPath = "thumb_url"
         case seconds = "t_seconds"
+        case libraryID = "library_id"
     }
 
     public init(from decoder: Decoder) throws {
@@ -92,6 +104,7 @@ public struct SearchHit: Decodable, Equatable, Identifiable, Sendable {
         thumbPath = try c.decodeIfPresent(String.self, forKey: .thumbPath)
         seconds = c.lenientDouble(.seconds)
         snippet = try c.decodeIfPresent(String.self, forKey: .snippet)
+        libraryID = try c.decodeIfPresent(String.self, forKey: .libraryID)
     }
 }
 
@@ -101,20 +114,30 @@ private struct Results<Hit: Decodable>: Decodable {
 
 extension NectarSession {
 
-    /// Titles matching `query`, best first.
-    public func searchTitles(_ query: String, limit: Int = 40) async throws -> [TitleHit] {
-        let data = try await get("api/v1/search", query: [URLQueryItem(name: "q", value: query), URLQueryItem(name: "limit", value: String(limit))])
+    /// Titles matching `query`, best first; with a `library`, only that library's, scoped by nectar (#96).
+    public func searchTitles(_ query: String, library: String? = nil, limit: Int = 40) async throws -> [TitleHit] {
+        let data = try await get("api/v1/search", query: Self.searchQuery(query, library: library, limit: limit))
         return try JSONDecoder().decode(Results<TitleHit>.self, from: data).results
     }
 
     /// Dialogue, scene or audio hits for `query`. Throws ``SearchError/disabled`` when nectar has the mode off.
-    public func searchMoments(_ query: String, in mode: SearchMode, limit: Int = 30) async throws -> [SearchHit] {
+    /// With a `library`, only that library's: nectar is asked to scope it (nectar#610), and until it does,
+    /// hits from other libraries are dropped here.
+    public func searchMoments(_ query: String, in mode: SearchMode, library: String? = nil, limit: Int = 30) async throws -> [SearchHit] {
         precondition(mode != .titles, "titles come from searchTitles")
         do {
-            let data = try await get("api/v1/search/\(mode.rawValue)", query: [URLQueryItem(name: "q", value: query), URLQueryItem(name: "limit", value: String(limit))])
-            return try JSONDecoder().decode(Results<SearchHit>.self, from: data).results
+            let data = try await get("api/v1/search/\(mode.rawValue)", query: Self.searchQuery(query, library: library, limit: limit))
+            let hits = try JSONDecoder().decode(Results<SearchHit>.self, from: data).results
+            guard let library else { return hits }
+            return hits.filter { $0.libraryID == nil || $0.libraryID == library }
         } catch NectarSessionError.unexpectedStatus(400) where mode == .scenes || mode == .audio {
             throw SearchError.disabled
         }
+    }
+
+    private static func searchQuery(_ query: String, library: String?, limit: Int) -> [URLQueryItem] {
+        var items = [URLQueryItem(name: "q", value: query), URLQueryItem(name: "limit", value: String(limit))]
+        if let library { items.append(URLQueryItem(name: "library_id", value: library)) }
+        return items
     }
 }
