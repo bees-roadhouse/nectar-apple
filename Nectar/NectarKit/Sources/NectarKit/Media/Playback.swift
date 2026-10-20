@@ -47,14 +47,17 @@ struct DecideBody: Encodable, Sendable {
     let hlsCodecs: Codecs
     let maxBitrate: Int?
     let startOffset: Int?
+    /// Left out when the player didn't choose, so nectar applies the person's default.
+    let subtitle: SubtitleChoice?
 
-    init(_ capabilities: PlaybackCapabilities, startOffset: Double?) {
+    init(_ capabilities: PlaybackCapabilities, startOffset: Double?, subtitle: SubtitleChoice? = nil) {
         containers = capabilities.containers
         codecs = Codecs(video: capabilities.videoCodecs, audio: capabilities.audioCodecs)
         hlsCodecs = Codecs(video: capabilities.hlsVideoCodecs, audio: capabilities.hlsAudioCodecs)
         maxBitrate = capabilities.maxBitrate
         // nectar takes whole seconds; resuming a second early beats a second late.
         self.startOffset = startOffset.map { max(Int($0.rounded(.down)), 0) }
+        self.subtitle = subtitle
     }
 
     enum CodingKeys: String, CodingKey {
@@ -63,6 +66,7 @@ struct DecideBody: Encodable, Sendable {
         case hlsCodecs = "hls_codecs"
         case maxBitrate = "max_bitrate"
         case startOffset = "start_offset"
+        case subtitle
     }
 }
 
@@ -116,8 +120,26 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
     /// The source's audio stream nectar picked, when it isn't the file's default. Such a pick always
     /// comes as HLS carrying that one track, so there's nothing to switch on the client.
     public let audioStreamIndex: Int?
+    /// The subtitle nectar drew into this stream, or the one the player asked for: an embedded track's index…
+    public let subtitleStreamIndex: Int?
+    /// …or any other track's id.
+    public let subtitleID: String?
+    /// The subtitle this person would see by their My Account settings, when the player didn't choose.
+    public let subtitleDefault: SubtitleDefault?
 
-    public init(strategy: Strategy, streamPath: String, playMethod: String? = nil, reason: String? = nil, durationSeconds: Double? = nil, startOffsetSeconds: Double = 0, audioReason: AudioReason? = nil, audioStreamIndex: Int? = nil) {
+    public init(
+        strategy: Strategy,
+        streamPath: String,
+        playMethod: String? = nil,
+        reason: String? = nil,
+        durationSeconds: Double? = nil,
+        startOffsetSeconds: Double = 0,
+        audioReason: AudioReason? = nil,
+        audioStreamIndex: Int? = nil,
+        subtitleStreamIndex: Int? = nil,
+        subtitleID: String? = nil,
+        subtitleDefault: SubtitleDefault? = nil
+    ) {
         self.strategy = strategy
         self.streamPath = streamPath
         self.playMethod = playMethod
@@ -126,13 +148,20 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
         self.startOffsetSeconds = startOffsetSeconds
         self.audioReason = audioReason
         self.audioStreamIndex = audioStreamIndex
+        self.subtitleStreamIndex = subtitleStreamIndex
+        self.subtitleID = subtitleID
+        self.subtitleDefault = subtitleDefault
     }
 
     private struct Selected: Decodable {
         let audioStreamIndex: Int?
+        let subtitleStreamIndex: Int?
+        let subtitleID: String?
 
         enum CodingKeys: String, CodingKey {
             case audioStreamIndex = "audio_stream_index"
+            case subtitleStreamIndex = "subtitle_stream_index"
+            case subtitleID = "subtitle_id"
         }
     }
 
@@ -145,6 +174,7 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
         case startOffsetSeconds = "start_offset_seconds"
         case audioReason = "audio_reason"
         case selected
+        case subtitleDefault = "subtitle_default"
     }
 
     public init(from decoder: Decoder) throws {
@@ -156,7 +186,11 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
         durationSeconds = try c.decodeIfPresent(Double.self, forKey: .durationSeconds)
         startOffsetSeconds = try c.decodeIfPresent(Double.self, forKey: .startOffsetSeconds) ?? 0
         audioReason = try c.decodeIfPresent(AudioReason.self, forKey: .audioReason)
-        audioStreamIndex = try c.decodeIfPresent(Selected.self, forKey: .selected)?.audioStreamIndex
+        let selected = try c.decodeIfPresent(Selected.self, forKey: .selected)
+        audioStreamIndex = selected?.audioStreamIndex
+        subtitleStreamIndex = selected?.subtitleStreamIndex
+        subtitleID = selected?.subtitleID
+        subtitleDefault = try c.decodeIfPresent(SubtitleDefault.self, forKey: .subtitleDefault)
     }
 
     /// Where to seek once the player is ready. A direct file starts at zero, so seek to the resume
@@ -184,9 +218,10 @@ struct ProgressBody: Encodable, Sendable {
 
 extension NectarSession {
 
-    /// Ask nectar how this device should play an item, starting at `startOffset` seconds.
-    public func decide(_ itemID: String, capabilities: PlaybackCapabilities, startOffset: Double?) async throws -> PlaybackDecision {
-        let data = try await post("api/v1/streaming/\(itemID)/decide", json: DecideBody(capabilities, startOffset: startOffset))
+    /// Ask nectar how this device should play an item, starting at `startOffset` seconds, with the subtitle
+    /// the person chose; without one, nectar answers with their default in `subtitleDefault`.
+    public func decide(_ itemID: String, capabilities: PlaybackCapabilities, startOffset: Double?, subtitle: SubtitleChoice? = nil) async throws -> PlaybackDecision {
+        let data = try await post("api/v1/streaming/\(itemID)/decide", json: DecideBody(capabilities, startOffset: startOffset, subtitle: subtitle))
         return try JSONDecoder().decode(PlaybackDecision.self, from: data)
     }
 
