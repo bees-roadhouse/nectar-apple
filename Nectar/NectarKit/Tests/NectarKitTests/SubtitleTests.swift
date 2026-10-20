@@ -130,3 +130,38 @@ struct SubtitleTests {
         #expect(decision.subtitleDefault == SubtitleDefault(streamIndex: 2, reason: .other("hearing")))
     }
 }
+
+/// Which of AVKit's subtitle options is the person's default (#97): nectar names a track, AVKit lists renditions.
+@Suite("Subtitle default")
+struct SubtitleDefaultMatchTests {
+
+    private let options = [
+        SubtitleOption(name: "English", language: "en", forced: false),
+        SubtitleOption(name: "English (Forced)", language: "en", forced: true),
+        SubtitleOption(name: "Español", language: "es-419", forced: false),
+    ]
+
+    @Test func theSameNameWins() {
+        let track = SubtitleTrack(id: "embedded-3", kind: .embedded, streamIndex: 3, language: "en", label: "English (Forced)", isForced: true)
+        #expect(track.option(among: options) == 1)
+    }
+
+    @Test func withoutTheNameLanguageAndForcedDecide() {
+        let forced = SubtitleTrack(id: "embedded-3", kind: .embedded, streamIndex: 3, language: "eng", label: "Signs", isForced: true)
+        let full = SubtitleTrack(id: "embedded-2", kind: .embedded, streamIndex: 2, language: "en", label: "SDH", isForced: false)
+        #expect(forced.option(among: options) == 1, "ISO 639-2 'eng' is the same language as 'en'")
+        #expect(full.option(among: options) == 0)
+    }
+
+    @Test func aRegionalTagMatchesItsLanguage() {
+        let spanish = SubtitleTrack(id: "embedded-5", kind: .embedded, streamIndex: 5, language: "spa", label: "Spanish")
+        #expect(spanish.option(among: options) == 2)
+    }
+
+    @Test func noMatchingOptionMeansNoChoice() {
+        let french = SubtitleTrack(id: "embedded-6", kind: .embedded, streamIndex: 6, language: "fr", label: "Français")
+        #expect(french.option(among: options) == nil)
+        #expect(SubtitleTrack(id: "x", kind: .external, label: "English", canSidecar: false).option(among: options) == nil,
+                "an image track has no rendition: it can only be burned in")
+    }
+}

@@ -85,6 +85,40 @@ public struct SubtitleTrack: Decodable, Equatable, Identifiable, Sendable {
     }
 }
 
+/// One of AVKit's subtitle options, as the app reads it from the stream's legible group: what's needed
+/// to find the person's default among nectar's renditions (#97).
+public struct SubtitleOption: Equatable, Sendable {
+    public let name: String
+    public let language: String?
+    public let forced: Bool
+
+    public init(name: String, language: String?, forced: Bool) {
+        self.name = name
+        self.language = language
+        self.forced = forced
+    }
+}
+
+extension SubtitleTrack {
+
+    /// This track's rendition among AVKit's options: the same name first (nectar names a rendition after its
+    /// track), else the same language and forced flag. Nil for an image track, which has no rendition.
+    public func option(among options: [SubtitleOption]) -> Int? {
+        guard canSidecar else { return nil }
+        if let named = options.firstIndex(where: { $0.name == label }) { return named }
+        guard let language = Self.baseLanguage(language) else { return nil }
+        return options.firstIndex { Self.baseLanguage($0.language ?? "") == language && $0.forced == isForced }
+    }
+
+    /// "en", "eng" and "en-US" are one language; an empty or undetermined tag is none.
+    static func baseLanguage(_ tag: String) -> String? {
+        let tag = tag.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !tag.isEmpty, tag != "und" else { return nil }
+        let code = Locale.Language(identifier: tag).languageCode
+        return code?.identifier(.alpha2) ?? code?.identifier
+    }
+}
+
 /// The subtitle a player asks decide for: `subtitle` in its body.
 public struct SubtitleChoice: Encodable, Equatable, Sendable {
 
