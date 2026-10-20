@@ -169,15 +169,17 @@ final class PlayerModel: Identifiable {
         let duration = decision.durationSeconds ?? card.runtimeSeconds
         let completed = duration.map { position >= $0 * 0.95 } ?? false
         report(position, paused: true, completed: completed ? true : nil, force: true)
+        sayGoodbye(decision)
     }
 
     /// AVPlayer gave up on the item, or never started it (#91): say so, instead of leaving a dead player on screen.
     /// Where it had got to is saved as a stop would save it; a start that never played reports nothing, so the old
     /// resume point stands.
     private func failed() {
-        guard case let .playing(player, _) = phase else { return }
+        guard case let .playing(player, decision) = phase else { return }
         if let track = burned, !hasPlayed, !fellBack {
             tearDown(player)
+            sayGoodbye(decision)
             Task { await playUnburned(instead: track) }
             return
         }
@@ -185,6 +187,7 @@ final class PlayerModel: Identifiable {
             stop()
         } else {
             tearDown(player)
+            sayGoodbye(decision)
         }
         phase = .failed("Couldn't play this title.")
     }
@@ -221,6 +224,21 @@ final class PlayerModel: Identifiable {
     static func readingTime(_ text: String) -> Duration {
         let words = text.split(separator: " ").count
         return .milliseconds(min(max(4000 + 250 * words, 6000), 10000))
+    }
+
+    /// Tells nectar this viewer has left (#94), so the stream parks and its transcoder slot frees at once rather
+    /// than after the 45 s no-fetch backstop. A courtesy: if it fails, the backstop still holds.
+    private func sayGoodbye(_ decision: PlaybackDecision) {
+        guard decision.goodbyePath != nil else { return }
+        let session = session
+        Task {
+            do {
+                try await session.goodbye(decision)
+                log.info("goodbye sent")
+            } catch {
+                log.error("goodbye not sent: \(String(describing: error), privacy: .public)")
+            }
+        }
     }
 
     private func tearDown(_ player: AVPlayer) {
