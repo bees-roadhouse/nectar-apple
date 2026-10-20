@@ -152,14 +152,13 @@ struct LibraryPoster: View {
                 .preloadBadge(card.id)
             }
             .buttonStyle(.card)
-            Text(caption)
-                .font(.caption)
-                .lineLimit(2, reservesSpace: true)
-                .frame(width: shape.size.width, alignment: .leading)
+            // The title on one line and the year on its own, so a long title truncates instead of orphaning
+            // "· 2011" (Capping, #103).
+            VStack(alignment: .leading, spacing: 2) {
+                Text(card.title ?? "Untitled").font(.caption).lineLimit(1)
+                Text(card.year.map(String.init) ?? " ").font(.caption).foregroundStyle(.secondary)
+            }
+            .frame(width: shape.size.width, alignment: .leading)
         }
-    }
-
-    private var caption: String {
-        [card.title ?? "Untitled", card.year.map(String.init)].compactMap(\.self).joined(separator: " · ")
     }
 }

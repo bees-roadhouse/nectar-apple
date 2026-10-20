@@ -109,14 +109,17 @@ struct LibrarySearchView: View {
         .scrollClipDisabled()
     }
 
-    /// Songs as Music lists them.
+    /// Songs as Music lists them: plain at rest, only the focused row lifts. The title alone until search carries
+    /// the artist and album; the year is the least useful fact about a song you're looking for (Capping, #103).
     private func list(_ hits: [TitleHit]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             ForEach(hits) { hit in
                 Button { model.open(hit) } label: {
-                    Text([hit.title, hit.year.map(String.init)].compactMap(\.self).joined(separator: " · "))
+                    Text(hit.title)
                         .frame(maxWidth: 1200, alignment: .leading)
+                        .padding(.vertical, 8)
                 }
+                .buttonStyle(.plain)
             }
         }
     }
