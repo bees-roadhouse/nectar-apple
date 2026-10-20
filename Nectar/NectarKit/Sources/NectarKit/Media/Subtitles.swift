@@ -110,6 +110,23 @@ extension SubtitleTrack {
         return options.firstIndex { Self.baseLanguage($0.language ?? "") == language && $0.forced == isForced }
     }
 
+    /// A "More subtitles" row (Capping's spec on #97): the language in the person's locale, then only SDH,
+    /// Forced or Commentary. Never the codec or the stream index: an admin sees those in Playback info.
+    public func menuTitle(locale: Locale = .current) -> String {
+        guard let code = Self.baseLanguage(language), let name = locale.localizedString(forLanguageCode: code) else { return label }
+        let text = label.lowercased()
+        let qualifier: String? = if text.contains("commentary") {
+            "Commentary"
+        } else if isForced {
+            "Forced"
+        } else if text.contains("sdh") || text.contains("hearing") {
+            "SDH"
+        } else {
+            nil
+        }
+        return qualifier.map { "\(name) · \($0)" } ?? name
+    }
+
     /// "en", "eng" and "en-US" are one language; an empty or undetermined tag is none.
     static func baseLanguage(_ tag: String) -> String? {
         let tag = tag.trimmingCharacters(in: .whitespaces).lowercased()
@@ -139,6 +156,9 @@ public struct SubtitleChoice: Encodable, Equatable, Sendable {
         self.subtitleID = subtitleID
     }
 
+    /// No subtitle, said outright: a burned stream turned off, even when the person's default is an image track.
+    public static let off = SubtitleChoice(mode: .off, streamIndex: nil, subtitleID: nil)
+
     /// The track drawn into the picture: how an image track plays at all.
     public static func burn(_ track: SubtitleTrack) -> SubtitleChoice {
         SubtitleChoice(mode: .burn, track)
@@ -160,6 +180,22 @@ public struct SubtitleChoice: Encodable, Equatable, Sendable {
         case mode
         case streamIndex = "stream_index"
         case subtitleID = "subtitle_id"
+    }
+}
+
+/// What the TV does with the person's default at start (#97, Capping's spec): the default does the work, so
+/// nobody has to open a menu. Their language as a text track is AVKit's rendition; as an image track only
+/// (common on Blu-ray rips, where English is PGS), it's burned in from the first frame.
+public enum SubtitleStart: Equatable, Sendable {
+    case none
+    case rendition(SubtitleTrack)
+    case burn(SubtitleTrack)
+
+    /// `subtitle_default` names an embedded stream; nil, or a track the list doesn't have, leaves it to AVKit.
+    public static func plan(_ fallback: SubtitleDefault?, _ tracks: [SubtitleTrack]) -> SubtitleStart {
+        guard let fallback, let track = tracks.first(where: { $0.kind == .embedded && $0.streamIndex == fallback.streamIndex }) else { return .none }
+        if track.canSidecar { return .rendition(track) }
+        return track.canBurn ? .burn(track) : .none
     }
 }
 

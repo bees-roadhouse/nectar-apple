@@ -165,3 +165,60 @@ struct SubtitleDefaultMatchTests {
                 "an image track has no rendition: it can only be burned in")
     }
 }
+
+/// What the TV does with the person's default at start (#97, Capping's spec): the default does the work.
+@Suite("Subtitle start")
+struct SubtitleStartTests {
+
+    private let tracks = [
+        SubtitleTrack(id: "embedded-2", kind: .embedded, streamIndex: 2, language: "en", label: "English"),
+        SubtitleTrack(id: "embedded-3", kind: .embedded, streamIndex: 3, language: "en", label: "English (Forced)", isForced: true, canSidecar: false),
+        SubtitleTrack(id: "6b0f", kind: .external, language: "fr", label: "Français"),
+    ]
+
+    @Test func aTextDefaultIsAnAVKitRendition() {
+        #expect(SubtitleStart.plan(SubtitleDefault(streamIndex: 2, reason: .always), tracks) == .rendition(tracks[0]))
+    }
+
+    @Test func anImageDefaultIsBurnedFromTheFirstFrame() {
+        #expect(SubtitleStart.plan(SubtitleDefault(streamIndex: 3, reason: .forced), tracks) == .burn(tracks[1]))
+    }
+
+    @Test func noDefaultOrAnUnknownTrackLeavesItToAVKit() {
+        #expect(SubtitleStart.plan(nil, tracks) == .none)
+        #expect(SubtitleStart.plan(SubtitleDefault(streamIndex: 9, reason: .always), tracks) == .none)
+    }
+
+    @Test func offIsAnExplicitChoiceWithNoTrack() throws {
+        let body = try JSONSerialization.jsonObject(with: JSONEncoder().encode(SubtitleChoice.off)) as? [String: Any]
+        #expect(body?["mode"] as? String == "off")
+        #expect(body?["stream_index"] == nil && body?["subtitle_id"] == nil)
+    }
+}
+
+/// "More subtitles" rows: the language, and only SDH, Forced or Commentary after it.
+@Suite("Subtitle menu names")
+struct SubtitleMenuNameTests {
+
+    private let english = Locale(identifier: "en_US")
+
+    @Test func aLanguageIsNamedInThePersonsLocale() {
+        let spanish = SubtitleTrack(id: "embedded-4", kind: .embedded, streamIndex: 4, language: "spa", label: "Track 4", canSidecar: false)
+        #expect(spanish.menuTitle(locale: english) == "Spanish")
+        #expect(spanish.menuTitle(locale: Locale(identifier: "fr_FR")) == "espagnol")
+    }
+
+    @Test func onlyTheThreeQualifiersAreShown() {
+        let sdh = SubtitleTrack(id: "e5", kind: .embedded, streamIndex: 5, language: "eng", format: "hdmv_pgs_subtitle", label: "English SDH (PGS)", canSidecar: false)
+        let forced = SubtitleTrack(id: "e6", kind: .embedded, streamIndex: 6, language: "en", label: "English (Forced)", isForced: true, canSidecar: false)
+        let commentary = SubtitleTrack(id: "e7", kind: .embedded, streamIndex: 7, language: "en", label: "Director's Commentary", canSidecar: false)
+        #expect(sdh.menuTitle(locale: english) == "English · SDH")
+        #expect(forced.menuTitle(locale: english) == "English · Forced")
+        #expect(commentary.menuTitle(locale: english) == "English · Commentary")
+    }
+
+    @Test func aTrackWithNoLanguageKeepsNectarsLabel() {
+        let unknown = SubtitleTrack(id: "e8", kind: .embedded, streamIndex: 8, language: "", label: "Track 8", canSidecar: false)
+        #expect(unknown.menuTitle(locale: english) == "Track 8")
+    }
+}
