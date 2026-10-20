@@ -95,6 +95,8 @@ jobs:
           path: fastlane/build/*-unsigned.ipa
           if-no-files-found: error
           compression-level: 0
+          # nectar-apple: nothing here uses upstream's unsigned builds; a day keeps the org under its artifact quota (#100).
+          retention-days: 1
 
       # Populate the shared cache from main,
       # PR caches are isolated to their merge ref
