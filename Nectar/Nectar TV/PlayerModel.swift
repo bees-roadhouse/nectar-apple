@@ -34,6 +34,17 @@ final class PlayerModel: Identifiable {
     private var hasPlayed = false
     private var endObserver: NSObjectProtocol?
     private var startDeadline: Task<Void, Never>?
+    /// Every subtitle the title carries or sits beside (#97); the image tracks among them make "More subtitles".
+    private(set) var subtitles: [SubtitleTrack] = []
+    /// The image track drawn into the current stream, if one is.
+    private(set) var burned: SubtitleTrack?
+    /// A burned stream being swapped in: the last frame holds under a spinner meanwhile.
+    private(set) var switching = false
+    /// One line after a subtitle switch that didn't work; playback carries on.
+    private(set) var notice: String?
+    /// The rendition to select once the stream is ready: the person's default, or the AVKit track picked while burned.
+    private var pendingRendition: String?
+    private var selectionObserver: NSObjectProtocol?
     /// Called when the title plays to its end; a playlist moves on to the next.
     var finished: (() -> Void)?
 
@@ -82,7 +93,10 @@ final class PlayerModel: Identifiable {
             return
         }
         do {
-            let decision = try await session.decide(card.id, capabilities: Self.capabilities, startOffset: resume > 0 ? resume : nil)
+            async let tracks = try? session.subtitles(card.id)
+            var decision = try await session.decide(card.id, capabilities: Self.capabilities, startOffset: resume > 0 ? resume : nil)
+            subtitles = await tracks ?? []
+            decision = await applyDefault(to: decision, resume: resume)
             log.info("decide \(decision.strategy.rawValue, privacy: .public) \(decision.playMethod ?? "-", privacy: .public) reason=\(decision.reason ?? "-", privacy: .public) start_offset=\(decision.startOffsetSeconds, privacy: .public)s audio=\(decision.audioStreamIndex.map(String.init) ?? "file default", privacy: .public) because \(String(describing: decision.audioReason), privacy: .public) after \(started.duration(to: .now), privacy: .public)")
             // The URL carries the access token: it goes to AVPlayer and nowhere else.
             let player = AVPlayer(url: try await session.mediaURL(decision.streamPath))
@@ -154,6 +168,8 @@ final class PlayerModel: Identifiable {
         itemStatusObservation = nil
         if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
         endObserver = nil
+        if let selectionObserver { NotificationCenter.default.removeObserver(selectionObserver) }
+        selectionObserver = nil
     }
 
     // MARK: - Progress
@@ -204,9 +220,16 @@ final class PlayerModel: Identifiable {
         }
         if let item = player.currentItem {
             itemStatusObservation = item.observe(\.status) { [weak self] item, _ in
+                if item.status == .readyToPlay {
+                    Task { @MainActor in await self?.applySubtitles(item) }
+                    return
+                }
                 guard item.status == .failed else { return }
                 log.error("player item failed: \(String(describing: item.error), privacy: .public)")
                 Task { @MainActor in self?.failed() }
+            }
+            selectionObserver = NotificationCenter.default.addObserver(forName: AVPlayerItem.mediaSelectionDidChangeNotification, object: item, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.selectionChanged(item) }
             }
         }
     }
@@ -245,5 +268,119 @@ final class PlayerModel: Identifiable {
                 log.error("progress \(position, privacy: .public)s not saved: \(String(describing: error), privacy: .public)")
             }
         }
+    }
+
+    // MARK: - Subtitles (#97, Capping's spec)
+
+    /// The person's default does the work at start: their language as an image track only is burned from the
+    /// first frame (a second decide, before anything plays); as a text track, AVKit's rendition is selected once
+    /// the stream is ready. A burn that can't be had plays the stream unburned rather than not at all.
+    private func applyDefault(to decision: PlaybackDecision, resume: Double) async -> PlaybackDecision {
+        switch SubtitleStart.plan(decision.subtitleDefault, subtitles) {
+        case .none:
+            return decision
+        case let .rendition(track):
+            pendingRendition = track.label
+            log.info("subtitles: the default is the rendition \(track.label, privacy: .public)")
+            return decision
+        case let .burn(track):
+            do {
+                let burnedDecision = try await session.decide(card.id, capabilities: Self.capabilities, startOffset: resume > 0 ? resume : nil, subtitle: .burn(track))
+                burned = track
+                log.info("subtitles: the default \(track.label, privacy: .public) is an image track, burned from the first frame")
+                return burnedDecision
+            } catch {
+                log.error("subtitles: burning the default failed, playing unburned: \(String(describing: error), privacy: .public)")
+                return decision
+            }
+        }
+    }
+
+    /// The stream is ready: one subtitle at a time. A burned stream shows no AVKit rendition; otherwise the
+    /// pending rendition (the default, or a text track chosen while burned) is selected by its track.
+    private func applySubtitles(_ item: AVPlayerItem) async {
+        guard let group = try? await item.asset.loadMediaSelectionGroup(for: .legible) else {
+            log.info("subtitles: the stream offers no legible group")
+            return
+        }
+        let options = group.options.map { SubtitleOption(name: $0.displayName, language: $0.extendedLanguageTag, forced: $0.hasMediaCharacteristic(.containsOnlyForcedSubtitles)) }
+        log.info("subtitles: AVKit offers \(options.map { "\($0.name) [\($0.language ?? "und")\($0.forced ? ", forced" : "")]" }.joined(separator: ", "), privacy: .public)")
+        if burned != nil {
+            if group.allowsEmptySelection { item.select(nil, in: group) }
+            return
+        }
+        guard let name = pendingRendition else { return }
+        pendingRendition = nil
+        let wanted = subtitles.first { $0.label == name } ?? SubtitleTrack(id: name, kind: .other("chosen"), label: name)
+        guard let index = wanted.option(among: options) else {
+            log.info("subtitles: no rendition matches \(name, privacy: .public)")
+            return
+        }
+        item.select(group.options[index], in: group)
+        log.info("subtitles: selected \(group.options[index].displayName, privacy: .public)")
+    }
+
+    /// AVKit's own menu changed the selection. While a track is burned, a text track chosen there means the
+    /// unburned stream with that rendition: the two menus never show two subtitles at once.
+    private func selectionChanged(_ item: AVPlayerItem) {
+        guard burned != nil, !switching, let group = item.asset.mediaSelectionGroup(forMediaCharacteristic: .legible),
+              let chosen = item.currentMediaSelection.selectedMediaOption(in: group) else { return }
+        log.info("subtitles: \(chosen.displayName, privacy: .public) chosen in AVKit's menu while burned; back to the unburned stream")
+        Task { await switchSubtitle(burning: nil, thenSelect: chosen.displayName) }
+    }
+
+    /// "More subtitles": an image track burned in, or Off. The picture holds on its last frame under a spinner
+    /// until the new stream is ready at the same position; if it can't be had, the old stream carries on.
+    func switchSubtitle(burning track: SubtitleTrack?, thenSelect rendition: String? = nil) async {
+        guard case let .playing(old, oldDecision) = phase, !switching, track?.id != burned?.id || rendition != nil else { return }
+        switching = true
+        notice = nil
+        defer { switching = false }
+        let at = position(of: old, oldDecision)
+        old.pause()
+        do {
+            let decision = try await session.decide(card.id, capabilities: Self.capabilities, startOffset: at, subtitle: track.map { .burn($0) } ?? .off)
+            let player = AVPlayer(url: try await session.mediaURL(decision.streamPath))
+            try await Self.ready(player, within: Self.switchDeadline)
+            await player.seek(to: CMTime(seconds: decision.seek(toResumeAt: at), preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+            tearDown(old)
+            burned = track
+            pendingRendition = rendition
+            observe(player, decision)
+            phase = .playing(player, decision)
+            player.play()
+            describe(player.currentItem)
+            if let item = player.currentItem, item.status == .readyToPlay { await applySubtitles(item) }
+            log.info("subtitles: switched to \(track?.label ?? "unburned", privacy: .public) at \(at, privacy: .public)s")
+        } catch {
+            log.error("subtitles: switch to \(track?.label ?? "unburned", privacy: .public) failed: \(String(describing: error), privacy: .public)")
+            notice = track.map { "Couldn't turn on \($0.menuTitle()) subtitles" } ?? "Couldn't turn off subtitles"
+            old.play()
+            let shown = notice
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(6))
+                if self?.notice == shown { self?.notice = nil }
+            }
+        }
+    }
+
+    /// How long a burned stream may take to be ready before the switch gives up and the old stream carries on:
+    /// a burn is a transcode, and the slowest transcode start seen was about 25 s.
+    private static let switchDeadline: Duration = .seconds(40)
+
+    private struct NotReady: Error {}
+
+    /// Waits for the player's item to be ready to play, or throws.
+    private static func ready(_ player: AVPlayer, within deadline: Duration) async throws {
+        guard let item = player.currentItem else { throw NotReady() }
+        let clock = ContinuousClock.now
+        while clock.duration(to: .now) < deadline {
+            switch item.status {
+            case .readyToPlay: return
+            case .failed: throw item.error ?? NotReady()
+            default: try await Task.sleep(for: .milliseconds(100))
+            }
+        }
+        throw NotReady()
     }
 }

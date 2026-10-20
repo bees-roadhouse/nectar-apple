@@ -22,8 +22,30 @@ struct PlayerView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             case let .playing(player, decision):
-                SystemPlayer(player: player, info: isAdmin ? PlaybackInfoPanel(model: model, player: player) : nil)
-                    .ignoresSafeArea()
+                SystemPlayer(
+                    player: player,
+                    info: isAdmin ? PlaybackInfoPanel(model: model, player: player) : nil,
+                    imageTracks: model.subtitles.filter(\.burnOnly),
+                    burnedID: model.burned?.id
+                ) { track in
+                    Task { await model.switchSubtitle(burning: track) }
+                }
+                .ignoresSafeArea()
+                // A burned stream being swapped in: the last frame holds under the system spinner (Capping's spec).
+                if model.switching {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                if let notice = model.notice {
+                    Text(notice)
+                        .font(.headline)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                        .padding(60)
+                        .transition(.opacity)
+                }
                 if showsMethod {
                     MethodBadge(decision: decision)
                         .padding(60)
@@ -91,6 +113,12 @@ private struct SystemPlayer: UIViewControllerRepresentable {
     let player: AVPlayer
     /// An admin's Playback tab in the info panel (#82); nil for everyone else.
     let info: PlaybackInfoPanel?
+    /// Image tracks (PGS, VobSub): AVKit can't list them, so they get "More subtitles" (#97). None, no menu.
+    let imageTracks: [SubtitleTrack]
+    /// The image track burned into the current stream, checked in the menu.
+    let burnedID: String?
+    /// Burn a track, or nil for Off.
+    let burn: (SubtitleTrack?) -> Void
 
     /// The player model sets the item's metadata (Now Playing, #42); the controller publishes it.
     func makeUIViewController(context: Context) -> AVPlayerViewController {
@@ -102,8 +130,24 @@ private struct SystemPlayer: UIViewControllerRepresentable {
             tab.preferredContentSize = CGSize(width: 0, height: 280)
             controller.customInfoViewControllers = [tab]
         }
+        controller.transportBarCustomMenuItems = moreSubtitles
         return controller
     }
 
-    func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {}
+    /// A burned stream replaces the player; the menu's checkmark follows what's burned.
+    func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {
+        if controller.player !== player { controller.player = player }
+        controller.transportBarCustomMenuItems = moreSubtitles
+    }
+
+    /// One transport-bar item after AVKit's own, only when the title has image tracks: Off, then each by its
+    /// language (Capping's spec on #97). Text tracks stay in AVKit's Subtitles menu.
+    private var moreSubtitles: [UIMenuElement] {
+        guard !imageTracks.isEmpty else { return [] }
+        let off = UIAction(title: "Off", state: burnedID == nil ? .on : .off) { _ in burn(nil) }
+        let rows = imageTracks.map { track in
+            UIAction(title: track.menuTitle(), state: burnedID == track.id ? .on : .off) { _ in burn(track) }
+        }
+        return [UIMenu(title: "More subtitles", image: UIImage(systemName: "captions.bubble.fill"), children: [off] + rows)]
+    }
 }
