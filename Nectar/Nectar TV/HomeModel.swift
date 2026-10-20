@@ -133,6 +133,7 @@ final class HomeModel {
         }
         forYou = await recommendations ?? []
         self.shelves = await shelves
+        await refreshTitleCatalog()
     }
 
     /// Recently added in each library, then the top genres best rated; a row with nothing in it is left out.

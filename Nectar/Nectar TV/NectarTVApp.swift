@@ -1,3 +1,4 @@
+import AppIntents
 import NectarKit
 import SwiftUI
 
@@ -5,10 +6,17 @@ import SwiftUI
 struct NectarTVApp: App {
 
     @State
-    private var model = AppModel()
+    private var model: AppModel
     /// Hands back pre-load downloads that finished while the app was away (#85).
     @UIApplicationDelegateAdaptor(AppDelegate.self)
     private var appDelegate
+
+    init() {
+        let model = AppModel()
+        _model = State(initialValue: model)
+        // Siri's intents (#77) follow their links through the same model the screen shows.
+        AppDependencyManager.shared.add(dependency: model)
+    }
 
     var body: some Scene {
         WindowGroup {
