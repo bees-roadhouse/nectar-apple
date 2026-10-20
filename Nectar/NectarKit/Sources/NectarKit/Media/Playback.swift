@@ -137,6 +137,8 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
     public let subtitleID: String?
     /// The subtitle this person would see by their My Account settings, when the player didn't choose.
     public let subtitleDefault: SubtitleDefault?
+    /// A burn nectar would have added for that default and didn't, because the box can't run it in real time.
+    public let subtitleDeclined: SubtitleDeclined?
 
     public init(
         strategy: Strategy,
@@ -149,7 +151,8 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
         audioStreamIndex: Int? = nil,
         subtitleStreamIndex: Int? = nil,
         subtitleID: String? = nil,
-        subtitleDefault: SubtitleDefault? = nil
+        subtitleDefault: SubtitleDefault? = nil,
+        subtitleDeclined: SubtitleDeclined? = nil
     ) {
         self.strategy = strategy
         self.streamPath = streamPath
@@ -162,6 +165,7 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
         self.subtitleStreamIndex = subtitleStreamIndex
         self.subtitleID = subtitleID
         self.subtitleDefault = subtitleDefault
+        self.subtitleDeclined = subtitleDeclined
     }
 
     private struct Selected: Decodable {
@@ -186,6 +190,7 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
         case audioReason = "audio_reason"
         case selected
         case subtitleDefault = "subtitle_default"
+        case subtitleDeclined = "subtitle_declined"
     }
 
     public init(from decoder: Decoder) throws {
@@ -202,6 +207,7 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
         subtitleStreamIndex = selected?.subtitleStreamIndex
         subtitleID = selected?.subtitleID
         subtitleDefault = try c.decodeIfPresent(SubtitleDefault.self, forKey: .subtitleDefault)
+        subtitleDeclined = try c.decodeIfPresent(SubtitleDeclined.self, forKey: .subtitleDeclined)
     }
 
     /// Where to seek once the player is ready. A direct file starts at zero, so seek to the resume

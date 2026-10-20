@@ -36,15 +36,23 @@ struct PlayerView: View {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+                // Where tvOS shows its own passing notices: a capsule at the top centre, clear of the transport
+                // bar, never in the title's metadata, never focusable (Capping's spec on #98).
                 if let notice = model.notice {
-                    Text(notice)
-                        .font(.headline)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 12)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                        .padding(60)
-                        .transition(.opacity)
+                    Label {
+                        Text(notice.text).foregroundStyle(.primary)
+                    } icon: {
+                        Image(systemName: notice.isFailure ? "exclamationmark.triangle.fill" : "captions.bubble.fill")
+                            .foregroundStyle(notice.isFailure ? .red : .secondary)
+                    }
+                    .font(.callout)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .padding(.top, 60)
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
                 }
                 if showsMethod {
                     MethodBadge(decision: decision)
@@ -59,6 +67,8 @@ struct PlayerView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        // The notice fades in and out: opacity only, so it's the same under Reduce Motion.
+        .animation(.easeInOut(duration: 0.3), value: model.notice)
         .task {
             await model.start()
             // How nectar is playing it, long enough to read, then out of the picture.

@@ -40,8 +40,16 @@ final class PlayerModel: Identifiable {
     private(set) var burned: SubtitleTrack?
     /// A burned stream being swapped in: the last frame holds under a spinner meanwhile.
     private(set) var switching = false
-    /// One line after a subtitle switch that didn't work; playback carries on.
-    private(set) var notice: String?
+    /// One line over the picture: a subtitle that couldn't be had, or one that's coming. Playback carries on.
+    struct Notice: Equatable {
+        let text: String
+        /// A failure shows the error glyph; anything else is news.
+        let isFailure: Bool
+    }
+
+    private(set) var notice: Notice?
+    /// A notice decided before anything plays, shown with the first frame so it isn't spent on a spinner.
+    private var noticeAtStart: Notice?
     /// A burned start that never showed a frame has fallen back to the unburned stream; a second failure is final.
     private var fellBack = false
     /// The rendition to select once the stream is ready: the person's default, or the AVKit track picked while burned.
@@ -186,20 +194,20 @@ final class PlayerModel: Identifiable {
         do {
             let decision = try await session.decide(card.id, capabilities: Self.capabilities, startOffset: resume > 0 ? resume : nil, subtitle: .off)
             started = .now
+            noticeAtStart = Notice(text: "Couldn't turn on \(track.menuTitle()) subtitles", isFailure: true)
             try await begin(decision, at: resume)
-            show("Couldn't turn on \(track.menuTitle()) subtitles")
         } catch {
             log.error("play failed: \(String(describing: error), privacy: .public)")
             phase = .failed("Couldn't play this title.")
         }
     }
 
-    /// One line over the picture for a few seconds.
-    private func show(_ line: String) {
-        notice = line
+    /// One line over the picture for about 4 s (Capping's spec on #98).
+    private func show(_ shown: Notice) {
+        notice = shown
         Task { [weak self] in
-            try? await Task.sleep(for: .seconds(6))
-            if self?.notice == line { self?.notice = nil }
+            try? await Task.sleep(for: .seconds(4))
+            if self?.notice == shown { self?.notice = nil }
         }
     }
 
@@ -253,7 +261,13 @@ final class PlayerModel: Identifiable {
             Task { @MainActor in
                 guard let self else { return }
                 self.waitingToStart(status == .waitingToPlayAtSpecifiedRate && !self.hasPlayed, player)
-                if status == .playing, !self.hasPlayed { self.logAudio(player) }
+                if status == .playing, !self.hasPlayed {
+                    self.logAudio(player)
+                    if let shown = self.noticeAtStart {
+                        self.noticeAtStart = nil
+                        self.show(shown)
+                    }
+                }
                 if status == .playing { self.hasPlayed = true }
                 if status == .playing, let started = self.started {
                     log.info("playing at \(self.position(of: player, decision), privacy: .public)s (player time \(player.currentTime().seconds, privacy: .public)s), \(started.duration(to: .now), privacy: .public) after select")
@@ -334,6 +348,14 @@ final class PlayerModel: Identifiable {
             pendingRendition = track.label
             log.info("subtitles: the default is the rendition \(track.label, privacy: .public)")
             return decision
+        case let .declined(track, declined):
+            log.info("subtitles: nectar declined burning \(track?.label ?? "stream \(declined.streamIndex)", privacy: .public): \(declined.message, privacy: .public); OCR \(String(describing: declined.ocr), privacy: .public)")
+            if let track {
+                noticeAtStart = declined.ocr == .queued
+                    ? Notice(text: "\(track.menuTitle()) subtitles will be ready next time", isFailure: false)
+                    : Notice(text: "Couldn't turn on \(track.menuTitle()) subtitles", isFailure: true)
+            }
+            return decision
         case let .burn(track):
             do {
                 let burnedDecision = try await session.decide(card.id, capabilities: Self.capabilities, startOffset: resume > 0 ? resume : nil, subtitle: .burn(track))
@@ -405,7 +427,7 @@ final class PlayerModel: Identifiable {
             log.info("subtitles: switched to \(track?.label ?? "unburned", privacy: .public) at \(at, privacy: .public)s")
         } catch {
             log.error("subtitles: switch to \(track?.label ?? "unburned", privacy: .public) failed: \(String(describing: error), privacy: .public)")
-            show(track.map { "Couldn't turn on \($0.menuTitle()) subtitles" } ?? "Couldn't turn off subtitles")
+            show(Notice(text: track.map { "Couldn't turn on \($0.menuTitle()) subtitles" } ?? "Couldn't turn off subtitles", isFailure: true))
             old.play()
         }
     }

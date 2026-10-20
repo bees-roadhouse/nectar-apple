@@ -193,8 +193,12 @@ public enum SubtitleStart: Equatable, Sendable {
     case burn(SubtitleTrack)
     /// nectar burned it already, in the answer to the first decide (#627, the TV's `bitmap: false`).
     case burned(SubtitleTrack)
+    /// nectar wouldn't burn it, because the box can't encode the picture in real time (#645); the film plays
+    /// without it. The track, when the list has it.
+    case declined(SubtitleTrack?, SubtitleDeclined)
 
-    /// The plan for a decision: a track nectar already burned is taken as is; otherwise the person's default.
+    /// The plan for a decision: a track nectar already burned is taken as is, and one it declined to burn is never
+    /// burned by a second decide; otherwise the person's default.
     public static func plan(_ decision: PlaybackDecision, _ tracks: [SubtitleTrack]) -> SubtitleStart {
         if decision.reason == "subtitle_burn" {
             let track = tracks.first { track in
@@ -203,12 +207,18 @@ public enum SubtitleStart: Equatable, Sendable {
             }
             if let track { return .burned(track) }
         }
+        if let declined = decision.subtitleDeclined {
+            return .declined(tracks.first { $0.kind == .embedded && $0.streamIndex == declined.streamIndex }, declined)
+        }
         return plan(decision.subtitleDefault, tracks)
     }
 
-    /// `subtitle_default` names an embedded stream; nil, or a track the list doesn't have, leaves it to AVKit.
+    /// `subtitle_default` names an embedded stream, and an image stream OCR has read also its text twin (#645),
+    /// which is shown instead; nil, or a track the list doesn't have, leaves it to AVKit.
     public static func plan(_ fallback: SubtitleDefault?, _ tracks: [SubtitleTrack]) -> SubtitleStart {
-        guard let fallback, let track = tracks.first(where: { $0.kind == .embedded && $0.streamIndex == fallback.streamIndex }) else { return .none }
+        guard let fallback else { return .none }
+        if let id = fallback.subtitleID, let twin = tracks.first(where: { $0.id == id }), twin.canSidecar { return .rendition(twin) }
+        guard let track = tracks.first(where: { $0.kind == .embedded && $0.streamIndex == fallback.streamIndex }) else { return .none }
         if track.canSidecar { return .rendition(track) }
         return track.canBurn ? .burn(track) : .none
     }
@@ -241,15 +251,80 @@ public struct SubtitleDefault: Decodable, Equatable, Sendable {
 
     public let streamIndex: Int
     public let reason: Reason
+    /// An image stream OCR has read (#619) names its text twin, by id in the subtitle list.
+    public let subtitleID: String?
 
-    public init(streamIndex: Int, reason: Reason) {
+    public init(streamIndex: Int, reason: Reason, subtitleID: String? = nil) {
         self.streamIndex = streamIndex
         self.reason = reason
+        self.subtitleID = subtitleID
     }
 
     enum CodingKeys: String, CodingKey {
         case streamIndex = "stream_index"
         case reason
+        case subtitleID = "subtitle_id"
+    }
+}
+
+/// A burn nectar would have added for the person's default and didn't (#645): the box would encode the picture
+/// slower than it plays. The film plays without it; `ocr` says whether the track's text is coming.
+public struct SubtitleDeclined: Decodable, Equatable, Sendable {
+
+    /// Unknown reasons are kept, not refused.
+    public enum Reason: Equatable, Sendable, Decodable {
+        /// A source above 1080p, and no transcoder here has a hardware encoder.
+        case burnTooSlow
+        case other(String)
+
+        public init(from decoder: Decoder) throws {
+            let raw = try decoder.singleValueContainer().decode(String.self)
+            self = raw == "burn_too_slow" ? .burnTooSlow : .other(raw)
+        }
+    }
+
+    /// What the person can expect of that track as text. Unknown outlooks are kept, not refused.
+    public enum OCR: Equatable, Sendable, Decodable {
+        /// Being read: a later play shows it as text.
+        case queued
+        /// Already read; its twin is in the list.
+        case read
+        /// Not a track this nectar can read (VobSub, or a language without a pack).
+        case unreadable
+        /// OCR is off on this nectar.
+        case off
+        case other(String)
+
+        public init(from decoder: Decoder) throws {
+            let raw = try decoder.singleValueContainer().decode(String.self)
+            self = switch raw {
+            case "queued": .queued
+            case "read": .read
+            case "unreadable": .unreadable
+            case "off": .off
+            default: .other(raw)
+            }
+        }
+    }
+
+    public let streamIndex: Int
+    public let reason: Reason
+    /// Why, in words, for an admin: not a line for the person watching.
+    public let message: String
+    public let ocr: OCR
+
+    public init(streamIndex: Int, reason: Reason, message: String, ocr: OCR) {
+        self.streamIndex = streamIndex
+        self.reason = reason
+        self.message = message
+        self.ocr = ocr
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case streamIndex = "stream_index"
+        case reason
+        case message
+        case ocr
     }
 }
 

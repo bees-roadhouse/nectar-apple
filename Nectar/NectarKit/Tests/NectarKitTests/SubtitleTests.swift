@@ -252,3 +252,56 @@ struct SubtitleCapabilityTests {
         #expect(SubtitleStart.plan(oldServer, tracks) == .burn(tracks[1]), "a nectar without #627 still gets the burn, by a second decide")
     }
 }
+
+/// nectar#645: an image track OCR has read comes as its text twin, and a burn the box can't run in real time is
+/// declined with a reason instead of handed out.
+@Suite("OCR twins and declined burns")
+struct SubtitleTwinTests {
+
+    private let tracks = [
+        SubtitleTrack(id: "embedded-4", kind: .embedded, streamIndex: 4, language: "eng", label: "English", canSidecar: false),
+        SubtitleTrack(id: "9c1e", kind: .generated, streamIndex: 4, language: "eng", label: "English (OCR 93%)"),
+    ]
+
+    @Test func decodesTheTwinAndTheDeclinedBurn() throws {
+        let answer = #"""
+        {"strategy":"hls","stream_url":"/s.m3u8","play_method":"DirectStream","reason":"container","start_offset_seconds":0,
+         "subtitle_default":{"stream_index":4,"reason":"always","codec":"hdmv_pgs_subtitle","subtitle_id":"9c1e"},
+         "subtitle_declined":{"stream_index":4,"reason":"burn_too_slow","message":"burning subtitles into this 2160p picture means re-encoding it in software","ocr":"queued"}}
+        """#
+        let decision = try JSONDecoder().decode(PlaybackDecision.self, from: Data(answer.utf8))
+
+        #expect(decision.subtitleDefault == SubtitleDefault(streamIndex: 4, reason: .always, subtitleID: "9c1e"))
+        #expect(decision.subtitleDeclined == SubtitleDeclined(streamIndex: 4, reason: .burnTooSlow, message: "burning subtitles into this 2160p picture means re-encoding it in software", ocr: .queued))
+    }
+
+    @Test func unknownReasonsAndOutlooksAreKept() throws {
+        let answer = #"{"strategy":"direct","stream_url":"/d","start_offset_seconds":0,"subtitle_declined":{"stream_index":4,"reason":"no_gpu","message":"m","ocr":"later"}}"#
+        let declined = try #require(try JSONDecoder().decode(PlaybackDecision.self, from: Data(answer.utf8)).subtitleDeclined)
+
+        #expect(declined.reason == .other("no_gpu"))
+        #expect(declined.ocr == .other("later"))
+    }
+
+    @Test func anOCRdDefaultIsItsTextTwinNotABurn() {
+        let decision = PlaybackDecision(strategy: .hls, streamPath: "/s.m3u8", reason: "container", subtitleDefault: SubtitleDefault(streamIndex: 4, reason: .always, subtitleID: "9c1e"))
+        #expect(SubtitleStart.plan(decision, tracks) == .rendition(tracks[1]))
+    }
+
+    @Test func aTwinTheListDoesntHaveYetFallsBackToTheStream() {
+        let decision = PlaybackDecision(strategy: .hls, streamPath: "/s.m3u8", reason: "container", subtitleDefault: SubtitleDefault(streamIndex: 4, reason: .always, subtitleID: "gone"))
+        #expect(SubtitleStart.plan(decision, tracks) == .burn(tracks[0]))
+    }
+
+    @Test func aDeclinedBurnIsNeverBurnedBySecondDecide() {
+        let declined = SubtitleDeclined(streamIndex: 4, reason: .burnTooSlow, message: "m", ocr: .queued)
+        let decision = PlaybackDecision(strategy: .hls, streamPath: "/s.m3u8", reason: "container", subtitleDefault: SubtitleDefault(streamIndex: 4, reason: .always), subtitleDeclined: declined)
+        #expect(SubtitleStart.plan(decision, tracks) == .declined(tracks[0], declined))
+    }
+
+    @Test func aDeclinedBurnOfATrackTheListLacksStillSaysSo() {
+        let declined = SubtitleDeclined(streamIndex: 7, reason: .burnTooSlow, message: "m", ocr: .unreadable)
+        let decision = PlaybackDecision(strategy: .hls, streamPath: "/s.m3u8", reason: "container", subtitleDeclined: declined)
+        #expect(SubtitleStart.plan(decision, tracks) == .declined(nil, declined))
+    }
+}
