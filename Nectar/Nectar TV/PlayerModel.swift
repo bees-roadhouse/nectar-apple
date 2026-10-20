@@ -33,11 +33,18 @@ final class PlayerModel: Identifiable {
     /// AVPlayer starts out paused; only a pause after playing is the viewer's.
     private var hasPlayed = false
     private var endObserver: NSObjectProtocol?
+    private var startDeadline: Task<Void, Never>?
     /// Called when the title plays to its end; a playlist moves on to the next.
     var finished: (() -> Void)?
 
     /// How often progress goes to nectar while playing.
     private static let reportEvery: Double = 10
+
+    /// How long AVPlayer may wait to start, with no first frame, before the TV says so (#91). It can wait forever,
+    /// never failing, when the server answers the playlists but not the media; real starts on the TV take under 5 s,
+    /// and the slowest transcode seen took about 25. Only waiting counts: a start the system paused (a screensaver
+    /// over the app, the app in the background) is not a failure, and on the TV that pause looked like one.
+    private static let firstFrameDeadline: Duration = .seconds(45)
 
     init(card: MediaCard, session: NectarSession) {
         id = card.id
@@ -117,6 +124,29 @@ final class PlayerModel: Identifiable {
     /// The player is going away: say where it stopped, and whether that's the end.
     func stop() {
         guard case let .playing(player, decision) = phase else { return }
+        tearDown(player)
+        let position = position(of: player, decision)
+        let duration = decision.durationSeconds ?? card.runtimeSeconds
+        let completed = duration.map { position >= $0 * 0.95 } ?? false
+        report(position, paused: true, completed: completed ? true : nil, force: true)
+    }
+
+    /// AVPlayer gave up on the item, or never started it (#91): say so, instead of leaving a dead player on screen.
+    /// Where it had got to is saved as a stop would save it; a start that never played reports nothing, so the old
+    /// resume point stands.
+    private func failed() {
+        guard case let .playing(player, _) = phase else { return }
+        if hasPlayed {
+            stop()
+        } else {
+            tearDown(player)
+        }
+        phase = .failed("Couldn't play this title.")
+    }
+
+    private func tearDown(_ player: AVPlayer) {
+        startDeadline?.cancel()
+        startDeadline = nil
         player.pause()
         if let timeObserver { player.removeTimeObserver(timeObserver) }
         timeObserver = nil
@@ -124,13 +154,25 @@ final class PlayerModel: Identifiable {
         itemStatusObservation = nil
         if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
         endObserver = nil
-        let position = position(of: player, decision)
-        let duration = decision.durationSeconds ?? card.runtimeSeconds
-        let completed = duration.map { position >= $0 * 0.95 } ?? false
-        report(position, paused: true, completed: completed ? true : nil, force: true)
     }
 
     // MARK: - Progress
+
+    /// Runs the first-frame deadline while AVPlayer is waiting to start, and stops it when it plays or is paused.
+    private func waitingToStart(_ waiting: Bool, _ player: AVPlayer) {
+        guard waiting else {
+            startDeadline?.cancel()
+            startDeadline = nil
+            return
+        }
+        guard startDeadline == nil else { return }
+        startDeadline = Task { [weak self, weak player] in
+            try? await Task.sleep(for: Self.firstFrameDeadline)
+            guard let self, let player, !Task.isCancelled, !self.hasPlayed else { return }
+            log.error("no first frame after \(Self.firstFrameDeadline, privacy: .public) of waiting: \(player.reasonForWaitingToPlay?.rawValue ?? "-", privacy: .public), item status \(player.currentItem?.status.rawValue ?? -1, privacy: .public)")
+            self.failed()
+        }
+    }
 
     private func observe(_ player: AVPlayer, _ decision: PlaybackDecision) {
         timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: Self.reportEvery, preferredTimescale: 1), queue: .main) { [weak self] _ in
@@ -148,6 +190,7 @@ final class PlayerModel: Identifiable {
             let status = player.timeControlStatus
             Task { @MainActor in
                 guard let self else { return }
+                self.waitingToStart(status == .waitingToPlayAtSpecifiedRate && !self.hasPlayed, player)
                 if status == .playing, !self.hasPlayed { self.logAudio(player) }
                 if status == .playing { self.hasPlayed = true }
                 if status == .playing, let started = self.started {
@@ -160,10 +203,10 @@ final class PlayerModel: Identifiable {
             }
         }
         if let item = player.currentItem {
-            itemStatusObservation = item.observe(\.status) { item, _ in
-                if item.status == .failed {
-                    log.error("player item failed: \(String(describing: item.error), privacy: .public)")
-                }
+            itemStatusObservation = item.observe(\.status) { [weak self] item, _ in
+                guard item.status == .failed else { return }
+                log.error("player item failed: \(String(describing: item.error), privacy: .public)")
+                Task { @MainActor in self?.failed() }
             }
         }
     }
