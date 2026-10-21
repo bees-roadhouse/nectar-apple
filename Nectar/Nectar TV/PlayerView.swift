@@ -25,7 +25,8 @@ struct PlayerView: View {
                 SystemPlayer(
                     player: player,
                     info: isAdmin ? PlaybackInfoPanel(model: model, player: player) : nil,
-                    imageTracks: model.subtitles.filter(\.burnOnly),
+                    // An image track plays only burned, so while burns are off there's nothing to offer.
+                    imageTracks: PlayerModel.burnsEnabled ? model.subtitles.filter(\.burnOnly) : [],
                     burnedID: model.burned?.id
                 ) { track in
                     Task { await model.switchSubtitle(burning: track) }

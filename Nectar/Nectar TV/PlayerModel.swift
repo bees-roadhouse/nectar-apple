@@ -72,6 +72,12 @@ final class PlayerModel: Identifiable {
     /// #644); the fallback plays the film unburned, so waiting the full deadline would only hold the film back.
     private static let burnedStartDeadline: Duration = .seconds(15)
 
+    /// Burns off (Nate, 2026-10-21, on #98): nectar holds each segment of a burned stream about 10 s, so a burn
+    /// never starts in time (nectar#687). Until that's fixed the TV asks for no burn, nectar adds none, and an
+    /// image-only default plays without that track. Text tracks, forced tracks and OCR's text twins are unaffected.
+    /// Turning it back on is this one line.
+    static let burnsEnabled = false
+
     init(card: MediaCard, session: NectarSession) {
         id = card.id
         self.card = card
@@ -83,7 +89,7 @@ final class PlayerModel: Identifiable {
     static let nowPlayingArtworkWidth: Double = 600
 
     static var capabilities: PlaybackCapabilities {
-        .avPlayer(hevcHardwareDecode: VTIsHardwareDecodeSupported(kCMVideoCodecType_HEVC))
+        .avPlayer(hevcHardwareDecode: VTIsHardwareDecodeSupported(kCMVideoCodecType_HEVC), burnsSubtitles: burnsEnabled)
     }
 
     func start() async {
@@ -357,6 +363,11 @@ final class PlayerModel: Identifiable {
             }
             return decision
         case let .burn(track):
+            guard Self.burnsEnabled else {
+                log.info("subtitles: the default \(track.label, privacy: .public) is an image track and burns are off; playing without it")
+                noticeAtStart = Notice(text: "Couldn't turn on \(track.menuTitle()) subtitles", isFailure: true)
+                return decision
+            }
             do {
                 let burnedDecision = try await session.decide(card.id, capabilities: Self.capabilities, startOffset: resume > 0 ? resume : nil, subtitle: .burn(track))
                 burned = track

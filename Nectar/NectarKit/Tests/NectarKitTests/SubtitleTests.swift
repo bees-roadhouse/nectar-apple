@@ -238,6 +238,14 @@ struct SubtitleCapabilityTests {
         #expect((body?["subtitle_capabilities"] as? [String: Bool])?["bitmap"] == false)
     }
 
+    /// nectar-apple #98, Nate 2026-10-21: burns off until nectar#687. Saying nothing about bitmaps stops nectar
+    /// adding a burn of its own; the person's default still comes back as advice.
+    @Test func withBurnsOffDecideSaysNothingAboutBitmaps() throws {
+        let body = try JSONSerialization.jsonObject(with: JSONEncoder().encode(DecideBody(.avPlayer(hevcHardwareDecode: true, burnsSubtitles: false), startOffset: nil))) as? [String: Any]
+        #expect(body?["subtitle_capabilities"] == nil)
+        #expect(body?["containers"] != nil, "the rest of the body is still there")
+    }
+
     @Test func aDefaultNectarAlreadyBurnedIsTakenAsIs() {
         let embedded = PlaybackDecision(strategy: .hls, streamPath: "/s.m3u8", reason: "subtitle_burn", subtitleStreamIndex: 11)
         let external = PlaybackDecision(strategy: .hls, streamPath: "/s.m3u8", reason: "subtitle_burn", subtitleID: "5b6e")

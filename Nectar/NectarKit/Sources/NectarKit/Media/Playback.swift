@@ -15,8 +15,11 @@ public struct PlaybackCapabilities: Equatable, Sendable {
     /// Whether the player draws picture subtitles (PGS, VobSub) itself. AVPlayer can't, so nectar burns a bitmap
     /// default into the stream in the same answer (nectar#627).
     public var drawsBitmapSubtitles: Bool
+    /// Whether nectar may burn a subtitle into this player's stream on its own. Off, decide hears nothing about
+    /// bitmaps, so nectar adds no burn of its own: the TV runs with burns off until nectar#687 starts them in time.
+    public var burnsSubtitles: Bool
 
-    public init(containers: [String], videoCodecs: [String], audioCodecs: [String], hlsVideoCodecs: [String], hlsAudioCodecs: [String], maxBitrate: Int? = nil, drawsBitmapSubtitles: Bool = false) {
+    public init(containers: [String], videoCodecs: [String], audioCodecs: [String], hlsVideoCodecs: [String], hlsAudioCodecs: [String], maxBitrate: Int? = nil, drawsBitmapSubtitles: Bool = false, burnsSubtitles: Bool = true) {
         self.containers = containers
         self.videoCodecs = videoCodecs
         self.audioCodecs = audioCodecs
@@ -24,17 +27,19 @@ public struct PlaybackCapabilities: Equatable, Sendable {
         self.hlsAudioCodecs = hlsAudioCodecs
         self.maxBitrate = maxBitrate
         self.drawsBitmapSubtitles = drawsBitmapSubtitles
+        self.burnsSubtitles = burnsSubtitles
     }
 
     /// AVPlayer on tvOS. HEVC only when the hardware decodes it: true on an Apple TV 4K, false in the simulator.
-    public static func avPlayer(hevcHardwareDecode: Bool) -> PlaybackCapabilities {
+    public static func avPlayer(hevcHardwareDecode: Bool, burnsSubtitles: Bool = true) -> PlaybackCapabilities {
         let video = hevcHardwareDecode ? ["h264", "hevc"] : ["h264"]
         return PlaybackCapabilities(
             containers: ["mp4", "m4v", "mov"],
             videoCodecs: video,
             audioCodecs: ["aac", "ac3", "eac3", "alac", "flac", "mp3"],
             hlsVideoCodecs: video,
-            hlsAudioCodecs: ["aac", "ac3", "eac3"]
+            hlsAudioCodecs: ["aac", "ac3", "eac3"],
+            burnsSubtitles: burnsSubtitles
         )
     }
 }
@@ -57,7 +62,8 @@ struct DecideBody: Encodable, Sendable {
     let startOffset: Int?
     /// Left out when the player didn't choose, so nectar applies the person's default.
     let subtitle: SubtitleChoice?
-    let subtitleCapabilities: SubtitleCapabilities
+    /// Left out while burns are off: nectar then burns nothing of its own.
+    let subtitleCapabilities: SubtitleCapabilities?
 
     init(_ capabilities: PlaybackCapabilities, startOffset: Double?, subtitle: SubtitleChoice? = nil) {
         containers = capabilities.containers
@@ -67,7 +73,7 @@ struct DecideBody: Encodable, Sendable {
         // nectar takes whole seconds; resuming a second early beats a second late.
         self.startOffset = startOffset.map { max(Int($0.rounded(.down)), 0) }
         self.subtitle = subtitle
-        subtitleCapabilities = SubtitleCapabilities(bitmap: capabilities.drawsBitmapSubtitles)
+        subtitleCapabilities = capabilities.burnsSubtitles ? SubtitleCapabilities(bitmap: capabilities.drawsBitmapSubtitles) : nil
     }
 
     enum CodingKeys: String, CodingKey {
