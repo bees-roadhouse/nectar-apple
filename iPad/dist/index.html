@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nectar tracer</title>
+<style>
+  body { margin: 0; background: #111; color: #ddd; font: 18px -apple-system, sans-serif; }
+  video { display: block; width: 100%; max-height: 80vh; background: #000; }
+  p { padding: 12px 16px; margin: 0; }
+</style>
+</head>
+<body>
+<video id="v" controls playsinline muted autoplay></video>
+<p id="s">…</p>
+<script>
+  // Native HLS on AVPlayer, for #127's tracer. The master URL carries a token, so it's never shown.
+  const v = document.getElementById("v"), s = document.getElementById("s");
+  const master = (window.__TRACER__ || {}).master;
+  const say = (t) => { s.textContent += " · " + t; };
+  s.textContent = "native <video> · canPlayType(HLS)=" + JSON.stringify(v.canPlayType("application/vnd.apple.mpegurl"));
+  for (const ev of ["loadedmetadata", "playing", "waiting", "stalled", "error"]) {
+    v.addEventListener(ev, () => say(ev + (ev === "error" && v.error ? " " + v.error.code : "")));
+  }
+  setInterval(() => { document.title = "t=" + v.currentTime.toFixed(1); }, 1000);
+  if (master) { v.muted = true; v.src = master; v.play().catch((e) => say("play(): " + e.message)); } else { say("no master URL"); }
+</script>
+</body>
+</html>

@@ -1,0 +1,460 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		17FEEC2406A4EAA56087D556 /* assets in Resources */ = {isa = PBXBuildFile; fileRef = C00BF10CDFE769A9870FAA87 /* assets */; };
+		1C289B5456BEF78C291D999C /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E8C5A5A6CE0D1F52408DF736 /* CoreGraphics.framework */; };
+		2C56207E1F5EE07DCF51D7FC /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2E3C6720F18AC8031B5F3797 /* Metal.framework */; };
+		4EDC38BD48D362082D183D37 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 29D6CD10ACC05060DEFC94D1 /* Security.framework */; };
+		7CCA497E9EF9FF3AD526DEBE /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 8EA5F1126DAF42646F2E5B8A /* LaunchScreen.storyboard */; };
+		816E070CE3709D82A8CD378F /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = A889A3792429A12E8C28FAE4 /* main.mm */; };
+		82E42A189E3A1705FD100AB3 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D783EE5CAC4BA9C49F3855C /* QuartzCore.framework */; };
+		A81B1FB3611E4244412155B4 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4B423960A271E1504657DBA8 /* UIKit.framework */; };
+		ABA865D84663EE48EC1F2E50 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 52D8915C3B9BFE5AB3C4D08B /* MetalKit.framework */; };
+		B81B00C3F50C8AEB29237274 /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AD7B5956C2F29D10C45BF737 /* WebKit.framework */; };
+		E54E3AA54755CBCFED14C2D4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 81BC1DBDAB73CE02C60E6710 /* Assets.xcassets */; };
+		E666A4AA57040CABE84D9024 /* libapp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3F574F25C9D40C9E6429A0FC /* libapp.a */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		1D4BB03F82EDEFC681B83DF0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		29D6CD10ACC05060DEFC94D1 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
+		2E3C6720F18AC8031B5F3797 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
+		3F574F25C9D40C9E6429A0FC /* libapp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapp.a; sourceTree = "<group>"; };
+		46146DE6970EC13FB27ADD49 /* bindings.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bindings.h; sourceTree = "<group>"; };
+		4B423960A271E1504657DBA8 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		4D783EE5CAC4BA9C49F3855C /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		52D8915C3B9BFE5AB3C4D08B /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
+		5F3C1F45831E9DE4700F4B1A /* lib.rs */ = {isa = PBXFileReference; path = lib.rs; sourceTree = "<group>"; };
+		697CFE865D98D116F5F2633C /* main.rs */ = {isa = PBXFileReference; path = main.rs; sourceTree = "<group>"; };
+		81BC1DBDAB73CE02C60E6710 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		8EA5F1126DAF42646F2E5B8A /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		A254385F713570630FF63B4F /* nectar-ipad_iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "nectar-ipad_iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A889A3792429A12E8C28FAE4 /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
+		AD7B5956C2F29D10C45BF737 /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
+		C00BF10CDFE769A9870FAA87 /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = assets; sourceTree = SOURCE_ROOT; };
+		E5C553D69F4D97E261A0265C /* nectar-ipad_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "nectar-ipad_iOS.entitlements"; sourceTree = "<group>"; };
+		E8C5A5A6CE0D1F52408DF736 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		751820502A196CD0F772119F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E666A4AA57040CABE84D9024 /* libapp.a in Frameworks */,
+				1C289B5456BEF78C291D999C /* CoreGraphics.framework in Frameworks */,
+				2C56207E1F5EE07DCF51D7FC /* Metal.framework in Frameworks */,
+				ABA865D84663EE48EC1F2E50 /* MetalKit.framework in Frameworks */,
+				82E42A189E3A1705FD100AB3 /* QuartzCore.framework in Frameworks */,
+				4EDC38BD48D362082D183D37 /* Security.framework in Frameworks */,
+				A81B1FB3611E4244412155B4 /* UIKit.framework in Frameworks */,
+				B81B00C3F50C8AEB29237274 /* WebKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0294D5519B0B3DB182F0A128 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				5F3C1F45831E9DE4700F4B1A /* lib.rs */,
+				697CFE865D98D116F5F2633C /* main.rs */,
+			);
+			name = src;
+			path = ../../src;
+			sourceTree = "<group>";
+		};
+		117A36E1E7DCDE402737FED3 = {
+			isa = PBXGroup;
+			children = (
+				C00BF10CDFE769A9870FAA87 /* assets */,
+				81BC1DBDAB73CE02C60E6710 /* Assets.xcassets */,
+				8EA5F1126DAF42646F2E5B8A /* LaunchScreen.storyboard */,
+				40B7BF24BE2F2F52C929AA96 /* Externals */,
+				964FF13358805FB0AC0E5BCC /* nectar-ipad_iOS */,
+				5EB082AFE809C22262D72191 /* Sources */,
+				0294D5519B0B3DB182F0A128 /* src */,
+				4DD5978AE4A0C3D1A2B44806 /* Frameworks */,
+				DF3ED630802FE642F0E36FDD /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		40B7BF24BE2F2F52C929AA96 /* Externals */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Externals;
+			sourceTree = "<group>";
+		};
+		4DD5978AE4A0C3D1A2B44806 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				E8C5A5A6CE0D1F52408DF736 /* CoreGraphics.framework */,
+				3F574F25C9D40C9E6429A0FC /* libapp.a */,
+				2E3C6720F18AC8031B5F3797 /* Metal.framework */,
+				52D8915C3B9BFE5AB3C4D08B /* MetalKit.framework */,
+				4D783EE5CAC4BA9C49F3855C /* QuartzCore.framework */,
+				29D6CD10ACC05060DEFC94D1 /* Security.framework */,
+				4B423960A271E1504657DBA8 /* UIKit.framework */,
+				AD7B5956C2F29D10C45BF737 /* WebKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		5EB082AFE809C22262D72191 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				F8C4196D223AA3ADFE8C8C45 /* nectar-ipad */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		964FF13358805FB0AC0E5BCC /* nectar-ipad_iOS */ = {
+			isa = PBXGroup;
+			children = (
+				1D4BB03F82EDEFC681B83DF0 /* Info.plist */,
+				E5C553D69F4D97E261A0265C /* nectar-ipad_iOS.entitlements */,
+			);
+			path = "nectar-ipad_iOS";
+			sourceTree = "<group>";
+		};
+		D990B17301E630D2551D75AF /* bindings */ = {
+			isa = PBXGroup;
+			children = (
+				46146DE6970EC13FB27ADD49 /* bindings.h */,
+			);
+			path = bindings;
+			sourceTree = "<group>";
+		};
+		DF3ED630802FE642F0E36FDD /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A254385F713570630FF63B4F /* nectar-ipad_iOS.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		F8C4196D223AA3ADFE8C8C45 /* nectar-ipad */ = {
+			isa = PBXGroup;
+			children = (
+				A889A3792429A12E8C28FAE4 /* main.mm */,
+				D990B17301E630D2551D75AF /* bindings */,
+			);
+			path = "nectar-ipad";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		03E3F4C30FB54FB1E2906A0A /* nectar-ipad_iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 36359C58134FA339829A0517 /* Build configuration list for PBXNativeTarget "nectar-ipad_iOS" */;
+			buildPhases = (
+				A35EAAB6208AF20EE81A8490 /* Build Rust Code */,
+				94A3A9DCF8A949453CFC5A3B /* Sources */,
+				D1E451FB8B256D828A92FCA4 /* Resources */,
+				751820502A196CD0F772119F /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "nectar-ipad_iOS";
+			packageProductDependencies = (
+			);
+			productName = "nectar-ipad_iOS";
+			productReference = A254385F713570630FF63B4F /* nectar-ipad_iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		065B736EBF1ABBB08BCEF4A1 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = A81110F10C58A10A91ED1A96 /* Build configuration list for PBXProject "nectar-ipad" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 117A36E1E7DCDE402737FED3;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = DF3ED630802FE642F0E36FDD /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				03E3F4C30FB54FB1E2906A0A /* nectar-ipad_iOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D1E451FB8B256D828A92FCA4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E54E3AA54755CBCFED14C2D4 /* Assets.xcassets in Resources */,
+				7CCA497E9EF9FF3AD526DEBE /* LaunchScreen.storyboard in Resources */,
+				17FEEC2406A4EAA56087D556 /* assets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		A35EAAB6208AF20EE81A8490 /* Build Rust Code */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build Rust Code";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/Externals/x86_64/${CONFIGURATION}/libapp.a",
+				"$(SRCROOT)/Externals/arm64/${CONFIGURATION}/libapp.a",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "bun tauri ios xcode-script -v --platform \"${PLATFORM_DISPLAY_NAME:?}\" --sdk-root \"${SDKROOT:?}\" --framework-search-paths \"${FRAMEWORK_SEARCH_PATHS:?}\" --header-search-paths \"${HEADER_SEARCH_PATHS:?}\" --gcc-preprocessor-definitions \"${GCC_PREPROCESSOR_DEFINITIONS:-}\" --configuration \"${CONFIGURATION:?}\" ${FORCE_COLOR} ${ARCHS:?}\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		94A3A9DCF8A949453CFC5A3B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				816E070CE3709D82A8CD378F /* main.mm in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		42AEEEEB27E8873977F156BC /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ARCHS = (
+					arm64,
+				);
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "nectar-ipad_iOS/nectar-ipad_iOS.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_BITCODE = NO;
+				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\".\"",
+				);
+				INFOPLIST_FILE = "nectar-ipad_iOS/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.beesroadhouse.nectar.ipad;
+				PRODUCT_NAME = "Nectar";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALID_ARCHS = arm64;
+			};
+			name = debug;
+		};
+		6253EFC7D1C89DDCC5F4AD1F /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = debug;
+		};
+		71B7899E00F337DFB0CA80F9 /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ARCHS = (
+					arm64,
+				);
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "nectar-ipad_iOS/nectar-ipad_iOS.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_BITCODE = NO;
+				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\".\"",
+				);
+				INFOPLIST_FILE = "nectar-ipad_iOS/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.beesroadhouse.nectar.ipad;
+				PRODUCT_NAME = "Nectar";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALID_ARCHS = arm64;
+			};
+			name = release;
+		};
+		F43A2D79EE4C61F3AC0B56DC /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		36359C58134FA339829A0517 /* Build configuration list for PBXNativeTarget "nectar-ipad_iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				42AEEEEB27E8873977F156BC /* debug */,
+				71B7899E00F337DFB0CA80F9 /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+		A81110F10C58A10A91ED1A96 /* Build configuration list for PBXProject "nectar-ipad" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6253EFC7D1C89DDCC5F4AD1F /* debug */,
+				F43A2D79EE4C61F3AC0B56DC /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 065B736EBF1ABBB08BCEF4A1 /* Project object */;
+}
