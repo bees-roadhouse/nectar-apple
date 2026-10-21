@@ -479,16 +479,37 @@ extension AVMediaPlayerProxy {
         #endif
 
         var indexMap = MediaTrackIndexMap()
-        for (streams, cachedStreams, group) in [
-            (item.audioStreams, cachedAudioStreams, cachedAudioGroup),
-            (item.subtitleStreams, cachedSubtitleStreams, cachedSubtitleGroup),
-        ] {
-            guard let group else { continue }
-
-            for stream in streams {
+        if let group = cachedAudioGroup {
+            for stream in item.audioStreams {
                 guard let index = stream.index,
-                      let option = selectionOption(matching: index, in: group, from: cachedStreams),
+                      let option = selectionOption(matching: index, in: group, from: cachedAudioStreams),
                       let playerIndex = group.options.firstIndex(of: option)
+                else { continue }
+
+                indexMap.setPlayerIndex(playerIndex, for: index)
+            }
+        }
+        if let group = cachedSubtitleGroup {
+            var renditions: [SubtitleRenditionMatcher.Rendition] = []
+            for option in group.options {
+                let title = option.commonMetadata.first { $0.commonKey == .commonKeyTitle }
+                renditions.append(.init(
+                    name: try? await title?.load(.stringValue),
+                    language: option.extendedLanguageTag ?? option.locale?.identifier,
+                    isForced: option.hasMediaCharacteristic(.containsOnlyForcedSubtitles)
+                ))
+            }
+            let embeddedIndexes = cachedSubtitleStreams.compactMap(\.index)
+
+            // Every subtitle stream, external ones included: a server can list a text twin of an image track that
+            // plays as a rendition of this stream.
+            for stream in item.subtitleStreams {
+                guard let index = stream.index,
+                      let playerIndex = SubtitleRenditionMatcher.rendition(
+                          for: .init(index: index, displayTitle: stream.displayTitle, language: stream.language, isForced: stream.isForced ?? false),
+                          in: renditions,
+                          embeddedIndexes: embeddedIndexes
+                      )
                 else { continue }
 
                 indexMap.setPlayerIndex(playerIndex, for: index)
