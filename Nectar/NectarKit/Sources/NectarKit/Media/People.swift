@@ -18,9 +18,10 @@ public struct Credit: Equatable, Identifiable, Sendable {
     /// "as Louise Banks", or their jobs when they didn't play a part.
     public let role: String?
     public let posterPath: String?
+    public let posterBlurHash: String?
 
     public var card: MediaCard {
-        MediaCard(id: id, itemType: itemType, title: title, year: year, posterPath: posterPath)
+        MediaCard(id: id, itemType: itemType, title: title, year: year, posterPath: posterPath, posterBlurHash: posterBlurHash)
     }
 }
 
@@ -60,11 +61,13 @@ private struct PersonPage: Decodable {
         let roles: [String]?
         let character: String?
         let posterURL: String?
+        let posterBlurHash: String?
 
         enum CodingKeys: String, CodingKey {
             case id, title, year, roles, character
             case itemType = "item_type"
             case posterURL = "poster_url"
+            case posterBlurHash = "poster_blurhash"
         }
     }
 
@@ -86,7 +89,8 @@ extension NectarSession {
             } else {
                 nil
             }
-            return Credit(id: film.id, itemType: film.itemType, title: film.title, year: film.year, role: role, posterPath: film.posterURL)
+            return Credit(id: film.id, itemType: film.itemType, title: film.title, year: film.year, role: role, posterPath: film.posterURL,
+                          posterBlurHash: film.posterBlurHash)
         }
         return PersonDetail(person: person, credits: credits)
     }

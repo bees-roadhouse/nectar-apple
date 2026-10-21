@@ -93,6 +93,7 @@ public struct BlurPreview: Equatable, Sendable {
 
     public static let poster = 2.0 / 3
     public static let backdrop = 16.0 / 9
+    public static let still = 16.0 / 9
 
     public init(hash: String, aspect: Double) {
         self.hash = hash

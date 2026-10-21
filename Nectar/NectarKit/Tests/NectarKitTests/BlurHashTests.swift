@@ -99,3 +99,30 @@ struct CardBlurPreviewTests {
         }
     }
 }
+
+/// nectar#376 slice 2's rule: every `X_url` naming a nectar image has an `X_blurhash` beside it (Forage, 2026-10-21).
+@Suite("Blur previews across nectar's payloads")
+struct PayloadBlurPreviewTests {
+
+    private func decode<T: Decodable>(_ type: T.Type, _ json: String) throws -> T {
+        try JSONDecoder().decode(type, from: Data(json.utf8))
+    }
+
+    @Test func anEpisodesStillHasAWidePreview() throws {
+        let episode = try decode(Episode.self, #"{"id":"e1","title":"Pilot","thumb_url":"/api/v1/images/t","thumb_blurhash":"00FF00"}"#)
+        #expect(episode.thumbPreview == BlurPreview(hash: "00FF00", aspect: BlurPreview.still))
+        #expect(try decode(Episode.self, #"{"id":"e1","thumb_url":"/t","thumb_blurhash":null}"#).thumbPreview == nil)
+    }
+
+    @Test func aSearchTitleHasItsPostersPreview() throws {
+        let hit = try decode(TitleHit.self, #"{"id":"m1","item_type":"movie","title":"Arrival","poster_url":"/p","poster_blurhash":"00FF00"}"#)
+        #expect(hit.posterPreview == BlurPreview(hash: "00FF00", aspect: BlurPreview.poster))
+        #expect(try decode(TitleHit.self, #"{"id":"m1","item_type":"movie","poster_url":"/p"}"#).posterPreview == nil)
+    }
+
+    @Test func aRecommendationCarriesItsPostersHash() throws {
+        let pick = try decode(Recommendation.self, #"{"id":"r1","title":"Arrival","poster_url":"/p","poster_blurhash":"00FF00"}"#)
+        #expect(pick.posterBlurHash == "00FF00")
+        #expect(try decode(Recommendation.self, #"{"id":"r1","poster_url":"https://image.tmdb.org/p.jpg"}"#).posterBlurHash == nil)
+    }
+}
