@@ -386,6 +386,18 @@ struct SubtitleUnavailableTests {
         #expect(pending.message(locale: english).hasPrefix("Subtitles for this film are pictures"))
     }
 
+    /// nectar#687 slice 1: the default can be any text track. A sidecar (stream_index 1000+) or a Whisper track
+    /// (stream_index -1) is named by subtitle_id, which the TV resolves first, against the subtitle list's ids.
+    @Test func aSidecarOrWhisperDefaultResolvesBySubtitleID() {
+        let sidecar = SubtitleTrack(id: "7230c98d", kind: .external, streamIndex: 1000, language: "en", label: "English")
+        let whisper = SubtitleTrack(id: "w-41", kind: .generated, language: "en", label: "English (Generated)")
+        let image = SubtitleTrack(id: "embedded-3", kind: .embedded, streamIndex: 3, language: "en", label: "English (burn-in)", canSidecar: false)
+        let tracks = [image, sidecar, whisper]
+        #expect(SubtitleStart.plan(SubtitleDefault(streamIndex: 1000, reason: .always, subtitleID: "7230c98d"), tracks) == .rendition(sidecar))
+        #expect(SubtitleStart.plan(SubtitleDefault(streamIndex: -1, reason: .always, subtitleID: "w-41"), tracks) == .rendition(whisper))
+        #expect(SubtitleStart.plan(SubtitleDefault(streamIndex: 3, reason: .always), tracks) == .burn(image), "an embedded default still keys on stream_index")
+    }
+
     @Test func thePlanTellsTheReasonBeforeAnyDefault() {
         let u = SubtitleUnavailable(language: "eng", streamIndex: 11, reason: .ocrPending, ocr: .queued)
         let decision = PlaybackDecision(strategy: .hls, streamPath: "/s.m3u8", reason: "container", subtitleUnavailable: u)
