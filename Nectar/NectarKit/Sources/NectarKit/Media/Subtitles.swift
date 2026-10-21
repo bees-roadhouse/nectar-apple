@@ -407,7 +407,7 @@ public struct SubtitleUnavailable: Decodable, Equatable, Sendable {
     public let streamIndex: Int?
     public let reason: Reason
     public let ocr: OCR?
-    /// When nectar can estimate when OCR will finish.
+    /// Set only for a read in flight: nectar's estimate, never under 60 s. Null while queued (nectar#699).
     public let ocrEtaSeconds: Int?
     public let burn: Burn?
 
@@ -464,7 +464,9 @@ public struct SubtitleUnavailable: Decodable, Equatable, Sendable {
     }
 
     private var readyWhen: String {
-        guard let eta = ocrEtaSeconds else { return "They'll be ready next time you play it." }
+        guard let eta = ocrEtaSeconds else {
+            return ocr == .running ? "They should be ready soon." : "They'll be ready next time you play it."
+        }
         let minutes = Int((Double(eta) / 60).rounded())
         return minutes <= 1 ? "They should be ready in a minute or so." : "They should be ready in about \(minutes) minutes."
     }

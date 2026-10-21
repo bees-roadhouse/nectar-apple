@@ -360,6 +360,8 @@ struct SubtitleUnavailableTests {
         #expect(!later.isFailure)
         let soon = try unavailable("ocr_pending", ocr: "running", eta: 290)
         #expect(soon.message(locale: english) == "English subtitles for this film are pictures, and nectar is still reading them into text. They should be ready in about 5 minutes.")
+        let running = try unavailable("ocr_pending", ocr: "running")
+        #expect(running.message(locale: english) == "English subtitles for this film are pictures, and nectar is still reading them into text. They should be ready soon.", "running with no estimate yet")
         let now = try unavailable("ocr_pending", ocr: "running", eta: 20)
         #expect(now.message(locale: english) == "English subtitles for this film are pictures, and nectar is still reading them into text. They should be ready in a minute or so.")
     }
