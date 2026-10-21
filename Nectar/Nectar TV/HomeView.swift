@@ -174,7 +174,7 @@ private struct CardView: View {
     }
 
     private var artworkView: some View {
-        CachedImage(url: artwork, maxPixelSize: maxPixelSize) { image in
+        CachedImage(url: artwork, maxPixelSize: maxPixelSize, preview: card.artworkPreview) { image in
             image.resizable().aspectRatio(contentMode: .fill)
         } placeholder: {
             ZStack {

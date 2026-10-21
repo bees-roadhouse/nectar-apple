@@ -2,11 +2,13 @@ import NectarKit
 import SwiftUI
 
 /// `AsyncImage`, through nectar's image cache (#37): unchanged artwork comes from the device, not the server,
-/// decoded at the size it's drawn. `maxPixelSize` is the longer side in pixels.
+/// decoded at the size it's drawn. `maxPixelSize` is the longer side in pixels. With a `preview`, its blur shows
+/// through `content` at once and the artwork fades in over it (#114); without one, `placeholder` shows as before.
 struct CachedImage<Content: View, Placeholder: View>: View {
 
     let url: URL?
     let maxPixelSize: Int
+    var preview: BlurPreview?
     @ViewBuilder
     let content: (Image) -> Content
     @ViewBuilder
@@ -16,11 +18,14 @@ struct CachedImage<Content: View, Placeholder: View>: View {
     private var image: Image?
 
     var body: some View {
-        Group {
-            if let image {
-                content(image)
-            } else {
+        ZStack {
+            if let blur = preview.flatMap(BlurPreviews.image) {
+                content(Image(decorative: blur, scale: 1))
+            } else if image == nil {
                 placeholder()
+            }
+            if let image {
+                content(image).transition(.opacity)
             }
         }
         .task(id: url) {
@@ -28,9 +33,30 @@ struct CachedImage<Content: View, Placeholder: View>: View {
                 image = nil
                 return
             }
+            let asked = ContinuousClock.now
             let bitmap = try? await ImageCache.shared.image(for: url, maxPixelSize: maxPixelSize)
-            image = bitmap.map { Image(decorative: $0.cgImage, scale: 1) }
+            let loaded = bitmap.map { Image(decorative: $0.cgImage, scale: 1) }
+            // Artwork already on the device appears at once; artwork that had to wait fades in over its blur.
+            if ContinuousClock.now - asked < .milliseconds(100) {
+                image = loaded
+            } else {
+                withAnimation(.easeOut(duration: 0.3)) { image = loaded }
+            }
         }
+    }
+}
+
+/// Each hash decoded once: a row redraws its cards as focus moves.
+private enum BlurPreviews {
+
+    nonisolated(unsafe) private static let decoded = NSCache<NSString, CGImage>()
+
+    static func image(_ preview: BlurPreview) -> CGImage? {
+        let key = "\(preview.hash)@\(preview.aspect)" as NSString
+        if let image = decoded.object(forKey: key) { return image }
+        guard let image = preview.image() else { return nil }
+        decoded.setObject(image, forKey: key)
+        return image
     }
 }
 
