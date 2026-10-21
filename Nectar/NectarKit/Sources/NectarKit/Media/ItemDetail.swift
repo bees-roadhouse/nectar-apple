@@ -40,6 +40,8 @@ public struct ItemDetail: Decodable, Equatable, Identifiable, Sendable {
     public let runtimeSeconds: Double?
     public let posterPath: String?
     public let backdropPath: String?
+    /// The BlurHash of the backdrop the page draws, or of the poster when there's none (nectar#376 slice 2).
+    public let artworkBlurHash: String?
     public let genres: [String]
     public let cast: [CastMember]
     public let directors: [String]
@@ -68,6 +70,7 @@ public struct ItemDetail: Decodable, Equatable, Identifiable, Sendable {
         case communityRating = "community_rating"
         case runtimeSeconds = "runtime_seconds"
         case posterPath = "poster_url"
+        case posterBlurHash = "poster_blurhash"
         case trailerPath = "trailer_url"
         case seasonCount = "season_count"
         case episodeCount = "episode_count"
@@ -76,10 +79,11 @@ public struct ItemDetail: Decodable, Equatable, Identifiable, Sendable {
     private struct Image: Decodable {
         let imageType: String
         let url: String
+        let blurhash: String?
 
         enum CodingKeys: String, CodingKey {
             case imageType = "image_type"
-            case url
+            case url, blurhash
         }
     }
 
@@ -130,7 +134,9 @@ public struct ItemDetail: Decodable, Equatable, Identifiable, Sendable {
         runtimeSeconds = c.lenientDouble(.runtimeSeconds)
         posterPath = try c.decodeIfPresent(String.self, forKey: .posterPath)
         let images = (try? c.decodeIfPresent([Image].self, forKey: .images)) ?? []
-        backdropPath = images.first { $0.imageType == "backdrop" }?.url
+        let backdrop = images.first { $0.imageType == "backdrop" }
+        backdropPath = backdrop?.url
+        artworkBlurHash = backdrop != nil ? backdrop?.blurhash : try c.decodeIfPresent(String.self, forKey: .posterBlurHash)
         genres = (try? c.decodeIfPresent([String].self, forKey: .genres)) ?? []
         let credits = try? c.decodeIfPresent(Credits.self, forKey: .credits)
         cast = (credits?.cast ?? []).map { person in

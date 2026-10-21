@@ -88,7 +88,10 @@ struct ItemDetailView: View {
             .padding(.bottom, 80)
         }
         .background(alignment: .top) {
-            CachedImage(url: model.session.resolve(detail.backdropPath ?? detail.posterPath, pixelWidth: 1920), maxPixelSize: 3840) { image in
+            CachedImage(
+                url: model.session.resolve(detail.backdropPath ?? detail.posterPath, pixelWidth: 1920), maxPixelSize: 3840,
+                blurHash: detail.artworkBlurHash
+            ) { image in
                 image.resizable().aspectRatio(contentMode: .fill)
             } placeholder: {
                 Color.black

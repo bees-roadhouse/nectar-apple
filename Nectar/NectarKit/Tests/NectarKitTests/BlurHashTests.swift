@@ -120,3 +120,27 @@ struct PayloadBlurHashTests {
         #expect(try decode(Recommendation.self, #"{"id":"r1","poster_url":"https://image.tmdb.org/p.jpg"}"#).posterBlurHash == nil)
     }
 }
+
+/// Capping's pass on #118: the detail backdrop gets its blur too. nectar#718 puts a `blurhash` on each `images[]` entry.
+@Suite("Detail blur hashes")
+struct DetailBlurHashTests {
+
+    private func detail(_ item: String) throws -> ItemDetail {
+        try JSONDecoder().decode(ItemDetail.self, from: Data(#"{"item":{"id":"m1","item_type":"movie","title":"Arrival",\#(item)}}"#.utf8))
+    }
+
+    @Test func theBackdropsHashComesFromItsImageEntry() throws {
+        let item = try detail(#"""
+        "poster_url":"/api/v1/images/p","poster_blurhash":"00FF00",
+        "images":[{"image_type":"logo","url":"/api/v1/images/l","blurhash":"00FFFF"},{"image_type":"backdrop","url":"/api/v1/images/b","blurhash":"0000FF"}]
+        """#)
+        #expect(item.backdropPath == "/api/v1/images/b")
+        #expect(item.artworkBlurHash == "0000FF", "the backdrop's own hash, not the logo's")
+    }
+
+    @Test func withoutABackdropTheArtworkHashIsThePosters() throws {
+        let item = try detail(#""poster_url":"/api/v1/images/p","poster_blurhash":"00FF00","images":[]"#)
+        #expect(item.artworkBlurHash == "00FF00")
+        #expect(try detail(#""poster_url":"/p","images":[{"image_type":"backdrop","url":"/b","blurhash":null}]"#).artworkBlurHash == nil)
+    }
+}

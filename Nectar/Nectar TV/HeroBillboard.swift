@@ -30,7 +30,10 @@ struct HeroBillboard: View {
     var body: some View {
         if let slide {
             ZStack(alignment: .bottomLeading) {
-                CachedImage(url: session.resolve(slide.card.backdropPath ?? slide.card.posterPath, pixelWidth: 1920), maxPixelSize: 3840) { image in
+                CachedImage(
+                    url: session.resolve(slide.card.backdropPath ?? slide.card.posterPath, pixelWidth: 1920), maxPixelSize: 3840,
+                    blurHash: slide.card.artworkBlurHash
+                ) { image in
                     image.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {
                     Rectangle().fill(.quaternary)

@@ -41,7 +41,7 @@ struct CachedImage<Content: View, Placeholder: View>: View {
             if ContinuousClock.now - asked < .milliseconds(100) {
                 image = loaded
             } else {
-                withAnimation(.easeOut(duration: 0.3)) { image = loaded }
+                withAnimation(.easeOut(duration: Motion.fade)) { image = loaded }
             }
         }
     }
