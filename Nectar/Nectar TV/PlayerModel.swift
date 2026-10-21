@@ -376,7 +376,10 @@ final class PlayerModel: Identifiable {
             log.info("subtitles: the stream offers no legible group")
             return
         }
-        let options = group.options.map { SubtitleOption(name: $0.displayName, language: $0.extendedLanguageTag, forced: $0.hasMediaCharacteristic(.containsOnlyForcedSubtitles)) }
+        var options: [SubtitleOption] = []
+        for option in group.options {
+            options.append(SubtitleOption(name: await Self.renditionName(option), language: option.extendedLanguageTag, forced: option.hasMediaCharacteristic(.containsOnlyForcedSubtitles)))
+        }
         log.info("subtitles: AVKit offers \(options.map { "\($0.name) [\($0.language ?? "und")\($0.forced ? ", forced" : "")]" }.joined(separator: ", "), privacy: .public)")
         if burned != nil {
             if group.allowsEmptySelection { item.select(nil, in: group) }
@@ -390,7 +393,15 @@ final class PlayerModel: Identifiable {
             return
         }
         item.select(group.options[index], in: group)
-        log.info("subtitles: selected \(group.options[index].displayName, privacy: .public)")
+        log.info("subtitles: selected \(options[index].name, privacy: .public)")
+    }
+
+    /// An HLS rendition's `NAME`, which nectar sets to the track's label. AVFoundation exposes it as the option's
+    /// common-metadata title; `displayName` is only the localized language ("Chinese" for three Chinese renditions).
+    private static func renditionName(_ option: AVMediaSelectionOption) async -> String {
+        let title = option.commonMetadata.first { $0.commonKey == .commonKeyTitle }
+        let name = try? await title?.load(.stringValue)
+        return name ?? option.displayName
     }
 
     /// AVKit's own menu changed the selection. While a track is burned, a text track chosen there means the
@@ -398,8 +409,11 @@ final class PlayerModel: Identifiable {
     private func selectionChanged(_ item: AVPlayerItem) {
         guard burned != nil, !switching, let group = item.asset.mediaSelectionGroup(forMediaCharacteristic: .legible),
               let chosen = item.currentMediaSelection.selectedMediaOption(in: group) else { return }
-        log.info("subtitles: \(chosen.displayName, privacy: .public) chosen in AVKit's menu while burned; back to the unburned stream")
-        Task { await switchSubtitle(burning: nil, thenSelect: chosen.displayName) }
+        Task {
+            let name = await Self.renditionName(chosen)
+            log.info("subtitles: \(name, privacy: .public) chosen in AVKit's menu while burned; back to the unburned stream")
+            await switchSubtitle(burning: nil, thenSelect: name)
+        }
     }
 
     /// "More subtitles": an image track burned in, or Off. The picture holds on its last frame under a spinner
