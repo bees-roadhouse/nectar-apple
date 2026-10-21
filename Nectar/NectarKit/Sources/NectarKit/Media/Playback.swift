@@ -15,8 +15,8 @@ public struct PlaybackCapabilities: Equatable, Sendable {
     /// Whether the player draws picture subtitles (PGS, VobSub) itself. AVPlayer can't, so nectar burns a bitmap
     /// default into the stream in the same answer (nectar#627).
     public var drawsBitmapSubtitles: Bool
-    /// Whether nectar may burn a subtitle into this player's stream on its own. Off, decide hears nothing about
-    /// bitmaps, so nectar adds no burn of its own: the TV runs with burns off until nectar#687 starts them in time.
+    /// Whether nectar may burn a subtitle into this player's stream. Off, decide says `burn: false`: nectar burns
+    /// nothing for this player and explains a wanted subtitle it can't serve (#111, the contract on nectar#687).
     public var burnsSubtitles: Bool
 
     public init(containers: [String], videoCodecs: [String], audioCodecs: [String], hlsVideoCodecs: [String], hlsAudioCodecs: [String], maxBitrate: Int? = nil, drawsBitmapSubtitles: Bool = false, burnsSubtitles: Bool = true) {
@@ -51,8 +51,9 @@ struct DecideBody: Encodable, Sendable {
         let audio: [String]
     }
 
-    struct SubtitleCapabilities: Encodable, Sendable {
+    struct SubtitleCapabilities: Encodable, Equatable, Sendable {
         let bitmap: Bool
+        let burn: Bool
     }
 
     let containers: [String]
@@ -62,8 +63,7 @@ struct DecideBody: Encodable, Sendable {
     let startOffset: Int?
     /// Left out when the player didn't choose, so nectar applies the person's default.
     let subtitle: SubtitleChoice?
-    /// Left out while burns are off: nectar then burns nothing of its own.
-    let subtitleCapabilities: SubtitleCapabilities?
+    let subtitleCapabilities: SubtitleCapabilities
 
     init(_ capabilities: PlaybackCapabilities, startOffset: Double?, subtitle: SubtitleChoice? = nil) {
         containers = capabilities.containers
@@ -73,7 +73,7 @@ struct DecideBody: Encodable, Sendable {
         // nectar takes whole seconds; resuming a second early beats a second late.
         self.startOffset = startOffset.map { max(Int($0.rounded(.down)), 0) }
         self.subtitle = subtitle
-        subtitleCapabilities = capabilities.burnsSubtitles ? SubtitleCapabilities(bitmap: capabilities.drawsBitmapSubtitles) : nil
+        subtitleCapabilities = SubtitleCapabilities(bitmap: capabilities.drawsBitmapSubtitles, burn: capabilities.burnsSubtitles)
     }
 
     enum CodingKeys: String, CodingKey {
@@ -145,6 +145,8 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
     public let subtitleDefault: SubtitleDefault?
     /// A burn nectar would have added for that default and didn't, because the box can't run it in real time.
     public let subtitleDeclined: SubtitleDeclined?
+    /// Why the subtitle this person wanted can't be shown, in one primary reason (#111, the contract on nectar#687).
+    public let subtitleUnavailable: SubtitleUnavailable?
 
     public init(
         strategy: Strategy,
@@ -158,7 +160,8 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
         subtitleStreamIndex: Int? = nil,
         subtitleID: String? = nil,
         subtitleDefault: SubtitleDefault? = nil,
-        subtitleDeclined: SubtitleDeclined? = nil
+        subtitleDeclined: SubtitleDeclined? = nil,
+        subtitleUnavailable: SubtitleUnavailable? = nil
     ) {
         self.strategy = strategy
         self.streamPath = streamPath
@@ -172,6 +175,7 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
         self.subtitleID = subtitleID
         self.subtitleDefault = subtitleDefault
         self.subtitleDeclined = subtitleDeclined
+        self.subtitleUnavailable = subtitleUnavailable
     }
 
     private struct Selected: Decodable {
@@ -197,6 +201,7 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
         case selected
         case subtitleDefault = "subtitle_default"
         case subtitleDeclined = "subtitle_declined"
+        case subtitleUnavailable = "subtitle_unavailable"
     }
 
     public init(from decoder: Decoder) throws {
@@ -214,6 +219,7 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
         subtitleID = selected?.subtitleID
         subtitleDefault = try c.decodeIfPresent(SubtitleDefault.self, forKey: .subtitleDefault)
         subtitleDeclined = try c.decodeIfPresent(SubtitleDeclined.self, forKey: .subtitleDeclined)
+        subtitleUnavailable = try c.decodeIfPresent(SubtitleUnavailable.self, forKey: .subtitleUnavailable)
     }
 
     /// Where to seek once the player is ready. A direct file starts at zero, so seek to the resume

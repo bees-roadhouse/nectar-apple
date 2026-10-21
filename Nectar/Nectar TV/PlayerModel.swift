@@ -212,9 +212,15 @@ final class PlayerModel: Identifiable {
     private func show(_ shown: Notice) {
         notice = shown
         Task { [weak self] in
-            try? await Task.sleep(for: .seconds(4))
+            try? await Task.sleep(for: Self.readingTime(shown.text))
             if self?.notice == shown { self?.notice = nil }
         }
+    }
+
+    /// Long enough to read at a sofa's pace (Capping, nectar#699): 4000 + 250 ms a word, held 6 to 10 s.
+    static func readingTime(_ text: String) -> Duration {
+        let words = text.split(separator: " ").count
+        return .milliseconds(min(max(4000 + 250 * words, 6000), 10000))
     }
 
     private func tearDown(_ player: AVPlayer) {
@@ -353,6 +359,11 @@ final class PlayerModel: Identifiable {
         case let .rendition(track):
             pendingRendition = track.label
             log.info("subtitles: the default is the rendition \(track.label, privacy: .public)")
+            return decision
+        case let .unavailable(unavailable):
+            let message = unavailable.message()
+            log.info("subtitles: nectar says the wanted subtitle can't be shown: \(String(describing: unavailable.reason), privacy: .public); \(message, privacy: .public)")
+            noticeAtStart = Notice(text: message, isFailure: unavailable.isFailure)
             return decision
         case let .declined(track, declined):
             log.info("subtitles: nectar declined burning \(track?.label ?? "stream \(declined.streamIndex)", privacy: .public): \(declined.message, privacy: .public); OCR \(String(describing: declined.ocr), privacy: .public)")

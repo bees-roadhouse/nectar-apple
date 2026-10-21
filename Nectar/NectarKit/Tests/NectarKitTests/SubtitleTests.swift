@@ -238,12 +238,15 @@ struct SubtitleCapabilityTests {
         #expect((body?["subtitle_capabilities"] as? [String: Bool])?["bitmap"] == false)
     }
 
-    /// nectar-apple #98, Nate 2026-10-21: burns off until nectar#687. Saying nothing about bitmaps stops nectar
-    /// adding a burn of its own; the person's default still comes back as advice.
-    @Test func withBurnsOffDecideSaysNothingAboutBitmaps() throws {
-        let body = try JSONSerialization.jsonObject(with: JSONEncoder().encode(DecideBody(.avPlayer(hevcHardwareDecode: true, burnsSubtitles: false), startOffset: nil))) as? [String: Any]
-        #expect(body?["subtitle_capabilities"] == nil)
-        #expect(body?["containers"] != nil, "the rest of the body is still there")
+    /// nectar-apple #111 (the contract on nectar#687): burns off says so, `burn: false`, and nectar then burns
+    /// nothing for this player and explains a wanted subtitle it can't serve. Burns on says `burn: true`.
+    @Test func decideSaysWhetherNectarMayBurn() throws {
+        func capabilities(_ burns: Bool) throws -> [String: Bool]? {
+            let body = try JSONSerialization.jsonObject(with: JSONEncoder().encode(DecideBody(.avPlayer(hevcHardwareDecode: true, burnsSubtitles: burns), startOffset: nil))) as? [String: Any]
+            return body?["subtitle_capabilities"] as? [String: Bool]
+        }
+        #expect(try capabilities(false) == ["bitmap": false, "burn": false])
+        #expect(try capabilities(true) == ["bitmap": false, "burn": true])
     }
 
     @Test func aDefaultNectarAlreadyBurnedIsTakenAsIs() {
@@ -311,5 +314,88 @@ struct SubtitleTwinTests {
         let declined = SubtitleDeclined(streamIndex: 7, reason: .burnTooSlow, message: "m", ocr: .unreadable)
         let decision = PlaybackDecision(strategy: .hls, streamPath: "/s.m3u8", reason: "container", subtitleDeclined: declined)
         #expect(SubtitleStart.plan(decision, tracks) == .declined(nil, declined))
+    }
+}
+
+/// nectar-apple #111, Nate 2026-10-21: "let's give the reason why we can't turn them on. we're informative and clear
+/// not grey." One message per cause, from decide's `subtitle_unavailable` (the contract on nectar#687).
+@Suite("Why a subtitle can't be shown")
+struct SubtitleUnavailableTests {
+
+    private let english = Locale(identifier: "en_US")
+
+    private func unavailable(_ reason: String, ocr: String? = nil, eta: Int? = nil, burn: String? = nil, language: String = "eng") throws -> SubtitleUnavailable {
+        var object: [String: Any] = ["language": language, "stream_index": 3, "reason": reason]
+        object["ocr"] = ocr ?? NSNull()
+        object["ocr_eta_seconds"] = eta ?? NSNull()
+        object["burn"] = burn ?? NSNull()
+        return try JSONDecoder().decode(SubtitleUnavailable.self, from: JSONSerialization.data(withJSONObject: object))
+    }
+
+    @Test func theAgreedShapeDecodes() throws {
+        let json = #"{"strategy":"hls","stream_url":"/s.m3u8","subtitle_unavailable":{"language":"eng","stream_index":3,"reason":"ocr_failed","ocr":"unreadable","ocr_eta_seconds":null,"burn":"too_slow"}}"#
+        let decision = try JSONDecoder().decode(PlaybackDecision.self, from: Data(json.utf8))
+        #expect(decision.subtitleUnavailable == SubtitleUnavailable(language: "eng", streamIndex: 3, reason: .ocrFailed, ocr: .unreadable, burn: .tooSlow))
+    }
+
+    @Test func unknownCodesAreKeptNotRefused() throws {
+        let u = try unavailable("teleported", ocr: "dreaming", burn: "maybe")
+        #expect(u.reason == .other("teleported"))
+        #expect(u.ocr == .other("dreaming"))
+        #expect(u.burn == .other("maybe"))
+        #expect(u.message(locale: english) == "English subtitles aren't available for this title.", "an unknown reason gets the plain line")
+        #expect(u.isFailure)
+    }
+
+    /// Capping's final wording (nectar#699), word for word.
+    @Test func eachReasonSaysCappingsSentence() throws {
+        #expect(try unavailable("no_track").message(locale: english) == "This title has no English subtitles.")
+        #expect(try unavailable("ocr_failed", ocr: "unreadable", burn: "off", language: "fre").message(locale: english) == "This title's French subtitles are images, and nectar couldn't read the text in them.")
+        #expect(try unavailable("burn_off", ocr: "off", burn: "off", language: "fre").message(locale: english) == "This title's French subtitles are images. This player can't draw them, and drawing them into the video is turned off.")
+        #expect(try unavailable("burn_too_slow", ocr: "off", burn: "too_slow", language: "fre").message(locale: english) == "This title's French subtitles are images, and drawing them into the video at this quality is too slow for this server.")
+    }
+
+    @Test func beingReadSaysWhenItWillBeReady() throws {
+        #expect(try unavailable("ocr_pending", ocr: "queued").message(locale: english) == "English subtitles will be ready next time you play this.")
+        #expect(try unavailable("ocr_pending", ocr: "running").message(locale: english) == "English subtitles are being read from the film and will be ready soon.", "running with no estimate yet")
+        #expect(try unavailable("ocr_pending", ocr: "running", eta: 720).message(locale: english) == "English subtitles are being read from the film and will be ready in 12 minutes.")
+    }
+
+    @Test func waitsReadAsAPersonSaysThem() {
+        #expect(SubtitleUnavailable.waitWords(60) == "a minute")
+        #expect(SubtitleUnavailable.waitWords(89) == "a minute")
+        #expect(SubtitleUnavailable.waitWords(90) == "2 minutes", "rounded up, as the web does")
+        #expect(SubtitleUnavailable.waitWords(290) == "5 minutes")
+        #expect(SubtitleUnavailable.waitWords(3600) == "about 1 hour")
+        #expect(SubtitleUnavailable.waitWords(7400) == "about 2 hours")
+    }
+
+    @Test func whatIsNewsAndWhatIsAFailure() throws {
+        #expect(try !unavailable("no_track").isFailure, "a fact about the title, not something that went wrong")
+        #expect(try !unavailable("ocr_pending", ocr: "queued").isFailure)
+        #expect(try unavailable("ocr_failed", ocr: "failed").isFailure)
+        #expect(try unavailable("burn_off", ocr: "off").isFailure)
+    }
+
+    @Test func aLanguageWithNoNameKeepsItsCode() throws {
+        #expect(try unavailable("no_track", language: "qaa").message(locale: english) == "This title has no qaa subtitles.")
+    }
+
+    /// nectar#687 slice 1: the default can be any text track. A sidecar (stream_index 1000+) or a Whisper track
+    /// (stream_index -1) is named by subtitle_id, which the TV resolves first, against the subtitle list's ids.
+    @Test func aSidecarOrWhisperDefaultResolvesBySubtitleID() {
+        let sidecar = SubtitleTrack(id: "7230c98d", kind: .external, streamIndex: 1000, language: "en", label: "English")
+        let whisper = SubtitleTrack(id: "w-41", kind: .generated, language: "en", label: "English (Generated)")
+        let image = SubtitleTrack(id: "embedded-3", kind: .embedded, streamIndex: 3, language: "en", label: "English (burn-in)", canSidecar: false)
+        let tracks = [image, sidecar, whisper]
+        #expect(SubtitleStart.plan(SubtitleDefault(streamIndex: 1000, reason: .always, subtitleID: "7230c98d"), tracks) == .rendition(sidecar))
+        #expect(SubtitleStart.plan(SubtitleDefault(streamIndex: -1, reason: .always, subtitleID: "w-41"), tracks) == .rendition(whisper))
+        #expect(SubtitleStart.plan(SubtitleDefault(streamIndex: 3, reason: .always), tracks) == .burn(image), "an embedded default still keys on stream_index")
+    }
+
+    @Test func thePlanTellsTheReasonBeforeAnyDefault() {
+        let u = SubtitleUnavailable(language: "eng", streamIndex: 11, reason: .ocrPending, ocr: .queued)
+        let decision = PlaybackDecision(strategy: .hls, streamPath: "/s.m3u8", reason: "container", subtitleUnavailable: u)
+        #expect(SubtitleStart.plan(decision, []) == .unavailable(u))
     }
 }

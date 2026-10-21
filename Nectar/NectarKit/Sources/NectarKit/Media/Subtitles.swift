@@ -196,6 +196,8 @@ public enum SubtitleStart: Equatable, Sendable {
     /// nectar wouldn't burn it, because the box can't encode the picture in real time (#645); the film plays
     /// without it. The track, when the list has it.
     case declined(SubtitleTrack?, SubtitleDeclined)
+    /// nectar says why the subtitle this person wanted can't be shown (#111): the film plays, and the TV says why.
+    case unavailable(SubtitleUnavailable)
 
     /// The plan for a decision: a track nectar already burned is taken as is, and one it declined to burn is never
     /// burned by a second decide; otherwise the person's default.
@@ -206,6 +208,9 @@ public enum SubtitleStart: Equatable, Sendable {
                 return decision.subtitleID == track.id
             }
             if let track { return .burned(track) }
+        }
+        if let unavailable = decision.subtitleUnavailable {
+            return .unavailable(unavailable)
         }
         if let declined = decision.subtitleDeclined {
             return .declined(tracks.first { $0.kind == .embedded && $0.streamIndex == declined.streamIndex }, declined)
@@ -325,6 +330,151 @@ public struct SubtitleDeclined: Decodable, Equatable, Sendable {
         case reason
         case message
         case ocr
+    }
+}
+
+/// Why the subtitle this person wanted can't be shown (decide's `subtitle_unavailable`; #111, the contract on
+/// nectar#687). One primary reason maps to one message; the rest is supporting detail. Unknown codes are kept, not
+/// refused, and get the plain line.
+public struct SubtitleUnavailable: Decodable, Equatable, Sendable {
+
+    public enum Reason: Equatable, Sendable, Decodable {
+        /// An image track OCR is still reading into text.
+        case ocrPending
+        /// An image track OCR couldn't read; `burn` says why it isn't burned instead.
+        case ocrFailed
+        /// Nothing in the person's language.
+        case noTrack
+        /// OCR is off and this player wants no burn.
+        case burnOff
+        /// OCR is off and the box can't burn this title in real time.
+        case burnTooSlow
+        case other(String)
+
+        public init(from decoder: Decoder) throws {
+            let raw = try decoder.singleValueContainer().decode(String.self)
+            self = switch raw {
+            case "ocr_pending": .ocrPending
+            case "ocr_failed": .ocrFailed
+            case "no_track": .noTrack
+            case "burn_off": .burnOff
+            case "burn_too_slow": .burnTooSlow
+            default: .other(raw)
+            }
+        }
+    }
+
+    public enum OCR: Equatable, Sendable, Decodable {
+        case queued
+        case running
+        case unreadable
+        case failed
+        case off
+        case other(String)
+
+        public init(from decoder: Decoder) throws {
+            let raw = try decoder.singleValueContainer().decode(String.self)
+            self = switch raw {
+            case "queued": .queued
+            case "running": .running
+            case "unreadable": .unreadable
+            case "failed": .failed
+            case "off": .off
+            default: .other(raw)
+            }
+        }
+    }
+
+    /// Why it wasn't burned instead.
+    public enum Burn: Equatable, Sendable, Decodable {
+        case off
+        case tooSlow
+        case other(String)
+
+        public init(from decoder: Decoder) throws {
+            let raw = try decoder.singleValueContainer().decode(String.self)
+            self = switch raw {
+            case "off": .off
+            case "too_slow": .tooSlow
+            default: .other(raw)
+            }
+        }
+    }
+
+    /// ISO 639-2, as the tracks report it.
+    public let language: String
+    /// The image track, when there is one.
+    public let streamIndex: Int?
+    public let reason: Reason
+    public let ocr: OCR?
+    /// Set only for a read in flight: nectar's estimate, never under 60 s. Null while queued (nectar#699).
+    public let ocrEtaSeconds: Int?
+    public let burn: Burn?
+
+    public init(language: String, streamIndex: Int? = nil, reason: Reason, ocr: OCR? = nil, ocrEtaSeconds: Int? = nil, burn: Burn? = nil) {
+        self.language = language
+        self.streamIndex = streamIndex
+        self.reason = reason
+        self.ocr = ocr
+        self.ocrEtaSeconds = ocrEtaSeconds
+        self.burn = burn
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case language
+        case streamIndex = "stream_index"
+        case reason
+        case ocr
+        case ocrEtaSeconds = "ocr_eta_seconds"
+        case burn
+    }
+
+    /// Whether something went wrong, for the notice's look: a track still being read and a film with no subtitles in
+    /// that language are facts, not failures.
+    public var isFailure: Bool {
+        switch reason {
+        case .ocrPending, .noTrack: false
+        default: true
+        }
+    }
+
+    /// What the person is told: what the subtitles are, what stops them, and what to do if anything can be done
+    /// (Capping's rule). Capping's final wording on nectar#699, word for word, and the same sentence the web says for the
+    /// same code. No admin line and no "Choose a lower quality": the TV's burns-off is a build switch, not a setting,
+    /// and decide doesn't say which quality would work, so neither would be true here.
+    public func message(locale: Locale = .current) -> String {
+        let lang = Self.languageName(language, locale: locale)
+        switch reason {
+        case .noTrack:
+            return "This title has no \(lang) subtitles."
+        case .ocrPending:
+            if let eta = ocrEtaSeconds { return "\(lang) subtitles are being read from the film and will be ready in \(Self.waitWords(eta))." }
+            return ocr == .running
+                ? "\(lang) subtitles are being read from the film and will be ready soon."
+                : "\(lang) subtitles will be ready next time you play this."
+        case .ocrFailed:
+            return "This title's \(lang) subtitles are images, and nectar couldn't read the text in them."
+        case .burnOff:
+            return "This title's \(lang) subtitles are images. This player can't draw them, and drawing them into the video is turned off."
+        case .burnTooSlow:
+            return "This title's \(lang) subtitles are images, and drawing them into the video at this quality is too slow for this server."
+        case .other:
+            return "\(lang) subtitles aren't available for this title."
+        }
+    }
+
+    /// "a minute", "12 minutes", "about 2 hours": a wait as a person says it (the web's `waitWords`).
+    static func waitWords(_ seconds: Int) -> String {
+        if seconds < 90 { return "a minute" }
+        if seconds < 3600 { return "\(Int((Double(seconds) / 60).rounded(.up))) minutes" }
+        let hours = Int((Double(seconds) / 3600).rounded())
+        return "about \(hours) hour\(hours == 1 ? "" : "s")"
+    }
+
+    /// A language's name in the reader's language ("eng" → "English"); the code itself when there's no name.
+    static func languageName(_ code: String, locale: Locale) -> String {
+        let base = SubtitleTrack.baseLanguage(code) ?? code
+        return locale.localizedString(forLanguageCode: base) ?? code
     }
 }
 
