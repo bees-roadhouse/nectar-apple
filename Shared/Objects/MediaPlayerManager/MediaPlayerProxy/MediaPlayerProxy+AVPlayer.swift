@@ -493,8 +493,9 @@ extension AVMediaPlayerProxy {
             var renditions: [SubtitleRenditionMatcher.Rendition] = []
             for option in group.options {
                 let title = option.commonMetadata.first { $0.commonKey == .commonKeyTitle }
+                let name = try? await title?.load(.stringValue)
                 renditions.append(.init(
-                    name: try? await title?.load(.stringValue),
+                    name: name,
                     language: option.extendedLanguageTag ?? option.locale?.identifier,
                     isForced: option.hasMediaCharacteristic(.containsOnlyForcedSubtitles)
                 ))
@@ -504,12 +505,16 @@ extension AVMediaPlayerProxy {
             // Every subtitle stream, external ones included: a server can list a text twin of an image track that
             // plays as a rendition of this stream.
             for stream in item.subtitleStreams {
-                guard let index = stream.index,
-                      let playerIndex = SubtitleRenditionMatcher.rendition(
-                          for: .init(index: index, displayTitle: stream.displayTitle, language: stream.language, isForced: stream.isForced ?? false),
-                          in: renditions,
-                          embeddedIndexes: embeddedIndexes
-                      )
+                guard let index = stream.index else { continue }
+
+                let candidate = SubtitleRenditionMatcher.Stream(
+                    index: index,
+                    displayTitle: stream.displayTitle,
+                    language: stream.language,
+                    isForced: stream.isForced ?? false
+                )
+
+                guard let playerIndex = SubtitleRenditionMatcher.rendition(for: candidate, in: renditions, embeddedIndexes: embeddedIndexes)
                 else { continue }
 
                 indexMap.setPlayerIndex(playerIndex, for: index)
