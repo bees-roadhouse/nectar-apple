@@ -199,6 +199,8 @@ pub fn run() {
         .setup(|app| {
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .initialization_script(handoff::INIT_SCRIPT)
+                // The brand's Night (--brh-bg), so the handover to the server's pages never flashes white (Capping, #130).
+                .background_color(tauri::webview::Color(0x11, 0x12, 0x14, 0xff))
                 .build()?;
             tauri::async_runtime::spawn(resume(app.handle().clone()));
             Ok(())
