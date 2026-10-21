@@ -88,7 +88,10 @@ struct ItemDetailView: View {
             .padding(.bottom, 80)
         }
         .background(alignment: .top) {
-            CachedImage(url: model.session.resolve(detail.backdropPath ?? detail.posterPath, pixelWidth: 1920), maxPixelSize: 3840) { image in
+            CachedImage(
+                url: model.session.resolve(detail.backdropPath ?? detail.posterPath, pixelWidth: 1920), maxPixelSize: 3840,
+                blurHash: detail.artworkBlurHash
+            ) { image in
                 image.resizable().aspectRatio(contentMode: .fill)
             } placeholder: {
                 Color.black
@@ -304,7 +307,7 @@ private struct EpisodeCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Button(action: select) {
-                CachedImage(url: thumbnail, maxPixelSize: Int(Self.size.width * 2)) { image in
+                CachedImage(url: thumbnail, maxPixelSize: Int(Self.size.width * 2), blurHash: episode.thumbBlurHash) { image in
                     image.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {
                     ZStack {

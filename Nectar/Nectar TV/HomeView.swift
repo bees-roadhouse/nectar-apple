@@ -44,7 +44,7 @@ struct HomeView: View {
 
                 if !model.forYou.isEmpty {
                     PosterShelf(title: "For you", kind: .movies, session: model.session,
-                                cards: model.forYou.map { MediaCard(id: $0.id, itemType: $0.kind, title: $0.title, year: $0.year, posterPath: $0.posterPath) }) { card in
+                                cards: model.forYou.map { MediaCard(id: $0.id, itemType: $0.kind, title: $0.title, year: $0.year, posterPath: $0.posterPath, posterBlurHash: $0.posterBlurHash) }) { card in
                         if let recommendation = model.forYou.first(where: { $0.id == card.id }) { model.open(recommendation) }
                     }
                 }
@@ -174,7 +174,7 @@ private struct CardView: View {
     }
 
     private var artworkView: some View {
-        CachedImage(url: artwork, maxPixelSize: maxPixelSize) { image in
+        CachedImage(url: artwork, maxPixelSize: maxPixelSize, blurHash: card.artworkBlurHash) { image in
             image.resizable().aspectRatio(contentMode: .fill)
         } placeholder: {
             ZStack {

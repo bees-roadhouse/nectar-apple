@@ -12,6 +12,7 @@ public struct Episode: Decodable, Equatable, Identifiable, Sendable {
     /// How far in this user is; 0 when never started.
     public let progressSeconds: Double
     public let thumbPath: String?
+    public let thumbBlurHash: String?
 
     enum CodingKeys: String, CodingKey {
         case id, title, overview, watched
@@ -20,6 +21,7 @@ public struct Episode: Decodable, Equatable, Identifiable, Sendable {
         case runtimeSeconds = "runtime_seconds"
         case progressSeconds = "progress_seconds"
         case thumbPath = "thumb_url"
+        case thumbBlurHash = "thumb_blurhash"
     }
 
     public init(from decoder: Decoder) throws {
@@ -33,6 +35,7 @@ public struct Episode: Decodable, Equatable, Identifiable, Sendable {
         watched = (try c.decodeIfPresent(Bool.self, forKey: .watched)) ?? false
         progressSeconds = c.lenientDouble(.progressSeconds) ?? 0
         thumbPath = try c.decodeIfPresent(String.self, forKey: .thumbPath)
+        thumbBlurHash = try c.decodeIfPresent(String.self, forKey: .thumbBlurHash)
     }
 
     /// Started and not finished.

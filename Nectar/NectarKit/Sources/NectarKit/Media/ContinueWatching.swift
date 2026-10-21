@@ -23,6 +23,9 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
     /// The title's logo art, when nectar has one; root-relative.
     public let logoPath: String?
     public let genres: [String]?
+    /// Each image's BlurHash (nectar#376 slice 2); nil until nectar has hashed that image.
+    public let posterBlurHash: String?
+    public let backdropBlurHash: String?
 
     public init(
         id: String,
@@ -38,7 +41,9 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
         progressSeconds: Double? = nil,
         overview: String? = nil,
         logoPath: String? = nil,
-        genres: [String]? = nil
+        genres: [String]? = nil,
+        posterBlurHash: String? = nil,
+        backdropBlurHash: String? = nil
     ) {
         self.id = id
         self.itemType = itemType
@@ -54,6 +59,8 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
         self.overview = overview
         self.logoPath = logoPath
         self.genres = genres
+        self.posterBlurHash = posterBlurHash
+        self.backdropBlurHash = backdropBlurHash
     }
 
     enum CodingKeys: String, CodingKey {
@@ -70,6 +77,8 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
         case progressSeconds = "progress_seconds"
         case overview, genres
         case logoPath = "logo_url"
+        case posterBlurHash = "poster_blurhash"
+        case backdropBlurHash = "backdrop_blurhash"
     }
 
     /// How far through, 0...1, or nil when nectar doesn't know the runtime.
@@ -81,6 +90,11 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
     /// The wide artwork a row card wants, falling back to the poster.
     public var artworkPath: String? {
         backdropPath ?? posterPath
+    }
+
+    /// The hash of the image ``artworkPath`` picks.
+    public var artworkBlurHash: String? {
+        backdropPath != nil ? backdropBlurHash : posterBlurHash
     }
 }
 

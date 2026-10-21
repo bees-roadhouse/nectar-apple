@@ -34,6 +34,17 @@ private func session(_ transport: Server) -> NectarSession {
 @Suite("People and collections")
 struct PeopleTests {
 
+    /// nectar#376 slice 2: a filmography poster's hash reaches the card a credit opens as.
+    @Test func aCreditsCardCarriesItsPostersPreview() async throws {
+        let server = Server(["/api/v1/people/a1": #"""
+        {"person":{"id":"a1","name":"Amy Adams"},
+         "filmography":[{"id":"m1","item_type":"movie","title":"Arrival","poster_url":"/api/v1/images/p1","poster_blurhash":"00FF00"},
+                        {"id":"m2","item_type":"movie","title":"Enchanted","poster_url":null,"poster_blurhash":null}]}
+        """#])
+        let credits = try await session(server).person("a1").credits
+        #expect(credits.map(\.card.posterBlurHash) == ["00FF00", nil])
+    }
+
     @Test func aPersonAndWhatTheyreIn() async throws {
         let server = Server(["/api/v1/people/a1": #"""
         {"person":{"id":"a1","name":"Amy Adams","sort_name":"Adams, Amy","profile_image_url":"https://image.tmdb.org/t/p/w185/amy.jpg","credit_count":"3"},

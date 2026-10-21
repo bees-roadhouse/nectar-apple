@@ -99,7 +99,10 @@ struct LibrarySearchView: View {
         ScrollView(.horizontal) {
             LazyHStack(spacing: 48) {
                 ForEach(hits) { hit in
-                    StillCard(title: hit.title, artwork: model.session.resolve(hit.posterPath, pixelWidth: StillCard.size.width * 2)) {
+                    StillCard(
+                        title: hit.title, artwork: model.session.resolve(hit.posterPath, pixelWidth: StillCard.size.width * 2),
+                        blurHash: hit.posterBlurHash
+                    ) {
                         model.open(hit)
                     }
                 }
@@ -157,12 +160,13 @@ private struct StillCard: View {
 
     let title: String
     let artwork: URL?
+    let blurHash: String?
     let select: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Button(action: select) {
-                CachedImage(url: artwork, maxPixelSize: Int(Self.size.width * 2)) { image in
+                CachedImage(url: artwork, maxPixelSize: Int(Self.size.width * 2), blurHash: blurHash) { image in
                     image.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {
                     ZStack {
