@@ -503,7 +503,7 @@ extension AVMediaPlayerProxy {
             let embeddedIndexes = cachedSubtitleStreams.compactMap(\.index)
 
             // Every subtitle stream, external ones included: a server can list a text twin of an image track that
-            // plays as a rendition of this stream.
+            // plays as a rendition of this stream. Image streams map to none, so a burn plays without a text track.
             for stream in item.subtitleStreams {
                 guard let index = stream.index else { continue }
 
@@ -511,7 +511,8 @@ extension AVMediaPlayerProxy {
                     index: index,
                     displayTitle: stream.displayTitle,
                     language: stream.language,
-                    isForced: stream.isForced ?? false
+                    isForced: stream.isForced ?? false,
+                    isText: stream.isTextSubtitleStream != false
                 )
 
                 guard let playerIndex = SubtitleRenditionMatcher.rendition(for: candidate, in: renditions, embeddedIndexes: embeddedIndexes)

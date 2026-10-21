@@ -13,7 +13,8 @@ import Foundation
 /// A server names each rendition after its stream's display title (the HLS `NAME`, which AVFoundation exposes as the
 /// option's common-metadata title, not as `displayName`) and marks forced ones, so the name decides first, then the
 /// language with the forced flag. Position and language alone are the last resorts: image streams in the file have no
-/// rendition, so positions can line up by accident and point at the wrong track.
+/// rendition, so positions can line up by accident and point at the wrong track. An image stream itself maps to no
+/// rendition: picking it means the server draws it into the video, and a text track on top would show it twice.
 enum SubtitleRenditionMatcher {
 
     struct Stream: Equatable {
@@ -21,6 +22,8 @@ enum SubtitleRenditionMatcher {
         let displayTitle: String?
         let language: String?
         let isForced: Bool
+        /// False for an image stream (PGS, VobSub), which plays burned in and never as a rendition.
+        let isText: Bool
     }
 
     struct Rendition: Equatable {
@@ -33,6 +36,8 @@ enum SubtitleRenditionMatcher {
     /// The position in `renditions` that plays `stream`, or nil when none does.
     /// - Parameter embeddedIndexes: the file's embedded subtitle stream indexes in order, for the positional fallback.
     static func rendition(for stream: Stream, in renditions: [Rendition], embeddedIndexes: [Int]) -> Int? {
+        guard stream.isText else { return nil }
+
         if let title = stream.displayTitle, let named = renditions.firstIndex(where: { $0.name == title }) {
             return named
         }
