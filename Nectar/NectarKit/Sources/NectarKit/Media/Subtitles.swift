@@ -196,6 +196,8 @@ public enum SubtitleStart: Equatable, Sendable {
     /// nectar wouldn't burn it, because the box can't encode the picture in real time (#645); the film plays
     /// without it. The track, when the list has it.
     case declined(SubtitleTrack?, SubtitleDeclined)
+    /// nectar says why the subtitle this person wanted can't be shown (#111): the film plays, and the TV says why.
+    case unavailable(SubtitleUnavailable)
 
     /// The plan for a decision: a track nectar already burned is taken as is, and one it declined to burn is never
     /// burned by a second decide; otherwise the person's default.
@@ -206,6 +208,9 @@ public enum SubtitleStart: Equatable, Sendable {
                 return decision.subtitleID == track.id
             }
             if let track { return .burned(track) }
+        }
+        if let unavailable = decision.subtitleUnavailable {
+            return .unavailable(unavailable)
         }
         if let declined = decision.subtitleDeclined {
             return .declined(tracks.first { $0.kind == .embedded && $0.streamIndex == declined.streamIndex }, declined)
@@ -325,6 +330,143 @@ public struct SubtitleDeclined: Decodable, Equatable, Sendable {
         case reason
         case message
         case ocr
+    }
+}
+
+/// Why the subtitle this person wanted can't be shown (decide's `subtitle_unavailable`; #111, the contract on
+/// nectar#687). One primary reason maps to one message; the rest is supporting detail. Unknown codes are kept, not
+/// refused, and get the plain line.
+public struct SubtitleUnavailable: Decodable, Equatable, Sendable {
+
+    public enum Reason: Equatable, Sendable, Decodable {
+        /// An image track OCR is still reading into text.
+        case ocrPending
+        /// An image track OCR couldn't read; `burn` says why it isn't burned instead.
+        case ocrFailed
+        /// Nothing in the person's language.
+        case noTrack
+        /// OCR is off and this player wants no burn.
+        case burnOff
+        /// OCR is off and the box can't burn this title in real time.
+        case burnTooSlow
+        case other(String)
+
+        public init(from decoder: Decoder) throws {
+            let raw = try decoder.singleValueContainer().decode(String.self)
+            self = switch raw {
+            case "ocr_pending": .ocrPending
+            case "ocr_failed": .ocrFailed
+            case "no_track": .noTrack
+            case "burn_off": .burnOff
+            case "burn_too_slow": .burnTooSlow
+            default: .other(raw)
+            }
+        }
+    }
+
+    public enum OCR: Equatable, Sendable, Decodable {
+        case queued
+        case running
+        case unreadable
+        case failed
+        case off
+        case other(String)
+
+        public init(from decoder: Decoder) throws {
+            let raw = try decoder.singleValueContainer().decode(String.self)
+            self = switch raw {
+            case "queued": .queued
+            case "running": .running
+            case "unreadable": .unreadable
+            case "failed": .failed
+            case "off": .off
+            default: .other(raw)
+            }
+        }
+    }
+
+    /// Why it wasn't burned instead.
+    public enum Burn: Equatable, Sendable, Decodable {
+        case off
+        case tooSlow
+        case other(String)
+
+        public init(from decoder: Decoder) throws {
+            let raw = try decoder.singleValueContainer().decode(String.self)
+            self = switch raw {
+            case "off": .off
+            case "too_slow": .tooSlow
+            default: .other(raw)
+            }
+        }
+    }
+
+    /// ISO 639-2, as the tracks report it.
+    public let language: String
+    /// The image track, when there is one.
+    public let streamIndex: Int?
+    public let reason: Reason
+    public let ocr: OCR?
+    /// When nectar can estimate when OCR will finish.
+    public let ocrEtaSeconds: Int?
+    public let burn: Burn?
+
+    public init(language: String, streamIndex: Int? = nil, reason: Reason, ocr: OCR? = nil, ocrEtaSeconds: Int? = nil, burn: Burn? = nil) {
+        self.language = language
+        self.streamIndex = streamIndex
+        self.reason = reason
+        self.ocr = ocr
+        self.ocrEtaSeconds = ocrEtaSeconds
+        self.burn = burn
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case language
+        case streamIndex = "stream_index"
+        case reason
+        case ocr
+        case ocrEtaSeconds = "ocr_eta_seconds"
+        case burn
+    }
+
+    /// Whether something went wrong, for the notice's look: a track still being read and a film with no subtitles in
+    /// that language are facts, not failures.
+    public var isFailure: Bool {
+        switch reason {
+        case .ocrPending, .noTrack: false
+        default: true
+        }
+    }
+
+    /// What the person is told, in plain words: why, and what happens next (Nate: "informative and clear not grey").
+    /// Capping owns the wording (#111). `noun` is "film" or "episode".
+    public func message(noun: String = "film", locale: Locale = .current) -> String {
+        let name = SubtitleTrack.baseLanguage(language).flatMap { locale.localizedString(forLanguageCode: $0) }
+        let subtitles = name.map { "\($0) subtitles" } ?? "Subtitles"
+        let pictures = "\(subtitles) for this \(noun) are pictures"
+        switch reason {
+        case .noTrack:
+            return name.map { "This \(noun) has no \($0) subtitles." } ?? "This \(noun) has no subtitles in your language."
+        case .ocrPending:
+            return "\(pictures), and nectar is still reading them into text. \(readyWhen)"
+        case .ocrFailed:
+            let instead = burn == .tooSlow
+                ? "this \(noun) is too large to draw them in as it plays."
+                : "this TV can't show pictures as subtitles yet."
+            return "\(pictures) that nectar couldn't read into text, and \(instead)"
+        case .burnOff:
+            return "\(pictures), and nectar isn't set up to read them into text, so this TV can't show them yet."
+        case .burnTooSlow:
+            return "\(pictures), and this \(noun) is too large for nectar to draw them in as it plays."
+        case .other:
+            return "Couldn't turn on \(name.map { "\($0) subtitles" } ?? "subtitles")."
+        }
+    }
+
+    private var readyWhen: String {
+        guard let eta = ocrEtaSeconds else { return "They'll be ready next time you play it." }
+        let minutes = Int((Double(eta) / 60).rounded())
+        return minutes <= 1 ? "They should be ready in a minute or so." : "They should be ready in about \(minutes) minutes."
     }
 }
 
