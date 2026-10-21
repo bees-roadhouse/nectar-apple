@@ -217,11 +217,10 @@ final class PlayerModel: Identifiable {
         }
     }
 
-    /// Long enough to read (#111: a reason takes a sentence or two): about three words a second plus two, never under
-    /// the 4 s a short notice had, never over 12. Capping may tune it.
+    /// Long enough to read at a sofa's pace (Capping, nectar#699): 4000 + 250 ms a word, held 6 to 10 s.
     static func readingTime(_ text: String) -> Duration {
-        let words = Double(text.split(separator: " ").count)
-        return .seconds(min(max(4, words / 3 + 2), 12))
+        let words = text.split(separator: " ").count
+        return .milliseconds(min(max(4000 + 250 * words, 6000), 10000))
     }
 
     private func tearDown(_ player: AVPlayer) {
@@ -362,7 +361,7 @@ final class PlayerModel: Identifiable {
             log.info("subtitles: the default is the rendition \(track.label, privacy: .public)")
             return decision
         case let .unavailable(unavailable):
-            let message = unavailable.message(noun: card.episodeNumber != nil ? "episode" : "film")
+            let message = unavailable.message()
             log.info("subtitles: nectar says the wanted subtitle can't be shown: \(String(describing: unavailable.reason), privacy: .public); \(message, privacy: .public)")
             noticeAtStart = Notice(text: message, isFailure: unavailable.isFailure)
             return decision

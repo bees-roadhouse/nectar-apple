@@ -438,37 +438,43 @@ public struct SubtitleUnavailable: Decodable, Equatable, Sendable {
         }
     }
 
-    /// What the person is told, in plain words: why, and what happens next (Nate: "informative and clear not grey").
-    /// Capping owns the wording (#111). `noun` is "film" or "episode".
-    public func message(noun: String = "film", locale: Locale = .current) -> String {
-        let name = SubtitleTrack.baseLanguage(language).flatMap { locale.localizedString(forLanguageCode: $0) }
-        let subtitles = name.map { "\($0) subtitles" } ?? "Subtitles"
-        let pictures = "\(subtitles) for this \(noun) are pictures"
+    /// What the person is told: what the subtitles are, what stops them, and what to do if anything can be done
+    /// (Capping's rule). Capping's final wording on nectar#699, word for word, and the same sentence the web says for the
+    /// same code. No admin line and no "Choose a lower quality": the TV's burns-off is a build switch, not a setting,
+    /// and decide doesn't say which quality would work, so neither would be true here.
+    public func message(locale: Locale = .current) -> String {
+        let lang = Self.languageName(language, locale: locale)
         switch reason {
         case .noTrack:
-            return name.map { "This \(noun) has no \($0) subtitles." } ?? "This \(noun) has no subtitles in your language."
+            return "This title has no \(lang) subtitles."
         case .ocrPending:
-            return "\(pictures), and nectar is still reading them into text. \(readyWhen)"
+            if let eta = ocrEtaSeconds { return "\(lang) subtitles are being read from the film and will be ready in \(Self.waitWords(eta))." }
+            return ocr == .running
+                ? "\(lang) subtitles are being read from the film and will be ready soon."
+                : "\(lang) subtitles will be ready next time you play this."
         case .ocrFailed:
-            let instead = burn == .tooSlow
-                ? "this \(noun) is too large to draw them in as it plays."
-                : "this TV can't show pictures as subtitles yet."
-            return "\(pictures) that nectar couldn't read into text, and \(instead)"
+            return "This title's \(lang) subtitles are images, and nectar couldn't read the text in them."
         case .burnOff:
-            return "\(pictures), and nectar isn't set up to read them into text, so this TV can't show them yet."
+            return "This title's \(lang) subtitles are images. This player can't draw them, and drawing them into the video is turned off."
         case .burnTooSlow:
-            return "\(pictures), and this \(noun) is too large for nectar to draw them in as it plays."
+            return "This title's \(lang) subtitles are images, and drawing them into the video at this quality is too slow for this server."
         case .other:
-            return "Couldn't turn on \(name.map { "\($0) subtitles" } ?? "subtitles")."
+            return "\(lang) subtitles aren't available for this title."
         }
     }
 
-    private var readyWhen: String {
-        guard let eta = ocrEtaSeconds else {
-            return ocr == .running ? "They should be ready soon." : "They'll be ready next time you play it."
-        }
-        let minutes = Int((Double(eta) / 60).rounded())
-        return minutes <= 1 ? "They should be ready in a minute or so." : "They should be ready in about \(minutes) minutes."
+    /// "a minute", "12 minutes", "about 2 hours": a wait as a person says it (the web's `waitWords`).
+    static func waitWords(_ seconds: Int) -> String {
+        if seconds < 90 { return "a minute" }
+        if seconds < 3600 { return "\(Int((Double(seconds) / 60).rounded(.up))) minutes" }
+        let hours = Int((Double(seconds) / 3600).rounded())
+        return "about \(hours) hour\(hours == 1 ? "" : "s")"
+    }
+
+    /// A language's name in the reader's language ("eng" → "English"); the code itself when there's no name.
+    static func languageName(_ code: String, locale: Locale) -> String {
+        let base = SubtitleTrack.baseLanguage(code) ?? code
+        return locale.localizedString(forLanguageCode: base) ?? code
     }
 }
 

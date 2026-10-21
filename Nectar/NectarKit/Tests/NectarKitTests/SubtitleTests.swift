@@ -343,49 +343,42 @@ struct SubtitleUnavailableTests {
         #expect(u.reason == .other("teleported"))
         #expect(u.ocr == .other("dreaming"))
         #expect(u.burn == .other("maybe"))
-        #expect(u.message(locale: english) == "Couldn't turn on English subtitles.", "an unknown reason gets the plain line")
+        #expect(u.message(locale: english) == "English subtitles aren't available for this title.", "an unknown reason gets the plain line")
         #expect(u.isFailure)
     }
 
-    @Test func noTrackSaysThereIsNone() throws {
-        let u = try unavailable("no_track")
-        #expect(u.message(locale: english) == "This film has no English subtitles.")
-        #expect(u.message(noun: "episode", locale: english) == "This episode has no English subtitles.")
-        #expect(!u.isFailure, "a fact about the film, not something that went wrong")
+    /// Capping's final wording (nectar#699), word for word.
+    @Test func eachReasonSaysCappingsSentence() throws {
+        #expect(try unavailable("no_track").message(locale: english) == "This title has no English subtitles.")
+        #expect(try unavailable("ocr_failed", ocr: "unreadable", burn: "off", language: "fre").message(locale: english) == "This title's French subtitles are images, and nectar couldn't read the text in them.")
+        #expect(try unavailable("burn_off", ocr: "off", burn: "off", language: "fre").message(locale: english) == "This title's French subtitles are images. This player can't draw them, and drawing them into the video is turned off.")
+        #expect(try unavailable("burn_too_slow", ocr: "off", burn: "too_slow", language: "fre").message(locale: english) == "This title's French subtitles are images, and drawing them into the video at this quality is too slow for this server.")
     }
 
     @Test func beingReadSaysWhenItWillBeReady() throws {
-        let later = try unavailable("ocr_pending", ocr: "queued")
-        #expect(later.message(locale: english) == "English subtitles for this film are pictures, and nectar is still reading them into text. They'll be ready next time you play it.")
-        #expect(!later.isFailure)
-        let soon = try unavailable("ocr_pending", ocr: "running", eta: 290)
-        #expect(soon.message(locale: english) == "English subtitles for this film are pictures, and nectar is still reading them into text. They should be ready in about 5 minutes.")
-        let running = try unavailable("ocr_pending", ocr: "running")
-        #expect(running.message(locale: english) == "English subtitles for this film are pictures, and nectar is still reading them into text. They should be ready soon.", "running with no estimate yet")
-        let now = try unavailable("ocr_pending", ocr: "running", eta: 20)
-        #expect(now.message(locale: english) == "English subtitles for this film are pictures, and nectar is still reading them into text. They should be ready in a minute or so.")
+        #expect(try unavailable("ocr_pending", ocr: "queued").message(locale: english) == "English subtitles will be ready next time you play this.")
+        #expect(try unavailable("ocr_pending", ocr: "running").message(locale: english) == "English subtitles are being read from the film and will be ready soon.", "running with no estimate yet")
+        #expect(try unavailable("ocr_pending", ocr: "running", eta: 720).message(locale: english) == "English subtitles are being read from the film and will be ready in 12 minutes.")
     }
 
-    @Test func unreadableSaysWhyItIsntBurnedEither() throws {
-        let off = try unavailable("ocr_failed", ocr: "unreadable", burn: "off")
-        #expect(off.message(locale: english) == "English subtitles for this film are pictures that nectar couldn't read into text, and this TV can't show pictures as subtitles yet.")
-        let tooSlow = try unavailable("ocr_failed", ocr: "failed", burn: "too_slow")
-        #expect(tooSlow.message(locale: english) == "English subtitles for this film are pictures that nectar couldn't read into text, and this film is too large to draw them in as it plays.")
-        #expect(off.isFailure && tooSlow.isFailure)
+    @Test func waitsReadAsAPersonSaysThem() {
+        #expect(SubtitleUnavailable.waitWords(60) == "a minute")
+        #expect(SubtitleUnavailable.waitWords(89) == "a minute")
+        #expect(SubtitleUnavailable.waitWords(90) == "2 minutes", "rounded up, as the web does")
+        #expect(SubtitleUnavailable.waitWords(290) == "5 minutes")
+        #expect(SubtitleUnavailable.waitWords(3600) == "about 1 hour")
+        #expect(SubtitleUnavailable.waitWords(7400) == "about 2 hours")
     }
 
-    @Test func ocrOffSaysWhyItIsntBurned() throws {
-        let off = try unavailable("burn_off", ocr: "off", burn: "off")
-        #expect(off.message(locale: english) == "English subtitles for this film are pictures, and nectar isn't set up to read them into text, so this TV can't show them yet.")
-        let tooSlow = try unavailable("burn_too_slow", ocr: "off", burn: "too_slow")
-        #expect(tooSlow.message(locale: english) == "English subtitles for this film are pictures, and this film is too large for nectar to draw them in as it plays.")
+    @Test func whatIsNewsAndWhatIsAFailure() throws {
+        #expect(try !unavailable("no_track").isFailure, "a fact about the title, not something that went wrong")
+        #expect(try !unavailable("ocr_pending", ocr: "queued").isFailure)
+        #expect(try unavailable("ocr_failed", ocr: "failed").isFailure)
+        #expect(try unavailable("burn_off", ocr: "off").isFailure)
     }
 
-    @Test func aLanguageNectarCantNameStillReads() throws {
-        let u = try unavailable("no_track", language: "und")
-        #expect(u.message(locale: english) == "This film has no subtitles in your language.")
-        let pending = try unavailable("ocr_pending", ocr: "queued", language: "")
-        #expect(pending.message(locale: english).hasPrefix("Subtitles for this film are pictures"))
+    @Test func aLanguageWithNoNameKeepsItsCode() throws {
+        #expect(try unavailable("no_track", language: "qaa").message(locale: english) == "This title has no qaa subtitles.")
     }
 
     /// nectar#687 slice 1: the default can be any text track. A sidecar (stream_index 1000+) or a Whisper track
