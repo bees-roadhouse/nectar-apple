@@ -240,13 +240,15 @@ struct SubtitleCapabilityTests {
 
     /// nectar-apple #111 (the contract on nectar#687): burns off says so, `burn: false`, and nectar then burns
     /// nothing for this player and explains a wanted subtitle it can't serve. Burns on says `burn: true`.
+    /// #116 (nectar#705): AVPlayer takes text that isn't in the stream only as an HLS rendition, `external: false`, so a
+    /// sidecar default makes nectar stream (a copy) rather than direct-play.
     @Test func decideSaysWhetherNectarMayBurn() throws {
         func capabilities(_ burns: Bool) throws -> [String: Bool]? {
             let body = try JSONSerialization.jsonObject(with: JSONEncoder().encode(DecideBody(.avPlayer(hevcHardwareDecode: true, burnsSubtitles: burns), startOffset: nil))) as? [String: Any]
             return body?["subtitle_capabilities"] as? [String: Bool]
         }
-        #expect(try capabilities(false) == ["bitmap": false, "burn": false])
-        #expect(try capabilities(true) == ["bitmap": false, "burn": true])
+        #expect(try capabilities(false) == ["bitmap": false, "burn": false, "external": false])
+        #expect(try capabilities(true) == ["bitmap": false, "burn": true, "external": false])
     }
 
     @Test func aDefaultNectarAlreadyBurnedIsTakenAsIs() {

@@ -18,8 +18,12 @@ public struct PlaybackCapabilities: Equatable, Sendable {
     /// Whether nectar may burn a subtitle into this player's stream. Off, decide says `burn: false`: nectar burns
     /// nothing for this player and explains a wanted subtitle it can't serve (#111, the contract on nectar#687).
     public var burnsSubtitles: Bool
+    /// Whether the player can take a text track that isn't in the stream, loaded beside it. AVPlayer can't: such a track
+    /// reaches it only as an HLS rendition, so decide streams a copy instead of direct-playing a file whose subtitle
+    /// default is a sidecar or a transcript (nectar-apple #116, nectar#705's `external`).
+    public var sideloadsSubtitles: Bool
 
-    public init(containers: [String], videoCodecs: [String], audioCodecs: [String], hlsVideoCodecs: [String], hlsAudioCodecs: [String], maxBitrate: Int? = nil, drawsBitmapSubtitles: Bool = false, burnsSubtitles: Bool = true) {
+    public init(containers: [String], videoCodecs: [String], audioCodecs: [String], hlsVideoCodecs: [String], hlsAudioCodecs: [String], maxBitrate: Int? = nil, drawsBitmapSubtitles: Bool = false, burnsSubtitles: Bool = true, sideloadsSubtitles: Bool = false) {
         self.containers = containers
         self.videoCodecs = videoCodecs
         self.audioCodecs = audioCodecs
@@ -28,6 +32,7 @@ public struct PlaybackCapabilities: Equatable, Sendable {
         self.maxBitrate = maxBitrate
         self.drawsBitmapSubtitles = drawsBitmapSubtitles
         self.burnsSubtitles = burnsSubtitles
+        self.sideloadsSubtitles = sideloadsSubtitles
     }
 
     /// AVPlayer on tvOS. HEVC only when the hardware decodes it: true on an Apple TV 4K, false in the simulator.
@@ -54,6 +59,7 @@ struct DecideBody: Encodable, Sendable {
     struct SubtitleCapabilities: Encodable, Equatable, Sendable {
         let bitmap: Bool
         let burn: Bool
+        let external: Bool
     }
 
     let containers: [String]
@@ -73,7 +79,7 @@ struct DecideBody: Encodable, Sendable {
         // nectar takes whole seconds; resuming a second early beats a second late.
         self.startOffset = startOffset.map { max(Int($0.rounded(.down)), 0) }
         self.subtitle = subtitle
-        subtitleCapabilities = SubtitleCapabilities(bitmap: capabilities.drawsBitmapSubtitles, burn: capabilities.burnsSubtitles)
+        subtitleCapabilities = SubtitleCapabilities(bitmap: capabilities.drawsBitmapSubtitles, burn: capabilities.burnsSubtitles, external: capabilities.sideloadsSubtitles)
     }
 
     enum CodingKeys: String, CodingKey {
