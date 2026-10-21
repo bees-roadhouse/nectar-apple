@@ -12,25 +12,34 @@ public struct PlaybackCapabilities: Equatable, Sendable {
     public var hlsVideoCodecs: [String]
     public var hlsAudioCodecs: [String]
     public var maxBitrate: Int?
+    /// Whether the player draws picture subtitles (PGS, VobSub) itself. AVPlayer can't, so nectar burns a bitmap
+    /// default into the stream in the same answer (nectar#627).
+    public var drawsBitmapSubtitles: Bool
+    /// Whether nectar may burn a subtitle into this player's stream on its own. Off, decide hears nothing about
+    /// bitmaps, so nectar adds no burn of its own: the TV runs with burns off until nectar#687 starts them in time.
+    public var burnsSubtitles: Bool
 
-    public init(containers: [String], videoCodecs: [String], audioCodecs: [String], hlsVideoCodecs: [String], hlsAudioCodecs: [String], maxBitrate: Int? = nil) {
+    public init(containers: [String], videoCodecs: [String], audioCodecs: [String], hlsVideoCodecs: [String], hlsAudioCodecs: [String], maxBitrate: Int? = nil, drawsBitmapSubtitles: Bool = false, burnsSubtitles: Bool = true) {
         self.containers = containers
         self.videoCodecs = videoCodecs
         self.audioCodecs = audioCodecs
         self.hlsVideoCodecs = hlsVideoCodecs
         self.hlsAudioCodecs = hlsAudioCodecs
         self.maxBitrate = maxBitrate
+        self.drawsBitmapSubtitles = drawsBitmapSubtitles
+        self.burnsSubtitles = burnsSubtitles
     }
 
     /// AVPlayer on tvOS. HEVC only when the hardware decodes it: true on an Apple TV 4K, false in the simulator.
-    public static func avPlayer(hevcHardwareDecode: Bool) -> PlaybackCapabilities {
+    public static func avPlayer(hevcHardwareDecode: Bool, burnsSubtitles: Bool = true) -> PlaybackCapabilities {
         let video = hevcHardwareDecode ? ["h264", "hevc"] : ["h264"]
         return PlaybackCapabilities(
             containers: ["mp4", "m4v", "mov"],
             videoCodecs: video,
             audioCodecs: ["aac", "ac3", "eac3", "alac", "flac", "mp3"],
             hlsVideoCodecs: video,
-            hlsAudioCodecs: ["aac", "ac3", "eac3"]
+            hlsAudioCodecs: ["aac", "ac3", "eac3"],
+            burnsSubtitles: burnsSubtitles
         )
     }
 }
@@ -42,19 +51,29 @@ struct DecideBody: Encodable, Sendable {
         let audio: [String]
     }
 
+    struct SubtitleCapabilities: Encodable, Sendable {
+        let bitmap: Bool
+    }
+
     let containers: [String]
     let codecs: Codecs
     let hlsCodecs: Codecs
     let maxBitrate: Int?
     let startOffset: Int?
+    /// Left out when the player didn't choose, so nectar applies the person's default.
+    let subtitle: SubtitleChoice?
+    /// Left out while burns are off: nectar then burns nothing of its own.
+    let subtitleCapabilities: SubtitleCapabilities?
 
-    init(_ capabilities: PlaybackCapabilities, startOffset: Double?) {
+    init(_ capabilities: PlaybackCapabilities, startOffset: Double?, subtitle: SubtitleChoice? = nil) {
         containers = capabilities.containers
         codecs = Codecs(video: capabilities.videoCodecs, audio: capabilities.audioCodecs)
         hlsCodecs = Codecs(video: capabilities.hlsVideoCodecs, audio: capabilities.hlsAudioCodecs)
         maxBitrate = capabilities.maxBitrate
         // nectar takes whole seconds; resuming a second early beats a second late.
         self.startOffset = startOffset.map { max(Int($0.rounded(.down)), 0) }
+        self.subtitle = subtitle
+        subtitleCapabilities = capabilities.burnsSubtitles ? SubtitleCapabilities(bitmap: capabilities.drawsBitmapSubtitles) : nil
     }
 
     enum CodingKeys: String, CodingKey {
@@ -63,6 +82,8 @@ struct DecideBody: Encodable, Sendable {
         case hlsCodecs = "hls_codecs"
         case maxBitrate = "max_bitrate"
         case startOffset = "start_offset"
+        case subtitle
+        case subtitleCapabilities = "subtitle_capabilities"
     }
 }
 
@@ -116,8 +137,29 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
     /// The source's audio stream nectar picked, when it isn't the file's default. Such a pick always
     /// comes as HLS carrying that one track, so there's nothing to switch on the client.
     public let audioStreamIndex: Int?
+    /// The subtitle nectar drew into this stream, or the one the player asked for: an embedded track's index…
+    public let subtitleStreamIndex: Int?
+    /// …or any other track's id.
+    public let subtitleID: String?
+    /// The subtitle this person would see by their My Account settings, when the player didn't choose.
+    public let subtitleDefault: SubtitleDefault?
+    /// A burn nectar would have added for that default and didn't, because the box can't run it in real time.
+    public let subtitleDeclined: SubtitleDeclined?
 
-    public init(strategy: Strategy, streamPath: String, playMethod: String? = nil, reason: String? = nil, durationSeconds: Double? = nil, startOffsetSeconds: Double = 0, audioReason: AudioReason? = nil, audioStreamIndex: Int? = nil) {
+    public init(
+        strategy: Strategy,
+        streamPath: String,
+        playMethod: String? = nil,
+        reason: String? = nil,
+        durationSeconds: Double? = nil,
+        startOffsetSeconds: Double = 0,
+        audioReason: AudioReason? = nil,
+        audioStreamIndex: Int? = nil,
+        subtitleStreamIndex: Int? = nil,
+        subtitleID: String? = nil,
+        subtitleDefault: SubtitleDefault? = nil,
+        subtitleDeclined: SubtitleDeclined? = nil
+    ) {
         self.strategy = strategy
         self.streamPath = streamPath
         self.playMethod = playMethod
@@ -126,13 +168,21 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
         self.startOffsetSeconds = startOffsetSeconds
         self.audioReason = audioReason
         self.audioStreamIndex = audioStreamIndex
+        self.subtitleStreamIndex = subtitleStreamIndex
+        self.subtitleID = subtitleID
+        self.subtitleDefault = subtitleDefault
+        self.subtitleDeclined = subtitleDeclined
     }
 
     private struct Selected: Decodable {
         let audioStreamIndex: Int?
+        let subtitleStreamIndex: Int?
+        let subtitleID: String?
 
         enum CodingKeys: String, CodingKey {
             case audioStreamIndex = "audio_stream_index"
+            case subtitleStreamIndex = "subtitle_stream_index"
+            case subtitleID = "subtitle_id"
         }
     }
 
@@ -145,6 +195,8 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
         case startOffsetSeconds = "start_offset_seconds"
         case audioReason = "audio_reason"
         case selected
+        case subtitleDefault = "subtitle_default"
+        case subtitleDeclined = "subtitle_declined"
     }
 
     public init(from decoder: Decoder) throws {
@@ -156,7 +208,12 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
         durationSeconds = try c.decodeIfPresent(Double.self, forKey: .durationSeconds)
         startOffsetSeconds = try c.decodeIfPresent(Double.self, forKey: .startOffsetSeconds) ?? 0
         audioReason = try c.decodeIfPresent(AudioReason.self, forKey: .audioReason)
-        audioStreamIndex = try c.decodeIfPresent(Selected.self, forKey: .selected)?.audioStreamIndex
+        let selected = try c.decodeIfPresent(Selected.self, forKey: .selected)
+        audioStreamIndex = selected?.audioStreamIndex
+        subtitleStreamIndex = selected?.subtitleStreamIndex
+        subtitleID = selected?.subtitleID
+        subtitleDefault = try c.decodeIfPresent(SubtitleDefault.self, forKey: .subtitleDefault)
+        subtitleDeclined = try c.decodeIfPresent(SubtitleDeclined.self, forKey: .subtitleDeclined)
     }
 
     /// Where to seek once the player is ready. A direct file starts at zero, so seek to the resume
@@ -184,9 +241,10 @@ struct ProgressBody: Encodable, Sendable {
 
 extension NectarSession {
 
-    /// Ask nectar how this device should play an item, starting at `startOffset` seconds.
-    public func decide(_ itemID: String, capabilities: PlaybackCapabilities, startOffset: Double?) async throws -> PlaybackDecision {
-        let data = try await post("api/v1/streaming/\(itemID)/decide", json: DecideBody(capabilities, startOffset: startOffset))
+    /// Ask nectar how this device should play an item, starting at `startOffset` seconds, with the subtitle
+    /// the person chose; without one, nectar answers with their default in `subtitleDefault`.
+    public func decide(_ itemID: String, capabilities: PlaybackCapabilities, startOffset: Double?, subtitle: SubtitleChoice? = nil) async throws -> PlaybackDecision {
+        let data = try await post("api/v1/streaming/\(itemID)/decide", json: DecideBody(capabilities, startOffset: startOffset, subtitle: subtitle))
         return try JSONDecoder().decode(PlaybackDecision.self, from: data)
     }
 
