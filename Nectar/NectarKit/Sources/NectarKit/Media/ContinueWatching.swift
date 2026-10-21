@@ -123,22 +123,22 @@ extension NectarSession {
     /// Rounded up, so never a blurrier copy than asked; a path that already names a size is left alone.
     public nonisolated func resolve(_ path: String?, pixelWidth: Double) -> URL? {
         guard let path, !path.isEmpty else { return nil }
-        // Only nectar's own images come in widths; anything else, or a URL already finished, as it is.
-        guard path.hasPrefix("/api/v1/images/"), !path.contains("?") else { return resolve(path) }
-        let last = path.split(separator: "/").last.map(String.init) ?? ""
-        let alreadySized = last.range(of: #"^w?\d{1,5}$"#, options: .regularExpression) != nil && path.split(separator: "/").count > 4
-        guard pixelWidth >= 1, pixelWidth.isFinite, !alreadySized else { return resolve(Self.versioned(path)) }
-        return resolve(Self.versioned("\(path)/w\(Int(pixelWidth.rounded(.up)))"))
+        // Only nectar's own images come in widths; anything else as it is.
+        guard path.hasPrefix("/api/v1/images/"), var components = URLComponents(string: path) else { return resolve(path) }
+        let segments = components.path.split(separator: "/")
+        let alreadySized = segments.count > 4 && segments.last?.range(of: #"^w?\d{1,5}$"#, options: .regularExpression) != nil
+        if pixelWidth >= 1, pixelWidth.isFinite, !alreadySized {
+            // Into the path, before any query nectar sent (#120: nectar #695 versions the URLs it hands out).
+            components.path += "/w\(Int(pixelWidth.rounded(.up)))"
+        }
+        if components.queryItems?.contains(where: { $0.name == "v" }) != true {
+            components.queryItems = (components.queryItems ?? []) + [URLQueryItem(name: "v", value: String(Self.imageVersion))]
+        }
+        return resolve(components.string)
     }
 
-    /// nectar's `IMAGE_VERSION` (`shared/src/image_version.ts`, nectar #449): bumped there whenever the bytes
-    /// behind an existing image URL change. A versioned URL is immutable, so the image cache keeps it for good;
-    /// bump this with nectar's, or the TV keeps the old pictures.
+    /// nectar's `IMAGE_VERSION` (`shared/src/image_version.ts`, nectar #449), for a URL nectar sent without one. Once
+    /// nectar #695 versions every image URL it hands out, the server's `v` wins and this is only a fallback.
+    /// A versioned URL is immutable, so the image cache keeps it for good.
     static let imageVersion = 2
-
-    /// `?v=` on nectar's own image paths; anything else (TMDB) as it is, and never twice.
-    static func versioned(_ path: String) -> String {
-        guard path.hasPrefix("/api/v1/images/"), !path.contains("?") else { return path }
-        return "\(path)?v=\(imageVersion)"
-    }
 }

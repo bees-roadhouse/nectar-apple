@@ -104,6 +104,17 @@ struct ContinueWatchingTests {
         #expect(nectar.resolve("/api/v1/images/aa11/w342?v=2", pixelWidth: 960)?.absoluteString == "https://nectar.test/api/v1/images/aa11/w342?v=2", "never versioned twice")
     }
 
+    /// nectar #695 slice 1 hands out the versioned original (`…/{id}?v=2`): the size still goes into the path, and the
+    /// server's version wins over the one NectarKit would add (#120).
+    @Test func aVersionedOriginalIsSizedInItsPath() async throws {
+        let nectar = session(RecordingTransport(body: "{}"))
+        #expect(nectar.resolve("/api/v1/images/aa11?v=2", pixelWidth: 960)?.absoluteString == "https://nectar.test/api/v1/images/aa11/w960?v=2")
+        #expect(nectar.resolve("/api/v1/images/aa11?v=3", pixelWidth: 479.4)?.absoluteString == "https://nectar.test/api/v1/images/aa11/w480?v=3", "the server's version, not ours")
+        #expect(nectar.resolve("/api/v1/images/aa11?v=3", pixelWidth: 0)?.absoluteString == "https://nectar.test/api/v1/images/aa11?v=3", "no width, the original as sent")
+        #expect(nectar.resolve("/api/v1/images/aa11/w342?v=3", pixelWidth: 960)?.absoluteString == "https://nectar.test/api/v1/images/aa11/w342?v=3", "already sized, as sent")
+        #expect(nectar.resolve("https://image.tmdb.org/t/p/w342/x.jpg?v=1", pixelWidth: 480)?.absoluteString == "https://image.tmdb.org/t/p/w342/x.jpg?v=1", "not nectar's, as sent")
+    }
+
     @Test(arguments: [
         (1740.0, 6960.0, 0.25),
         (-5.0, 6960.0, 0.0),
