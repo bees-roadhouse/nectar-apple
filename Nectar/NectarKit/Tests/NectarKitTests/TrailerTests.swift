@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 import Testing
 @testable import NectarKit
@@ -89,5 +90,72 @@ struct TrailerTests {
         _ = queue.advance()
         queue.refresh(with: [trailer("a"), trailer("c")])
         #expect(queue.current?.id == "c", "the next one at or after b's old place")
+    }
+}
+
+private actor Recorder: HTTPTransport {
+    private let status: Int
+    private(set) var requests: [URLRequest] = []
+
+    init(status: Int) {
+        self.status = status
+    }
+
+    nonisolated func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        try await answer(request)
+    }
+
+    private func answer(_ request: URLRequest) -> (Data, HTTPURLResponse) {
+        requests.append(request)
+        return (Data(), HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: ["Retry-After": "20"])!)
+    }
+}
+
+@Suite("Starting a trailer's fetch")
+struct TrailerFetchTests {
+
+    private func session(_ transport: Recorder) -> NectarSession {
+        NectarSession(
+            baseURL: URL(string: "https://nectar.test")!,
+            tokenEndpoint: URL(string: "https://nectar.test/token")!,
+            clientID: "nectar-tv",
+            store: InMemoryTokenStore(TokenSet(accessToken: "jwt-1", tokenType: "Bearer", expiresIn: nil, refreshToken: "r1")),
+            transport: transport
+        )
+    }
+
+    /// nectar #715: a HEAD on an unready trailer answers 202 and starts its fetch, without pulling the file.
+    @Test func aHeadStartsTheFetchWithoutTheFile() async throws {
+        let server = Recorder(status: 202)
+        try await session(server).head("/api/v1/media/m1/trailers/t2")
+        let request = try #require(await server.requests.first)
+        #expect(request.httpMethod == "HEAD")
+        #expect(request.url?.path == "/api/v1/media/m1/trailers/t2")
+        #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer jwt-1")
+    }
+
+    @Test func aFailedFetchIsAnError() async {
+        await #expect(throws: NectarSessionError.self) { try await session(Recorder(status: 404)).head("/api/v1/media/m1/trailers/t9") }
+    }
+}
+
+@Suite("A trailer's info panel")
+struct TrailerNowPlayingTests {
+
+    private func text(_ items: [AVMetadataItem], _ identifier: AVMetadataIdentifier) -> String? {
+        items.first { $0.identifier == identifier }?.value as? String
+    }
+
+    @Test func itNamesTheTrailerAndItsPlaceAmongTheFilmsTrailers() {
+        let trailer = Trailer(id: "t2", path: "/t2", title: "Official Trailer 2")
+        let items = NowPlaying.metadata(for: trailer, of: "Arrival", position: TrailerQueue.Position(number: 2, of: 3))
+        #expect(text(items, .commonIdentifierTitle) == "Official Trailer 2")
+        #expect(text(items, .iTunesMetadataTrackSubTitle) == "Arrival · 2 of 3")
+    }
+
+    @Test func anUnnamedSingleTrailerIsJustTheFilmsTrailer() {
+        let items = NowPlaying.metadata(for: Trailer(id: "t1", path: "/t1"), of: "Arrival", position: TrailerQueue.Position(number: 1, of: 1))
+        #expect(text(items, .commonIdentifierTitle) == "Trailer")
+        #expect(text(items, .iTunesMetadataTrackSubTitle) == "Arrival", "no \"1 of 1\"")
     }
 }

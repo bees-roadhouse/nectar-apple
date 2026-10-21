@@ -1,4 +1,3 @@
-import AVFoundation
 import Foundation
 import NectarKit
 
@@ -24,8 +23,8 @@ final class ItemDetailModel {
     var playing: PlayerModel?
     /// A series playing from an episode on, one into the next.
     var queue: PlayQueue?
-    /// The trailer playing, if one is.
-    var trailer: TrailerPlayer?
+    /// The trailers playing, if they are.
+    var trailers: TrailersModel?
     /// A "More like this" title opened on top of this one.
     var opened: MediaCard?
     /// Someone from the cast, opened on top.
@@ -86,15 +85,7 @@ final class ItemDetailModel {
         Task { await load() }
     }
 
-    func playTrailer(_ detail: ItemDetail) async {
-        guard let path = detail.trailerPath, let url = try? await session.mediaURL(path) else { return }
-        // The URL carries the token: it goes to AVPlayer and nowhere else.
-        trailer = TrailerPlayer(player: AVPlayer(url: url))
+    func playTrailers(_ detail: ItemDetail) {
+        trailers = TrailersModel(detail: detail, session: session)
     }
-}
-
-/// A trailer is a plain file: no decide, no progress.
-struct TrailerPlayer: Identifiable {
-    let id = UUID()
-    let player: AVPlayer
 }
