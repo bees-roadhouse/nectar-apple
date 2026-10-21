@@ -8,11 +8,13 @@ on:
     branches: [ main ]
     paths:
       - "Nectar/**"
+      - "Shared/Objects/MediaPlayerManager/SubtitleRenditionMatcher.swift"
       - ".github/workflows/nectar-tv.yml"
   push:
     branches: [ main ]
     paths:
       - "Nectar/**"
+      - "Shared/Objects/MediaPlayerManager/SubtitleRenditionMatcher.swift"
       - ".github/workflows/nectar-tv.yml"
   workflow_dispatch:
 
@@ -36,6 +38,9 @@ jobs:
 
       - name: NectarKit tests
         working-directory: Nectar/NectarKit
+        run: swift test
+      - name: Swiftfin fork tests
+        working-directory: Nectar/SwiftfinForkTests
         run: swift test
 
       # Unsigned: CI only proves it compiles; signing is the TV's, with Nate's personal team.
