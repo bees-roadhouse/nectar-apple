@@ -140,7 +140,7 @@ struct LibraryPoster: View {
         VStack(alignment: .leading, spacing: 12) {
             Button(action: select) {
                 CachedImage(
-                    url: artwork, maxPixelSize: Int(max(shape.size.width, shape.size.height) * 2), preview: card.posterPreview
+                    url: artwork, maxPixelSize: Int(max(shape.size.width, shape.size.height) * 2), blurHash: card.posterBlurHash
                 ) { image in
                     image.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {

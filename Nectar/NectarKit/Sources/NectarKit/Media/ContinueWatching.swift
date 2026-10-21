@@ -92,17 +92,9 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
         backdropPath ?? posterPath
     }
 
-    public var posterPreview: BlurPreview? {
-        posterBlurHash.map { BlurPreview(hash: $0, aspect: BlurPreview.poster) }
-    }
-
-    public var backdropPreview: BlurPreview? {
-        backdropBlurHash.map { BlurPreview(hash: $0, aspect: BlurPreview.backdrop) }
-    }
-
-    /// The preview of the image ``artworkPath`` picks.
-    public var artworkPreview: BlurPreview? {
-        backdropPath != nil ? backdropPreview : posterPreview
+    /// The hash of the image ``artworkPath`` picks.
+    public var artworkBlurHash: String? {
+        backdropPath != nil ? backdropBlurHash : posterBlurHash
     }
 }
 

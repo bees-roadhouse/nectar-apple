@@ -42,7 +42,7 @@ struct PeopleTests {
                         {"id":"m2","item_type":"movie","title":"Enchanted","poster_url":null,"poster_blurhash":null}]}
         """#])
         let credits = try await session(server).person("a1").credits
-        #expect(credits.map(\.card.posterPreview) == [BlurPreview(hash: "00FF00", aspect: BlurPreview.poster), nil])
+        #expect(credits.map(\.card.posterBlurHash) == ["00FF00", nil])
     }
 
     @Test func aPersonAndWhatTheyreIn() async throws {

@@ -57,10 +57,6 @@ public struct TitleHit: Decodable, Equatable, Identifiable, Sendable {
         self.posterBlurHash = posterBlurHash
     }
 
-    /// The poster's blurred preview while it loads (#114).
-    public var posterPreview: BlurPreview? {
-        posterBlurHash.map { BlurPreview(hash: $0, aspect: BlurPreview.poster) }
-    }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)

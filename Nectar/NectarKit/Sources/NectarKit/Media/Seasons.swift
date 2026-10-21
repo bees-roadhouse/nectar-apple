@@ -38,11 +38,6 @@ public struct Episode: Decodable, Equatable, Identifiable, Sendable {
         thumbBlurHash = try c.decodeIfPresent(String.self, forKey: .thumbBlurHash)
     }
 
-    /// The still's blurred preview while it loads (#114).
-    public var thumbPreview: BlurPreview? {
-        thumbBlurHash.map { BlurPreview(hash: $0, aspect: BlurPreview.still) }
-    }
-
     /// Started and not finished.
     public var isInProgress: Bool { !watched && progressSeconds > 0 }
 

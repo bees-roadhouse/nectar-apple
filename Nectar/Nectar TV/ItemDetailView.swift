@@ -304,7 +304,7 @@ private struct EpisodeCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Button(action: select) {
-                CachedImage(url: thumbnail, maxPixelSize: Int(Self.size.width * 2), preview: episode.thumbPreview) { image in
+                CachedImage(url: thumbnail, maxPixelSize: Int(Self.size.width * 2), blurHash: episode.thumbBlurHash) { image in
                     image.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {
                     ZStack {

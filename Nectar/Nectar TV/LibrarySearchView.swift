@@ -99,10 +99,9 @@ struct LibrarySearchView: View {
         ScrollView(.horizontal) {
             LazyHStack(spacing: 48) {
                 ForEach(hits) { hit in
-                    // An episode hit's poster is its still, so its blur is decoded wide.
                     StillCard(
                         title: hit.title, artwork: model.session.resolve(hit.posterPath, pixelWidth: StillCard.size.width * 2),
-                        preview: hit.posterBlurHash.map { BlurPreview(hash: $0, aspect: BlurPreview.still) }
+                        blurHash: hit.posterBlurHash
                     ) {
                         model.open(hit)
                     }
@@ -161,13 +160,13 @@ private struct StillCard: View {
 
     let title: String
     let artwork: URL?
-    let preview: BlurPreview?
+    let blurHash: String?
     let select: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Button(action: select) {
-                CachedImage(url: artwork, maxPixelSize: Int(Self.size.width * 2), preview: preview) { image in
+                CachedImage(url: artwork, maxPixelSize: Int(Self.size.width * 2), blurHash: blurHash) { image in
                     image.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {
                     ZStack {

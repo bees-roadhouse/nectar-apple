@@ -2,13 +2,13 @@ import NectarKit
 import SwiftUI
 
 /// `AsyncImage`, through nectar's image cache (#37): unchanged artwork comes from the device, not the server,
-/// decoded at the size it's drawn. `maxPixelSize` is the longer side in pixels. With a `preview`, its blur shows
-/// through `content` at once and the artwork fades in over it (#114); without one, `placeholder` shows as before.
+/// decoded at the size it's drawn. `maxPixelSize` is the longer side in pixels. With a `blurHash`, its blur fills the
+/// frame at once and the artwork fades in over it (#114); without one, `placeholder` shows as before.
 struct CachedImage<Content: View, Placeholder: View>: View {
 
     let url: URL?
     let maxPixelSize: Int
-    var preview: BlurPreview?
+    var blurHash: String?
     @ViewBuilder
     let content: (Image) -> Content
     @ViewBuilder
@@ -19,8 +19,9 @@ struct CachedImage<Content: View, Placeholder: View>: View {
 
     var body: some View {
         ZStack {
-            if let blur = preview.flatMap(BlurPreviews.image) {
-                content(Image(decorative: blur, scale: 1))
+            if let blur = blurHash.flatMap(BlurPreviews.image) {
+                // Stretched, not filled: the hash doesn't know the image's shape, and the frame is what the eye compares.
+                Image(decorative: blur, scale: 1).resizable()
             } else if image == nil {
                 placeholder()
             }
@@ -51,10 +52,10 @@ private enum BlurPreviews {
 
     nonisolated(unsafe) private static let decoded = NSCache<NSString, CGImage>()
 
-    static func image(_ preview: BlurPreview) -> CGImage? {
-        let key = "\(preview.hash)@\(preview.aspect)" as NSString
+    static func image(_ hash: String) -> CGImage? {
+        let key = hash as NSString
         if let image = decoded.object(forKey: key) { return image }
-        guard let image = preview.image() else { return nil }
+        guard let image = BlurHash.image(hash, width: 32, height: 32) else { return nil }
         decoded.setObject(image, forKey: key)
         return image
     }

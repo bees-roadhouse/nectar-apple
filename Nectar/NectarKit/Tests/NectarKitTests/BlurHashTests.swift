@@ -66,58 +66,52 @@ struct BlurHashTests {
     }
 }
 
-@Suite("Card blur previews")
-struct CardBlurPreviewTests {
+/// A hash carries no shape, so a view stretches one decoded preview to whatever frame it draws (Forage, nectar#718):
+/// a card only has to pair each image with its own hash.
+@Suite("Card blur hashes")
+struct CardBlurHashTests {
 
-    @Test func aCardCarriesEachImagesHashWithItsShape() throws {
+    @Test func aCardCarriesEachImagesHash() throws {
         let json = #"{"id":"m1","poster_url":"/api/v1/images/p","poster_blurhash":"LEHV6nWB2yk8pyo0adR*.7kCMdnj","backdrop_url":"/api/v1/images/b","backdrop_blurhash":"00FF00"}"#
         let card = try JSONDecoder().decode(MediaCard.self, from: Data(json.utf8))
-        #expect(card.posterPreview == BlurPreview(hash: "LEHV6nWB2yk8pyo0adR*.7kCMdnj", aspect: 2.0 / 3))
-        #expect(card.backdropPreview == BlurPreview(hash: "00FF00", aspect: 16.0 / 9))
-        #expect(card.artworkPreview == card.backdropPreview, "the same image artworkPath picks")
+        #expect(card.posterBlurHash == "LEHV6nWB2yk8pyo0adR*.7kCMdnj")
+        #expect(card.backdropBlurHash == "00FF00")
+        #expect(card.artworkBlurHash == "00FF00", "the same image artworkPath picks")
     }
 
-    @Test func theArtworkPreviewFollowsThePosterWhenThereIsNoBackdrop() throws {
+    @Test func theArtworkHashFollowsThePosterWhenThereIsNoBackdrop() throws {
         let json = #"{"id":"m1","poster_url":"/api/v1/images/p","poster_blurhash":"00FF00","backdrop_blurhash":"00FFFF"}"#
         let card = try JSONDecoder().decode(MediaCard.self, from: Data(json.utf8))
         #expect(card.artworkPath == "/api/v1/images/p")
-        #expect(card.artworkPreview == card.posterPreview, "not the hash of a backdrop it won't draw")
+        #expect(card.artworkBlurHash == "00FF00", "not the hash of a backdrop it won't draw")
     }
 
-    @Test func aPreviewDecodesAtItsImagesShape() throws {
-        let poster = try #require(BlurPreview(hash: "00FF00", aspect: BlurPreview.poster).image())
-        let backdrop = try #require(BlurPreview(hash: "00FF00", aspect: BlurPreview.backdrop).image())
-        #expect((poster.width, poster.height) == (21, 32))
-        #expect((backdrop.width, backdrop.height) == (32, 18))
-        #expect(BlurPreview(hash: "not a hash", aspect: 1).image() == nil)
-    }
-
-    @Test func aCardWithoutHashesHasNoPreview() throws {
+    @Test func aCardWithoutHashesHasNone() throws {
         for json in [#"{"id":"m1","poster_url":"/p","backdrop_url":"/b"}"#, #"{"id":"m1","poster_url":"/p","poster_blurhash":null}"#] {
             let card = try JSONDecoder().decode(MediaCard.self, from: Data(json.utf8))
-            #expect(card.posterPreview == nil && card.backdropPreview == nil && card.artworkPreview == nil)
+            #expect(card.posterBlurHash == nil && card.backdropBlurHash == nil && card.artworkBlurHash == nil)
         }
     }
 }
 
 /// nectar#376 slice 2's rule: every `X_url` naming a nectar image has an `X_blurhash` beside it (Forage, 2026-10-21).
-@Suite("Blur previews across nectar's payloads")
-struct PayloadBlurPreviewTests {
+@Suite("Blur hashes across nectar's payloads")
+struct PayloadBlurHashTests {
 
     private func decode<T: Decodable>(_ type: T.Type, _ json: String) throws -> T {
         try JSONDecoder().decode(type, from: Data(json.utf8))
     }
 
-    @Test func anEpisodesStillHasAWidePreview() throws {
+    @Test func anEpisodeCarriesItsStillsHash() throws {
         let episode = try decode(Episode.self, #"{"id":"e1","title":"Pilot","thumb_url":"/api/v1/images/t","thumb_blurhash":"00FF00"}"#)
-        #expect(episode.thumbPreview == BlurPreview(hash: "00FF00", aspect: BlurPreview.still))
-        #expect(try decode(Episode.self, #"{"id":"e1","thumb_url":"/t","thumb_blurhash":null}"#).thumbPreview == nil)
+        #expect(episode.thumbBlurHash == "00FF00")
+        #expect(try decode(Episode.self, #"{"id":"e1","thumb_url":"/t","thumb_blurhash":null}"#).thumbBlurHash == nil)
     }
 
-    @Test func aSearchTitleHasItsPostersPreview() throws {
+    @Test func aSearchTitleCarriesItsPostersHash() throws {
         let hit = try decode(TitleHit.self, #"{"id":"m1","item_type":"movie","title":"Arrival","poster_url":"/p","poster_blurhash":"00FF00"}"#)
-        #expect(hit.posterPreview == BlurPreview(hash: "00FF00", aspect: BlurPreview.poster))
-        #expect(try decode(TitleHit.self, #"{"id":"m1","item_type":"movie","poster_url":"/p"}"#).posterPreview == nil)
+        #expect(hit.posterBlurHash == "00FF00")
+        #expect(try decode(TitleHit.self, #"{"id":"m1","item_type":"movie","poster_url":"/p"}"#).posterBlurHash == nil)
     }
 
     @Test func aRecommendationCarriesItsPostersHash() throws {

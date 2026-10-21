@@ -47,7 +47,9 @@ public enum BlurHash {
         return pixels
     }
 
-    /// The decoded picture, small (32 × 32 is plenty) and stretched by the view that shows it.
+    /// The decoded picture, small (32 × 32 is plenty) and stretched by the view that shows it. A hash carries no shape,
+    /// and its terms are scaled to the image's width and height, so a square decode stretched to any frame is the same
+    /// field as one decoded at that frame's proportions.
     public static func image(_ hash: String, width: Int, height: Int, punch: Double = 1) -> CGImage? {
         guard let pixels = pixels(hash, width: width, height: height, punch: punch),
               let provider = CGDataProvider(data: Data(pixels) as CFData)
@@ -84,26 +86,3 @@ public enum BlurHash {
     }
 }
 
-/// What to show while one image loads: its BlurHash, and the shape to decode it at, so a view that fills a frame
-/// crops the preview the way it will crop the artwork.
-public struct BlurPreview: Equatable, Sendable {
-    public let hash: String
-    /// Width over height. A hash doesn't carry the image's shape; nectar's posters are 2:3 and its backdrops 16:9.
-    public let aspect: Double
-
-    public static let poster = 2.0 / 3
-    public static let backdrop = 16.0 / 9
-    public static let still = 16.0 / 9
-
-    public init(hash: String, aspect: Double) {
-        self.hash = hash
-        self.aspect = aspect
-    }
-
-    /// The decoded preview, at most `longSide` pixels on its longer side; nil for a malformed hash.
-    public func image(longSide: Int = 32) -> CGImage? {
-        let width = aspect >= 1 ? longSide : max(1, Int((Double(longSide) * aspect).rounded()))
-        let height = aspect >= 1 ? max(1, Int((Double(longSide) / aspect).rounded())) : longSide
-        return BlurHash.image(hash, width: width, height: height)
-    }
-}
