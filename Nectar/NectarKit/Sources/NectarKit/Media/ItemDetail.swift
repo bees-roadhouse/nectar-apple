@@ -43,8 +43,10 @@ public struct ItemDetail: Decodable, Equatable, Identifiable, Sendable {
     public let genres: [String]
     public let cast: [CastMember]
     public let directors: [String]
-    /// Root-relative; the file needs the token.
+    /// Root-relative; the file needs the token. The first of ``trailers``, for builds that knew only one.
     public let trailerPath: String?
+    /// Every trailer, in nectar's order (nectar #715); an older server's single `trailer_url` as a list of one.
+    public let trailers: [Trailer]
     public let chapters: [Chapter]
     public let seasonCount: Int?
     public let episodeCount: Int?
@@ -62,7 +64,7 @@ public struct ItemDetail: Decodable, Equatable, Identifiable, Sendable {
     private enum Outer: String, CodingKey { case item, progress }
 
     private enum Keys: String, CodingKey {
-        case id, title, year, overview, tagline, genres, images, credits, chapters
+        case id, title, year, overview, tagline, genres, images, credits, chapters, trailers
         case itemType = "item_type"
         case contentRating = "content_rating"
         case communityRating = "community_rating"
@@ -139,6 +141,9 @@ public struct ItemDetail: Decodable, Equatable, Identifiable, Sendable {
         }
         directors = (credits?.crew ?? []).filter { $0.job == "Director" }.map(\.name)
         trailerPath = try c.decodeIfPresent(String.self, forKey: .trailerPath)
+        trailers = (try? c.decodeIfPresent([Trailer].self, forKey: .trailers))
+            ?? trailerPath.map { [Trailer(id: $0, path: $0)] }
+            ?? []
         chapters = (try? c.decodeIfPresent([Chapter].self, forKey: .chapters)) ?? []
         seasonCount = c.lenientInt(.seasonCount)
         episodeCount = c.lenientInt(.episodeCount)

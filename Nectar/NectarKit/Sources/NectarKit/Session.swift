@@ -119,6 +119,12 @@ public actor NectarSession {
         _ = try await request("DELETE", path, query: [], body: nil)
     }
 
+    /// HEAD a path for its effect: on an unready trailer nectar answers 202 and starts the fetch (nectar #715),
+    /// and no bytes come back.
+    public func head(_ path: String) async throws {
+        _ = try await request("HEAD", path, query: [], body: nil)
+    }
+
     /// A media URL AVPlayer can open on its own: it can't add headers, so the access token
     /// rides in the query (nectar#379 takes `?access_token=` on streaming and image paths only).
     /// The URL is a credential; don't log it.

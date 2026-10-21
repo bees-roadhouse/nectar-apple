@@ -25,6 +25,15 @@ public enum NowPlaying {
         return items
     }
 
+    /// A trailer (#119): its own name, then the film and, when there are several, its place ("Arrival · 2 of 3").
+    public static func metadata(for trailer: Trailer, of film: String, position: TrailerQueue.Position?) -> [AVMetadataItem] {
+        let place = position.flatMap { $0.of > 1 ? "\($0.number) of \($0.of)" : nil }
+        return [
+            item(.commonIdentifierTitle, value: (trailer.title ?? "Trailer") as NSString),
+            item(.iTunesMetadataTrackSubTitle, value: ([film] + [place].compactMap(\.self)).joined(separator: " · ") as NSString),
+        ]
+    }
+
     /// "Severance · S1 E1" for an episode, the year for anything else.
     static func subtitle(for card: MediaCard) -> String? {
         if card.itemType == "episode" {

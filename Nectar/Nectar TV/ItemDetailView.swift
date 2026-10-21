@@ -32,11 +32,14 @@ struct ItemDetailView: View {
         .fullScreenCover(item: $model.queue, onDismiss: model.finishedQueue) { queue in
             QueuePlayer(queue: queue, session: model.session) { model.queue = nil }
         }
-        .fullScreenCover(item: $model.trailer) { trailer in
-            VideoPlayer(player: trailer.player)
+        .fullScreenCover(item: $model.trailers) { trailers in
+            TrailersView(model: trailers)
                 .ignoresSafeArea()
-                .onAppear { trailer.player.play() }
-                .onDisappear { trailer.player.pause() }
+                .onAppear {
+                    trailers.close = { model.trailers = nil }
+                    trailers.start()
+                }
+                .onDisappear { trailers.stop() }
         }
         .fullScreenCover(item: Bindable(model.playlistAdding).target) { target in
             PlaylistPicker(target: target, model: model.playlistAdding)
@@ -138,8 +141,9 @@ struct ItemDetailView: View {
                         Button("Play", systemImage: "play.fill") { model.play(detail, from: nil) }
                     }
                 }
-                if detail.trailerPath != nil {
-                    Button("Trailer", systemImage: "film") { Task { await model.playTrailer(detail) } }
+                // Shown once one trailer is ready; the rest are fetched when it opens (nectar #715).
+                if detail.trailers.contains(where: \.isReady) {
+                    Button(detail.trailers.count > 1 ? "Trailers" : "Trailer", systemImage: "film") { model.playTrailers(detail) }
                 }
                 if detail.itemType == "movie" || detail.itemType == "episode" {
                     PreloadButton(detail: detail, session: model.session)
