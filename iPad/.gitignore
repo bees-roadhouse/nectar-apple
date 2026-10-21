@@ -1,0 +1,4 @@
+node_modules/
+src-tauri/gen/apple/build/
+src-tauri/gen/apple/Pods/
+src-tauri/gen/apple/Externals/
