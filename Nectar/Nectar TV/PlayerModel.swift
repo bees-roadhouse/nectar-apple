@@ -15,7 +15,7 @@ final class PlayerModel: Identifiable {
     enum Phase {
         case deciding
         case playing(AVPlayer, PlaybackDecision)
-        case failed(String)
+        case failed(PlaybackFailure)
     }
 
     nonisolated let id: String
@@ -57,6 +57,11 @@ final class PlayerModel: Identifiable {
     private var selectionObserver: NSObjectProtocol?
     /// Called when the title plays to its end; a playlist moves on to the next.
     var finished: (() -> Void)?
+    /// Ten seconds of deciding, or of waiting for the first frame, with nothing on screen yet: the player says it's
+    /// still starting, quietly, under the system spinner (#93).
+    private(set) var stillStarting = false
+    private var stillStartingTimer: Task<Void, Never>?
+    private static let stillStartingAfter: Duration = .seconds(10)
     /// Where an HLS stream was left when the app went to the background (#139). nectar parks it on our goodbye, so
     /// coming back asks for it again rather than letting AVPlayer fetch from a parked stream.
     private var leftAt: Double?
@@ -97,6 +102,7 @@ final class PlayerModel: Identifiable {
 
     func start() async {
         guard case .deciding = phase else { return }
+        watchForSlowStart()
         let resume = card.progressSeconds ?? 0
         let started = ContinuousClock.now
         log.info("play \(self.card.id, privacy: .public) resume=\(resume, privacy: .public)s hevc=\(Self.capabilities.videoCodecs.contains("hevc"), privacy: .public)")
@@ -126,7 +132,8 @@ final class PlayerModel: Identifiable {
             self.started = started
         } catch {
             log.error("play failed: \(String(describing: error), privacy: .public)")
-            phase = .failed("Couldn't start this title.")
+            settle()
+            phase = .failed(.explain(.decide, error: error, decision: nil))
         }
     }
 
@@ -166,6 +173,7 @@ final class PlayerModel: Identifiable {
 
     /// The player is going away: say where it stopped, and whether that's the end.
     func stop() {
+        settle()
         guard case let .playing(player, decision) = phase else { return }
         tearDown(player)
         let position = position(of: player, decision)
@@ -207,8 +215,9 @@ final class PlayerModel: Identifiable {
     /// AVPlayer gave up on the item, or never started it (#91): say so, instead of leaving a dead player on screen.
     /// Where it had got to is saved as a stop would save it; a start that never played reports nothing, so the old
     /// resume point stands.
-    private func failed() {
+    private func failed(_ stage: PlaybackFailure.Stage, _ error: Error?) {
         guard case let .playing(player, decision) = phase else { return }
+        settle()
         if let track = burned, !hasPlayed, !fellBack {
             tearDown(player)
             sayGoodbye(decision)
@@ -221,7 +230,41 @@ final class PlayerModel: Identifiable {
             tearDown(player)
             sayGoodbye(decision)
         }
-        phase = .failed("Couldn't play this title.")
+        phase = .failed(.explain(stage, error: error, decision: decision))
+    }
+
+    /// Try Again on the failed screen: the title starts over, from asking nectar how to play it.
+    func retry() async {
+        guard case .failed = phase else { return }
+        hasPlayed = false
+        fellBack = false
+        burned = nil
+        pendingRendition = nil
+        noticeAtStart = nil
+        notice = nil
+        leftAt = nil
+        phase = .deciding
+        await start()
+    }
+
+    private func watchForSlowStart() {
+        stillStartingTimer?.cancel()
+        stillStarting = false
+        stillStartingTimer = Task { [weak self] in
+            try? await Task.sleep(for: Self.stillStartingAfter)
+            guard let self, !Task.isCancelled, !self.hasPlayed else { return }
+            switch self.phase {
+            case .deciding, .playing: self.stillStarting = true
+            case .failed: break
+            }
+        }
+    }
+
+    /// The start is over, either way: no more "still starting".
+    private func settle() {
+        stillStartingTimer?.cancel()
+        stillStartingTimer = nil
+        stillStarting = false
     }
 
     /// A burned start that never showed a frame (a burn nectar can't encode in time, nectar #644): the title plays
@@ -230,6 +273,7 @@ final class PlayerModel: Identifiable {
         fellBack = true
         burned = nil
         phase = .deciding
+        watchForSlowStart()
         let resume = card.progressSeconds ?? 0
         log.error("subtitles: the stream burning \(track.label, privacy: .public) never started; playing unburned")
         do {
@@ -239,7 +283,8 @@ final class PlayerModel: Identifiable {
             try await begin(decision, at: resume)
         } catch {
             log.error("play failed: \(String(describing: error), privacy: .public)")
-            phase = .failed("Couldn't play this title.")
+            settle()
+            phase = .failed(.explain(.decide, error: error, decision: nil))
         }
     }
 
@@ -302,7 +347,7 @@ final class PlayerModel: Identifiable {
             try? await Task.sleep(for: deadline)
             guard let self, let player, !Task.isCancelled, !self.hasPlayed else { return }
             log.error("no first frame after \(deadline, privacy: .public) of waiting: \(player.reasonForWaitingToPlay?.rawValue ?? "-", privacy: .public), item status \(player.currentItem?.status.rawValue ?? -1, privacy: .public)")
-            self.failed()
+            self.failed(.noFirstFrame, nil)
         }
     }
 
@@ -330,7 +375,10 @@ final class PlayerModel: Identifiable {
                         self.show(shown)
                     }
                 }
-                if status == .playing { self.hasPlayed = true }
+                if status == .playing {
+                    self.hasPlayed = true
+                    self.settle()
+                }
                 if status == .playing, let started = self.started {
                     log.info("playing at \(self.position(of: player, decision), privacy: .public)s (player time \(player.currentTime().seconds, privacy: .public)s), \(started.duration(to: .now), privacy: .public) after select")
                     self.started = nil
@@ -348,7 +396,8 @@ final class PlayerModel: Identifiable {
                 }
                 guard item.status == .failed else { return }
                 log.error("player item failed: \(String(describing: item.error), privacy: .public)")
-                Task { @MainActor in self?.failed() }
+                let error = item.error
+                Task { @MainActor in self?.failed(.player, error) }
             }
             selectionObserver = NotificationCenter.default.addObserver(forName: AVPlayerItem.mediaSelectionDidChangeNotification, object: item, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.selectionChanged(item) }
