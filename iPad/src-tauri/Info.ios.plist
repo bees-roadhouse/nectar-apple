@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Merged into the generated Info.plist by tauri-cli at build (it looks for Info.ios.plist beside tauri.conf.json).
+     Background audio keeps nectar's sound going with the iPad locked or another app in front (#137). WebKit sets the
+     audio session's playback category itself when a media element plays, so the shell doesn't. -->
+<plist version="1.0">
+<dict>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
+</dict>
+</plist>
