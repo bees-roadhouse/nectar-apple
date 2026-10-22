@@ -81,6 +81,15 @@ impl std::fmt::Display for AuthError {
     }
 }
 
+/// What the launch page says when a request to `origin` fails: "Couldn't reach …" for the network, the error itself
+/// for anything the server answered (#135).
+pub fn explain(error: &AuthError, origin: &str) -> String {
+    match error {
+        AuthError::Network(_) => format!("Couldn't reach {}.", crate::handoff::shown_address(origin)),
+        other => other.to_string(),
+    }
+}
+
 pub async fn discover(http: &impl Http, server: &str) -> Result<Endpoints, AuthError> {
     #[derive(Deserialize)]
     struct Configuration {
@@ -218,6 +227,13 @@ mod tests {
     }
 
     const TOKENS: &str = r#"{"access_token":"at","token_type":"Bearer","expires_in":3600,"refresh_token":"rt"}"#;
+
+    #[test]
+    fn only_a_network_failure_reads_as_unreachable() {
+        assert_eq!(explain(&AuthError::Network("dns".into()), "https://nectar.test"), "Couldn't reach nectar.test.");
+        assert_eq!(explain(&AuthError::NoDeviceFlow, "https://nectar.test"), AuthError::NoDeviceFlow.to_string());
+        assert_eq!(explain(&AuthError::Server("http_500".into()), "http://10.0.0.2:8096"), AuthError::Server("http_500".into()).to_string());
+    }
 
     #[tokio::test]
     async fn discovery_finds_the_device_and_token_endpoints() {

@@ -81,21 +81,53 @@
   .approved svg { width: 32px; height: 32px; color: var(--brh-ok); }
 
   .error { color: var(--brh-err); margin-top: 12px; }
+  .hint { color: var(--brh-text2); opacity: 0.7; }
   [hidden] { display: none !important; }
+
+  /* The server list (#135): rows on Plate, 14 px corners, the name over its address. */
+  .lead { margin: 0 0 20px; }
+  .rows { display: grid; gap: 10px; margin-bottom: 20px; }
+  .row { display: flex; align-items: center; background: var(--brh-card); border: 1px solid var(--brh-line-dim); border-radius: 12px; }
+  /* A row that couldn't connect says so itself, with a 2 px Error edge on the leading side (Capping, #136). */
+  .row.failed { box-shadow: inset 2px 0 0 var(--brh-err); }
+  .row.failed .addr { color: var(--brh-text); white-space: normal; }
+  .pick .addr .dot { display: inline-block; vertical-align: middle; margin-right: 8px; }
+  .pick[disabled] { cursor: default; }
+  .row:has(.pick:active) { border-color: var(--brh-gold); }
+  .pick { flex: 1; min-width: 0; display: grid; gap: 2px; text-align: left; font: inherit; color: var(--brh-text); background: none; border: 0; padding: 14px 16px; }
+  .pick .name { font-weight: 600; }
+  .pick .addr { font-size: 15px; color: var(--brh-text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pick:focus-visible { outline: 2px solid var(--brh-gold-hi); outline-offset: -2px; border-radius: 12px; }
+  .row .quiet { padding: 14px 16px; }
+  .actions { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 12px; }
+  .danger { color: var(--brh-err); }
 </style>
 </head>
 <body>
 <main id="main">
-  <section id="ask">
+  <section id="list" hidden>
     <img class="mark" src="brand/nectar-lockup.svg" alt="nectar" width="136" height="44">
-    <p>Enter your nectar address. You'll approve this iPad from a phone or computer that's already signed in.</p>
+    <p class="lead">Choose a server.</p>
+    <div class="rows" id="rows"></div>
+    <button class="quiet" id="add" type="button">Add a server</button>
+  </section>
+  <section id="ask" hidden>
+    <img class="mark" src="brand/nectar-lockup.svg" alt="nectar" width="136" height="44">
+    <p id="ask-lead">Enter your nectar address. You'll approve this iPad from a phone or computer that's already signed in.</p>
     <form id="form">
       <label for="server">Address</label>
       <!-- Text, not type=url: a bare host (the placeholder's own form) isn't a valid URL, and the form wouldn't submit.
            The shell adds https:// itself. inputmode keeps the URL keyboard. -->
       <input id="server" name="server" type="text" inputmode="url" autocapitalize="off" autocorrect="off"
              spellcheck="false" placeholder="nectar.example.com" required>
+      <label for="name">Name <span class="hint">(optional)</span></label>
+      <input id="name" name="name" type="text" autocapitalize="words" autocorrect="off" spellcheck="false"
+             placeholder="Home">
       <button class="primary" id="go" type="submit">Get a code</button>
+      <div class="actions">
+        <button class="quiet" id="cancel" type="button">Cancel</button>
+        <button class="quiet danger" id="remove" type="button" hidden>Remove this server</button>
+      </div>
     </form>
   </section>
   <section id="wait" hidden>
@@ -125,33 +157,98 @@
   const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
   // Each code shown gets a turn; a reply for an older turn (one replaced or abandoned) is ignored.
   let turn = 0;
+  let servers = [];
+  // Per row, while it's being opened or after it failed: { origin: { connecting } | { failed: message } }.
+  let rowState = {};
+  // The server being edited (its origin), or null when adding.
+  let editing = null;
 
-  const showAsk = () => {
-    $("main").classList.remove("wide");
-    $("ask").hidden = false;
-    $("wait").hidden = true;
+  const screen = (id) => {
+    for (const s of ["list", "ask", "wait"]) $(s).hidden = s !== id;
+    $("main").classList.toggle("wide", id === "wait");
     $("go").disabled = false;
   };
-  const fail = (message) => {
-    $("error").textContent = String(message);
-    $("error").hidden = false;
-    showAsk();
+  const say = (message) => {
+    $("error").textContent = message ? String(message) : "";
+    $("error").hidden = !message;
   };
+
+  const showList = (message) => {
+    if (!servers.length) return showForm(null, message);
+    $("rows").replaceChildren(...servers.map((server) => {
+      const row = document.createElement("div");
+      row.className = "row";
+      const pick = document.createElement("button");
+      pick.className = "pick";
+      pick.type = "button";
+      const name = document.createElement("span");
+      name.className = "name";
+      name.textContent = server.name;
+      const addr = document.createElement("span");
+      addr.className = "addr";
+      const state = rowState[server.origin] || {};
+      if (state.connecting) {
+        // The address line becomes the attempt, and the row can't be tapped twice (Capping, #136).
+        const dot = document.createElement("span");
+        dot.className = "dot";
+        dot.setAttribute("aria-hidden", "true");
+        addr.append(dot, "Connecting…");
+        pick.disabled = true;
+      } else if (state.failed) {
+        row.classList.add("failed");
+        addr.textContent = state.failed;
+      } else {
+        addr.textContent = server.address;
+      }
+      // A server named by its address shows it once, unless the line is saying something else.
+      pick.append(...(server.name === server.address && !state.connecting && !state.failed ? [name] : [name, addr]));
+      pick.addEventListener("click", () => open(server));
+      const edit = document.createElement("button");
+      edit.className = "quiet";
+      edit.type = "button";
+      edit.textContent = "Edit";
+      edit.setAttribute("aria-label", "Edit " + server.name);
+      edit.addEventListener("click", () => showForm(server));
+      row.append(pick, edit);
+      return row;
+    }));
+    screen("list");
+    say(message);
+    $("rows").querySelector(".pick")?.focus();
+  };
+
+  // Adding (server null) or editing one.
+  const showForm = (server, message) => {
+    editing = server ? server.origin : null;
+    $("ask-lead").textContent = server
+      ? "Change this server's name or address."
+      : "Enter your nectar address. You'll approve this iPad from a phone or computer that's already signed in.";
+    $("server").value = server ? server.address : "";
+    $("name").value = server ? server.name : "";
+    $("go").textContent = server ? "Save" : "Get a code";
+    $("cancel").hidden = !servers.length;
+    $("remove").hidden = !server;
+    $("remove").textContent = "Remove this server";
+    delete $("remove").dataset.armed;
+    screen("ask");
+    say(message);
+    $("server").focus();
+  };
+
   const show = (code) => {
     $("where").textContent = code.verification_uri.replace(/^https?:\/\//, "");
     $("code").textContent = code.user_code;
     $("qr").innerHTML = code.qr_svg;
   };
 
-  // Shows a code and waits on it, renewing an expired one in place.
-  const signIn = async (server) => {
+  // Shows a code and waits on it, renewing an expired one in place. `name` is given only when adding.
+  const signIn = async (server, name) => {
     const mine = ++turn;
-    show(await invoke("begin_sign_in", { server }));
-    $("main").classList.add("wide");
-    $("ask").hidden = true;
-    $("wait").hidden = false;
+    show(await invoke("begin_sign_in", { server, name }));
+    screen("wait");
     $("waiting").hidden = false;
     $("approved").hidden = true;
+    $("back").textContent = servers.length ? "Choose another server" : "Use a different address";
     $("back").style.visibility = "";
     for (;;) {
       const result = await invoke("finish_sign_in");
@@ -165,7 +262,7 @@
         return;
       }
       // "expired": a new code, faded in, with no error.
-      const next = await invoke("begin_sign_in", { server });
+      const next = await invoke("begin_sign_in", { server, name });
       if (mine !== turn) return;
       for (const id of ["code", "qr"]) $(id).classList.add("out");
       await sleep(200);
@@ -174,33 +271,87 @@
     }
   };
 
+  // What a row says when it couldn't connect: the reason, and that a tap tries again.
+  const failure = (message) =>
+    (String(message).startsWith("Couldn't reach") ? "Couldn't reach it." : String(message)) + " Tap to try again.";
+
+  // A tap on a listed server: straight in if its token still works, else a code. One attempt at a time.
+  let busy = false;
+  const open = async (server) => {
+    if (busy) return;
+    busy = true;
+    say("");
+    rowState = { [server.origin]: { connecting: true } };
+    showList();
+    try {
+      const result = await invoke("open_saved", { origin: server.origin });
+      rowState = {};
+      if (result === "code") await signIn(server.address, null);
+    } catch (message) {
+      rowState = { [server.origin]: { failed: failure(message) } };
+      showList();
+    } finally {
+      busy = false;
+    }
+  };
+
   $("form").addEventListener("submit", async (event) => {
     event.preventDefault();
-    $("error").hidden = true;
+    say("");
     $("go").disabled = true;
     try {
-      await signIn($("server").value);
+      if (editing) {
+        servers = await invoke("save_server", { previous: editing, address: $("server").value, name: $("name").value });
+        rowState = {};
+        showList();
+      } else {
+        await signIn($("server").value, $("name").value);
+      }
     } catch (message) {
-      fail(message);
+      if (editing) {
+        $("go").disabled = false;
+        say(message);
+      } else {
+        showForm(null, message);
+      }
     }
+  });
+
+  $("add").addEventListener("click", () => showForm(null));
+  $("cancel").addEventListener("click", () => showList());
+
+  // Two taps, the first asking: it forgets the token, so the server needs a code again.
+  $("remove").addEventListener("click", async () => {
+    const button = $("remove");
+    if (!button.dataset.armed) {
+      button.dataset.armed = "1";
+      button.textContent = "Tap again to remove";
+      return;
+    }
+    servers = await invoke("remove_server", { origin: editing });
+    rowState = {};
+    showList();
   });
 
   $("back").addEventListener("click", () => {
     turn++;
     invoke("cancel_sign_in").catch(() => {});
-    showAsk();
-    $("server").focus();
+    servers.length ? showList() : showForm(null);
   });
 
-  // A returning person taps once: the last server filled in, with focus on Get a code.
-  invoke("last_server").then((server) => {
-    if (server && !$("server").value) {
-      $("server").value = server;
-      $("go").focus();
-    } else {
-      $("server").focus();
+  // A cold start opens the last server if it can; otherwise the list, saying why when the server was unreachable.
+  (async () => {
+    let message = null;
+    try {
+      if ((await invoke("resume")) === "opened") return;
+    } catch (error) {
+      message = error;
     }
-  }).catch(() => $("server").focus());
+    servers = await invoke("servers").catch(() => []);
+    const last = servers.find((server) => server.last);
+    if (message && last) rowState = { [last.origin]: { failed: failure(message) } };
+    showList(message && !last ? message : null);
+  })();
 </script>
 </body>
 </html>

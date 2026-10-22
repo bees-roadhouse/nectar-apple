@@ -10,6 +10,8 @@ use std::sync::Mutex;
 const SERVICE: &str = "com.beesroadhouse.nectar.ipad";
 /// The entry naming the server signed into last, for a cold start.
 const LAST_SERVER: &str = "last-server";
+/// The launch page's server list, as `servers::save` writes it (#135).
+const SERVERS: &str = "servers";
 
 pub trait TokenStore: Send + Sync {
     fn refresh_token(&self, origin: &str) -> Option<String>;
@@ -17,6 +19,8 @@ pub trait TokenStore: Send + Sync {
     fn forget(&self, origin: &str);
     fn last_server(&self) -> Option<String>;
     fn save_last_server(&self, origin: &str) -> Result<(), String>;
+    fn servers(&self) -> Option<String>;
+    fn save_servers(&self, json: &str) -> Result<(), String>;
 }
 
 /// The iOS Keychain, one generic-password entry per server origin.
@@ -50,6 +54,14 @@ impl TokenStore for Keychain {
     fn save_last_server(&self, origin: &str) -> Result<(), String> {
         Self::entry(LAST_SERVER).ok_or("no keychain entry")?.set_password(origin).map_err(|e| e.to_string())
     }
+
+    fn servers(&self) -> Option<String> {
+        Self::entry(SERVERS)?.get_password().ok()
+    }
+
+    fn save_servers(&self, json: &str) -> Result<(), String> {
+        Self::entry(SERVERS).ok_or("no keychain entry")?.set_password(json).map_err(|e| e.to_string())
+    }
 }
 
 #[cfg(test)]
@@ -57,6 +69,7 @@ impl TokenStore for Keychain {
 pub struct Memory {
     tokens: Mutex<HashMap<String, String>>,
     last: Mutex<Option<String>>,
+    servers: Mutex<Option<String>>,
 }
 
 #[cfg(test)]
@@ -80,6 +93,15 @@ impl TokenStore for Memory {
 
     fn save_last_server(&self, origin: &str) -> Result<(), String> {
         *self.last.lock().unwrap() = Some(origin.to_string());
+        Ok(())
+    }
+
+    fn servers(&self) -> Option<String> {
+        self.servers.lock().unwrap().clone()
+    }
+
+    fn save_servers(&self, json: &str) -> Result<(), String> {
+        *self.servers.lock().unwrap() = Some(json.to_string());
         Ok(())
     }
 }
