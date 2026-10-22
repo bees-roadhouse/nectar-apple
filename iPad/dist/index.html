@@ -180,7 +180,8 @@
       const addr = document.createElement("span");
       addr.className = "addr";
       addr.textContent = server.address;
-      pick.append(name, addr);
+      // A server named by its address shows it once.
+      pick.append(...(server.name === server.address ? [name] : [name, addr]));
       pick.addEventListener("click", () => open(server));
       const edit = document.createElement("button");
       edit.className = "quiet";
