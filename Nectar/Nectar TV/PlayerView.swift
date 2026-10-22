@@ -23,6 +23,7 @@ struct PlayerView: View {
             case .deciding:
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                StillStarting(shown: model.stillStarting)
             case let .playing(player, decision):
                 SystemPlayer(
                     player: player,
@@ -57,14 +58,30 @@ struct PlayerView: View {
                     .allowsHitTesting(false)
                     .transition(.opacity)
                 }
+                // Waiting for the first frame: AVKit draws its own spinner, and the line sits under it.
+                StillStarting(shown: model.stillStarting)
                 if showsMethod {
                     MethodBadge(decision: decision)
                         .padding(60)
                         .transition(.opacity)
                 }
-            case let .failed(message):
-                VStack(spacing: 32) {
-                    Text(message).font(.title2)
+            case let .failed(failure):
+                // Drawn the tvOS way (#93, Capping's review of #92): the system's empty state, one line of why in
+                // the household's words, the raw code for admins only. Try Again comes first, so it has the focus,
+                // and only when trying again could go differently; otherwise Back stands alone (Capping, #141).
+                ContentUnavailableView {
+                    Label(PlaybackFailure.headline, systemImage: "play.slash")
+                } description: {
+                    VStack(spacing: 12) {
+                        if let why = failure.why { Text(why) }
+                        if isAdmin, let detail = failure.detail {
+                            Text(detail).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                } actions: {
+                    if failure.retryable {
+                        Button("Try Again") { Task { await model.retry() } }
+                    }
                     Button("Back", action: dismiss)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -87,6 +104,25 @@ struct PlayerView: View {
             default: break
             }
         }
+    }
+}
+
+/// One quiet line under the spinner once a start has taken 10 s (#93). No motion of its own beyond the system
+/// spinner above it: it fades in, which reads the same under Reduce Motion.
+private struct StillStarting: View {
+
+    let shown: Bool
+
+    var body: some View {
+        Text("Still starting…")
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .offset(y: 90)
+            .opacity(shown ? 1 : 0)
+            .animation(.easeInOut(duration: 0.3), value: shown)
+            .allowsHitTesting(false)
+            .accessibilityHidden(!shown)
     }
 }
 
