@@ -46,6 +46,10 @@ struct Shell {
     store: store::Keychain,
     session: Mutex<Option<Session>>,
     pending: Mutex<Option<(String, auth::Endpoints, auth::DeviceCode)>>,
+    /// The signed-in landing URL, held while the launch page shows "Approved" (Capping, #131).
+    handover: Mutex<Option<String>>,
+    /// Stops the code being waited on, when the person asks for another ("Use a different address", #131).
+    cancel: tokio::sync::Notify,
 }
 
 /// What the launch page shows while it waits for a person to approve.
@@ -59,6 +63,7 @@ struct CodeView {
 
 #[tauri::command]
 async fn begin_sign_in(server: String, shell: State<'_, Shell>) -> Result<CodeView, String> {
+    shell.cancel.notify_waiters();
     let origin = handoff::server_origin(&server)?;
     let endpoints = auth::discover(&shell.net, &origin).await.map_err(|e| e.to_string())?;
     let code = auth::start(&shell.net, &endpoints, DEVICE_NAME).await.map_err(|e| e.to_string())?;
@@ -71,18 +76,47 @@ async fn begin_sign_in(server: String, shell: State<'_, Shell>) -> Result<CodeVi
     Ok(view)
 }
 
-/// Waits for the person to approve the code shown, then opens their server, signed in.
+/// The server signed into last, as the launch page pre-fills it, or `null` on a first launch.
 #[tauri::command]
-async fn finish_sign_in(app: AppHandle, shell: State<'_, Shell>) -> Result<(), String> {
+fn last_server(shell: State<'_, Shell>) -> Option<String> {
+    shell.store.last_server().map(|origin| handoff::shown_address(&origin))
+}
+
+/// Waits for the person to approve the code shown. `"approved"`: signed in, and `open_server` opens it.
+/// `"expired"`: the code ran out, and the launch page asks for a new one without an error (Capping, #131).
+/// `"cancelled"`: a newer code replaced this one.
+#[tauri::command]
+async fn finish_sign_in(app: AppHandle, shell: State<'_, Shell>) -> Result<&'static str, String> {
     let (origin, endpoints, code) = shell.pending.lock().unwrap().take().ok_or("Ask for a code first.")?;
-    match auth::poll(&shell.net, &endpoints, &code, tokio::time::sleep).await.map_err(|e| e.to_string())? {
+    // Created before polling starts, so a `begin_sign_in` from here on can't be missed.
+    let cancelled = shell.cancel.notified();
+    let outcome = tokio::select! {
+        outcome = auth::poll(&shell.net, &endpoints, &code, tokio::time::sleep) => outcome,
+        _ = cancelled => return Ok("cancelled"),
+    };
+    match outcome.map_err(|e| e.to_string())? {
         auth::Outcome::Approved(tokens) => {
-            signed_in(&app, &shell, origin, endpoints, tokens)?;
-            Ok(())
+            let landing = signed_in(&app, &shell, origin, endpoints, tokens)?;
+            *shell.handover.lock().unwrap() = Some(landing);
+            Ok("approved")
         }
         auth::Outcome::Denied => Err("The code was declined on the other device.".into()),
-        auth::Outcome::Expired => Err("The code ran out. Ask for a new one.".into()),
+        auth::Outcome::Expired => Ok("expired"),
     }
+}
+
+/// "Use a different address": stop waiting on the code shown.
+#[tauri::command]
+fn cancel_sign_in(shell: State<'_, Shell>) {
+    shell.cancel.notify_waiters();
+    shell.pending.lock().unwrap().take();
+}
+
+/// After the launch page's "Approved": the server's home, signed in.
+#[tauri::command]
+fn open_server(app: AppHandle, shell: State<'_, Shell>) -> Result<(), String> {
+    let landing = shell.handover.lock().unwrap().take().ok_or("Sign in first.")?;
+    navigate(&app, &landing)
 }
 
 /// From the server's pages, when nectar refuses the web client's token (nectar #750): a fresh access token, or
@@ -147,7 +181,8 @@ async fn revoke(client: &reqwest::Client, session: &Session) {
     }
 }
 
-fn signed_in(app: &AppHandle, shell: &Shell, origin: String, endpoints: auth::Endpoints, tokens: auth::Tokens) -> Result<(), String> {
+/// Keeps the sign-in and lets the server's pages call the shell; the URL that opens it signed in comes back.
+fn signed_in(app: &AppHandle, shell: &Shell, origin: String, endpoints: auth::Endpoints, tokens: auth::Tokens) -> Result<String, String> {
     if let Some(refresh) = &tokens.refresh_token {
         shell.store.save_refresh_token(&origin, refresh)?;
     }
@@ -155,6 +190,10 @@ fn signed_in(app: &AppHandle, shell: &Shell, origin: String, endpoints: auth::En
     let landing = handoff::landing_url(&origin, &tokens.access_token);
     *shell.session.lock().unwrap() = Some(Session { origin: origin.clone(), endpoints, access: tokens.access_token });
     allow_server(app, &origin);
+    Ok(landing)
+}
+
+fn navigate(app: &AppHandle, landing: &str) -> Result<(), String> {
     let window = app.get_webview_window("main").ok_or("no window")?;
     window.navigate(landing.parse().map_err(|_| "bad server address")?).map_err(|e| e.to_string())
 }
@@ -183,7 +222,9 @@ async fn resume(app: AppHandle) {
     let Ok(endpoints) = auth::discover(&shell.net, &origin).await else { return };
     match auth::refresh(&shell.net, &endpoints, &refresh).await {
         Ok(Some(tokens)) => {
-            let _ = signed_in(&app, &shell, origin, endpoints, tokens);
+            if let Ok(landing) = signed_in(&app, &shell, origin, endpoints, tokens) {
+                let _ = navigate(&app, &landing);
+            }
         }
         Ok(None) => shell.store.forget(&origin),
         Err(_) => {}
@@ -194,8 +235,8 @@ async fn resume(app: AppHandle) {
 pub fn run() {
     let net = Net(reqwest::Client::builder().timeout(std::time::Duration::from_secs(20)).build().expect("an HTTP client"));
     tauri::Builder::default()
-        .manage(Shell { net, store: store::Keychain, session: Mutex::new(None), pending: Mutex::new(None) })
-        .invoke_handler(tauri::generate_handler![begin_sign_in, finish_sign_in, refresh_token, signed_out])
+        .manage(Shell { net, store: store::Keychain, session: Mutex::new(None), pending: Mutex::new(None), handover: Mutex::new(None), cancel: tokio::sync::Notify::new() })
+        .invoke_handler(tauri::generate_handler![begin_sign_in, last_server, finish_sign_in, cancel_sign_in, open_server, refresh_token, signed_out])
         .setup(|app| {
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .initialization_script(handoff::INIT_SCRIPT)

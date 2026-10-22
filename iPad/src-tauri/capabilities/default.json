@@ -4,5 +4,5 @@
   "description": "The bundled launch page: signing in with a code. The server's own pages get refresh and sign-out from a capability added when the shell signs in to them.",
   "windows": ["main"],
   "local": true,
-  "permissions": ["core:default", "allow-begin-sign-in", "allow-finish-sign-in"]
+  "permissions": ["core:default", "allow-begin-sign-in", "allow-last-server", "allow-finish-sign-in", "allow-cancel-sign-in", "allow-open-server"]
 }
