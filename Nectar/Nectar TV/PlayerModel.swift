@@ -193,6 +193,8 @@ final class PlayerModel: Identifiable {
     func cameBack() async {
         guard let at = leftAt, case let .playing(old, _) = phase, !switching else { return }
         leftAt = nil
+        // tvOS's player resumes on the way back, before this runs: stop it fetching from the parked stream.
+        old.pause()
         let rendition = await Self.selectedRendition(old.currentItem)
         do {
             try await reopen(at: at, burning: burned, thenSelect: rendition, from: old, play: false)
