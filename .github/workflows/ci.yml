@@ -10,6 +10,9 @@ on:
       # The Nectar TV app has its own gate (nectar-tv.yml); this one is Swiftfin's.
       - '!Nectar/**'
       - '!.github/workflows/nectar-tv.yml'
+      # The iPad shell has its own gate too (ipad.yml).
+      - '!iPad/**'
+      - '!.github/workflows/ipad.yml'
   pull_request:
     types:
       - opened
@@ -22,6 +25,9 @@ on:
       # The Nectar TV app has its own gate (nectar-tv.yml); this one is Swiftfin's.
       - '!Nectar/**'
       - '!.github/workflows/nectar-tv.yml'
+      # The iPad shell has its own gate too (ipad.yml).
+      - '!iPad/**'
+      - '!.github/workflows/ipad.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
