@@ -12,6 +12,8 @@ struct PlayerView: View {
     private var showsMethod = true
     @Environment(\.isAdmin)
     private var isAdmin
+    @Environment(\.scenePhase)
+    private var scenePhase
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -77,6 +79,14 @@ struct PlayerView: View {
             withAnimation { showsMethod = false }
         }
         .onDisappear { model.stop() }
+        // Home or another app: nectar is told, and the stream is asked for again on the way back (#139).
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .background: model.wentToBackground()
+            case .active: Task { await model.cameBack() }
+            default: break
+            }
+        }
     }
 }
 

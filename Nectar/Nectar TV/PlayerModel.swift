@@ -57,6 +57,9 @@ final class PlayerModel: Identifiable {
     private var selectionObserver: NSObjectProtocol?
     /// Called when the title plays to its end; a playlist moves on to the next.
     var finished: (() -> Void)?
+    /// Where an HLS stream was left when the app went to the background (#139). nectar parks it on our goodbye, so
+    /// coming back asks for it again rather than letting AVPlayer fetch from a parked stream.
+    private var leftAt: Double?
 
     /// How often progress goes to nectar while playing.
     private static let reportEvery: Double = 10
@@ -170,6 +173,33 @@ final class PlayerModel: Identifiable {
         let completed = duration.map { position >= $0 * 0.95 } ?? false
         report(position, paused: true, completed: completed ? true : nil, force: true)
         sayGoodbye(decision)
+    }
+
+    /// Home, or another app in front (#139): pause, save the place, and say goodbye, so nectar frees the stream's
+    /// transcoder slot now rather than holding it for a viewer who may not come back. A direct file needs neither.
+    func wentToBackground() {
+        guard case let .playing(player, decision) = phase, decision.goodbyePath != nil, !switching, leftAt == nil else { return }
+        let at = position(of: player, decision)
+        player.pause()
+        report(at, paused: true, force: true)
+        sayGoodbye(decision)
+        leftAt = at
+        log.info("to the background at \(at, privacy: .public)s")
+    }
+
+    /// Back in front: the stream nectar parked is asked for again at the same place, with the same subtitle, and
+    /// left paused as tvOS leaves any player on the way back. A decide resumes a parked stream at once, or queues it
+    /// when no transcoder slot is free. If it fails, the old player stays, and its next fetch tries the old stream.
+    func cameBack() async {
+        guard let at = leftAt, case let .playing(old, _) = phase, !switching else { return }
+        leftAt = nil
+        let rendition = await Self.selectedRendition(old.currentItem)
+        do {
+            try await reopen(at: at, burning: burned, thenSelect: rendition, from: old, play: false)
+            log.info("back: asked for the stream again at \(at, privacy: .public)s")
+        } catch {
+            log.error("back: asking again at \(at, privacy: .public)s failed, keeping the old stream: \(String(describing: error), privacy: .public)")
+        }
     }
 
     /// AVPlayer gave up on the item, or never started it (#91): say so, instead of leaving a dead player on screen.
@@ -466,24 +496,37 @@ final class PlayerModel: Identifiable {
         let at = position(of: old, oldDecision)
         old.pause()
         do {
-            let decision = try await session.decide(card.id, capabilities: Self.capabilities, startOffset: at, subtitle: track.map { .burn($0) } ?? .off)
-            let player = AVPlayer(url: try await session.mediaURL(decision.streamPath))
-            try await Self.ready(player, within: Self.switchDeadline)
-            await player.seek(to: CMTime(seconds: decision.seek(toResumeAt: at), preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
-            tearDown(old)
-            burned = track
-            pendingRendition = rendition
-            observe(player, decision)
-            phase = .playing(player, decision)
-            player.play()
-            describe(player.currentItem)
-            if let item = player.currentItem, item.status == .readyToPlay { await applySubtitles(item) }
+            try await reopen(at: at, burning: track, thenSelect: rendition, from: old, play: true)
             log.info("subtitles: switched to \(track?.label ?? "unburned", privacy: .public) at \(at, privacy: .public)s")
         } catch {
             log.error("subtitles: switch to \(track?.label ?? "unburned", privacy: .public) failed: \(String(describing: error), privacy: .public)")
             show(Notice(text: track.map { "Couldn't turn on \($0.menuTitle()) subtitles" } ?? "Couldn't turn off subtitles", isFailure: true))
             old.play()
         }
+    }
+
+    /// A new stream for this title at `at`: asked of nectar, ready, seeked to the same frame, then swapped for `old`.
+    /// Until it's ready the old player stays, so a failure leaves things as they were.
+    private func reopen(at: Double, burning track: SubtitleTrack?, thenSelect rendition: String?, from old: AVPlayer, play: Bool) async throws {
+        let decision = try await session.decide(card.id, capabilities: Self.capabilities, startOffset: at, subtitle: track.map { .burn($0) } ?? .off)
+        let player = AVPlayer(url: try await session.mediaURL(decision.streamPath))
+        try await Self.ready(player, within: Self.switchDeadline)
+        await player.seek(to: CMTime(seconds: decision.seek(toResumeAt: at), preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+        tearDown(old)
+        burned = track
+        pendingRendition = rendition
+        observe(player, decision)
+        phase = .playing(player, decision)
+        if play { player.play() }
+        describe(player.currentItem)
+        if let item = player.currentItem, item.status == .readyToPlay { await applySubtitles(item) }
+    }
+
+    /// The AVKit text rendition showing now, by its `NAME`, so a new stream can select the same one.
+    private static func selectedRendition(_ item: AVPlayerItem?) async -> String? {
+        guard let item, let group = try? await item.asset.loadMediaSelectionGroup(for: .legible),
+              let chosen = item.currentMediaSelection.selectedMediaOption(in: group) else { return nil }
+        return await renditionName(chosen)
     }
 
     /// How long a burned stream may take to be ready before the switch gives up and the old stream carries on:
