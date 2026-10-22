@@ -21,10 +21,14 @@ public struct PlaybackFailure: Equatable, Sendable {
     public let why: String?
     /// The error's domain and code, and its underlying error's: for admins.
     public let detail: String?
+    /// Whether trying again could go differently (Capping, #141). A title nectar no longer has, a file the TV can't
+    /// play, or a signed-out TV would only fail the same way, so the screen offers Back alone.
+    public let retryable: Bool
 
-    public init(why: String?, detail: String?) {
+    public init(why: String?, detail: String?, retryable: Bool) {
         self.why = why
         self.detail = detail
+        self.retryable = retryable
     }
 
     /// AVFoundation's codes for a file the TV can't open or decode: format not recognised, failed to parse,
@@ -32,27 +36,31 @@ public struct PlaybackFailure: Equatable, Sendable {
     private static let unplayable: Set<Int> = [-11828, -11829, -11821, -11833]
 
     public static func explain(_ stage: Stage, error: Error?, decision: PlaybackDecision?) -> PlaybackFailure {
-        PlaybackFailure(why: why(stage, error, decision), detail: error.flatMap(detail))
+        let (why, retryable) = reason(stage, error, decision)
+        return PlaybackFailure(why: why, detail: error.flatMap(detail), retryable: retryable)
     }
 
-    private static func why(_ stage: Stage, _ error: Error?, _ decision: PlaybackDecision?) -> String? {
+    /// The why line, a sentence with its full stop as Apple's descriptions have one, and whether a retry can help.
+    private static func reason(_ stage: Stage, _ error: Error?, _ decision: PlaybackDecision?) -> (String?, Bool) {
         switch stage {
         case .decide:
             switch error {
-            case NectarSessionError.unexpectedStatus?: return "nectar couldn't send this title"
-            case NectarSessionError.signedOut?: return "This TV was signed out of nectar"
-            case let error? where (error as NSError).domain == NSURLErrorDomain: return "Couldn't reach nectar"
-            default: return nil
+            case NectarSessionError.unexpectedStatus(404)?: return ("It isn't in the library any more.", false)
+            case let NectarSessionError.unexpectedStatus(status)? where status >= 500: return ("nectar ran into a problem.", true)
+            case NectarSessionError.unexpectedStatus?: return ("nectar couldn't send this title.", false)
+            case NectarSessionError.signedOut?: return ("This TV was signed out of nectar.", false)
+            case let error? where (error as NSError).domain == NSURLErrorDomain: return ("Couldn't reach nectar.", true)
+            default: return (nil, true)
             }
         case .noFirstFrame:
             let base = "nectar didn't start sending it in time"
-            guard let decision, decision.playMethod == "Transcode", let code = decision.reason, !code.isEmpty else { return base }
-            return "\(base) (converting it: \(PlaybackInfo.reason(code)))"
+            guard let decision, decision.playMethod == "Transcode", let code = decision.reason, !code.isEmpty else { return ("\(base).", true) }
+            return ("\(base) (converting it: \(PlaybackInfo.reason(code))).", true)
         case .player:
-            guard let error = error as NSError? else { return nil }
-            if error.domain == NSURLErrorDomain { return "The stream stopped arriving from nectar" }
-            if error.domain == "AVFoundationErrorDomain", unplayable.contains(error.code) { return "The TV can't play this file" }
-            return nil
+            guard let error = error as NSError? else { return (nil, true) }
+            if error.domain == NSURLErrorDomain { return ("The stream stopped arriving from nectar.", true) }
+            if error.domain == "AVFoundationErrorDomain", unplayable.contains(error.code) { return ("The TV can't play this file.", false) }
+            return (nil, true)
         }
     }
 

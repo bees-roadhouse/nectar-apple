@@ -67,7 +67,8 @@ struct PlayerView: View {
                 }
             case let .failed(failure):
                 // Drawn the tvOS way (#93, Capping's review of #92): the system's empty state, one line of why in
-                // the household's words, the raw code for admins only, and Try Again first, so it has the focus.
+                // the household's words, the raw code for admins only. Try Again comes first, so it has the focus,
+                // and only when trying again could go differently; otherwise Back stands alone (Capping, #141).
                 ContentUnavailableView {
                     Label(PlaybackFailure.headline, systemImage: "play.slash")
                 } description: {
@@ -78,7 +79,9 @@ struct PlayerView: View {
                         }
                     }
                 } actions: {
-                    Button("Try Again") { Task { await model.retry() } }
+                    if failure.retryable {
+                        Button("Try Again") { Task { await model.retry() } }
+                    }
                     Button("Back", action: dismiss)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
