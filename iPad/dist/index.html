@@ -87,12 +87,17 @@
   /* The server list (#135): rows on Plate, 14 px corners, the name over its address. */
   .lead { margin: 0 0 20px; }
   .rows { display: grid; gap: 10px; margin-bottom: 20px; }
-  .row { display: flex; align-items: center; background: var(--brh-card); border: 1px solid var(--brh-line-dim); border-radius: 14px; }
+  .row { display: flex; align-items: center; background: var(--brh-card); border: 1px solid var(--brh-line-dim); border-radius: 12px; }
+  /* A row that couldn't connect says so itself, with a 2 px Error edge on the leading side (Capping, #136). */
+  .row.failed { box-shadow: inset 2px 0 0 var(--brh-err); }
+  .row.failed .addr { color: var(--brh-text); white-space: normal; }
+  .pick .addr .dot { display: inline-block; vertical-align: middle; margin-right: 8px; }
+  .pick[disabled] { cursor: default; }
   .row:has(.pick:active) { border-color: var(--brh-gold); }
   .pick { flex: 1; min-width: 0; display: grid; gap: 2px; text-align: left; font: inherit; color: var(--brh-text); background: none; border: 0; padding: 14px 16px; }
   .pick .name { font-weight: 600; }
   .pick .addr { font-size: 15px; color: var(--brh-text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pick:focus-visible { outline: 2px solid var(--brh-gold-hi); outline-offset: -2px; border-radius: 14px; }
+  .pick:focus-visible { outline: 2px solid var(--brh-gold-hi); outline-offset: -2px; border-radius: 12px; }
   .row .quiet { padding: 14px 16px; }
   .actions { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 12px; }
   .danger { color: var(--brh-err); }
@@ -153,6 +158,8 @@
   // Each code shown gets a turn; a reply for an older turn (one replaced or abandoned) is ignored.
   let turn = 0;
   let servers = [];
+  // Per row, while it's being opened or after it failed: { origin: { connecting } | { failed: message } }.
+  let rowState = {};
   // The server being edited (its origin), or null when adding.
   let editing = null;
 
@@ -179,9 +186,22 @@
       name.textContent = server.name;
       const addr = document.createElement("span");
       addr.className = "addr";
-      addr.textContent = server.address;
-      // A server named by its address shows it once.
-      pick.append(...(server.name === server.address ? [name] : [name, addr]));
+      const state = rowState[server.origin] || {};
+      if (state.connecting) {
+        // The address line becomes the attempt, and the row can't be tapped twice (Capping, #136).
+        const dot = document.createElement("span");
+        dot.className = "dot";
+        dot.setAttribute("aria-hidden", "true");
+        addr.append(dot, "Connecting…");
+        pick.disabled = true;
+      } else if (state.failed) {
+        row.classList.add("failed");
+        addr.textContent = state.failed;
+      } else {
+        addr.textContent = server.address;
+      }
+      // A server named by its address shows it once, unless the line is saying something else.
+      pick.append(...(server.name === server.address && !state.connecting && !state.failed ? [name] : [name, addr]));
       pick.addEventListener("click", () => open(server));
       const edit = document.createElement("button");
       edit.className = "quiet";
@@ -251,13 +271,27 @@
     }
   };
 
-  // A tap on a listed server: straight in if its token still works, else a code.
+  // What a row says when it couldn't connect: the reason, and that a tap tries again.
+  const failure = (message) =>
+    (String(message).startsWith("Couldn't reach") ? "Couldn't reach it." : String(message)) + " Tap to try again.";
+
+  // A tap on a listed server: straight in if its token still works, else a code. One attempt at a time.
+  let busy = false;
   const open = async (server) => {
+    if (busy) return;
+    busy = true;
     say("");
+    rowState = { [server.origin]: { connecting: true } };
+    showList();
     try {
-      if ((await invoke("open_saved", { origin: server.origin })) === "code") await signIn(server.address, null);
+      const result = await invoke("open_saved", { origin: server.origin });
+      rowState = {};
+      if (result === "code") await signIn(server.address, null);
     } catch (message) {
-      showList(message);
+      rowState = { [server.origin]: { failed: failure(message) } };
+      showList();
+    } finally {
+      busy = false;
     }
   };
 
@@ -268,6 +302,7 @@
     try {
       if (editing) {
         servers = await invoke("save_server", { previous: editing, address: $("server").value, name: $("name").value });
+        rowState = {};
         showList();
       } else {
         await signIn($("server").value, $("name").value);
@@ -294,6 +329,7 @@
       return;
     }
     servers = await invoke("remove_server", { origin: editing });
+    rowState = {};
     showList();
   });
 
@@ -312,7 +348,9 @@
       message = error;
     }
     servers = await invoke("servers").catch(() => []);
-    showList(message);
+    const last = servers.find((server) => server.last);
+    if (message && last) rowState = { [last.origin]: { failed: failure(message) } };
+    showList(message && !last ? message : null);
   })();
 </script>
 </body>
