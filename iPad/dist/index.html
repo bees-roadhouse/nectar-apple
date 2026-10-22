@@ -61,12 +61,19 @@
   .qr svg { display: block; width: 240px; height: 240px; }
   .swap { transition: opacity 200ms; }
   .swap.out { opacity: 0; }
+  /* "Use a different address" comes last, under the QR's caption (Capping, #132). */
+  .back { margin-top: 14px; }
   @media (min-width: 900px) and (orientation: landscape) {
     #wait { grid-template-columns: 1fr auto; align-items: center; text-align: left; }
     #wait .copy { justify-items: start; }
     #wait .qr { margin-bottom: 0; }
+    #wait .back { grid-column: 1; justify-self: start; margin-top: 0; }
   }
-  .status { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; color: var(--brh-text2); }
+  /* One fixed-height slot for "Waiting…" and "Approved", so nothing moves at approval (Capping, #132). */
+  .slot { display: grid; place-items: center; height: 40px; margin-bottom: 8px; }
+  #wait .slot > * { grid-area: 1 / 1; margin: 0; }
+  @media (min-width: 900px) and (orientation: landscape) { .slot { justify-items: start; } }
+  .status { display: flex; align-items: center; gap: 10px; color: var(--brh-text2); }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--brh-gold); animation: pulse 1.8s ease-in-out infinite; }
   @keyframes pulse { 50% { opacity: 0.25; } }
   @media (prefers-reduced-motion: reduce) { .dot { animation: none; } .swap { transition: none; } }
@@ -96,17 +103,19 @@
       <h1>Approve this iPad</h1>
       <p>On a signed-in phone or computer, go to <strong id="where"></strong> and enter:</p>
       <div class="code swap" id="code"></div>
-      <p class="status" id="waiting"><span class="dot" aria-hidden="true"></span>Waiting for approval…</p>
-      <div class="approved" id="approved" role="status" hidden>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-             stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Approved
+      <div class="slot">
+        <p class="status" id="waiting"><span class="dot" aria-hidden="true"></span>Waiting for approval…</p>
+        <div class="approved" id="approved" role="status" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+               stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Approved
+        </div>
       </div>
-      <button class="quiet" id="back" type="button">Use a different address</button>
     </div>
     <div>
       <div class="qr swap" id="qr"></div>
       <p>Or scan this with your phone's camera.</p>
     </div>
+    <button class="quiet back" id="back" type="button">Use a different address</button>
   </section>
   <p class="error" id="error" role="alert" hidden></p>
 </main>
@@ -143,13 +152,13 @@
     $("wait").hidden = false;
     $("waiting").hidden = false;
     $("approved").hidden = true;
-    $("back").hidden = false;
+    $("back").style.visibility = "";
     for (;;) {
       const result = await invoke("finish_sign_in");
       if (mine !== turn || result === "cancelled") return;
       if (result === "approved") {
         $("waiting").hidden = true;
-        $("back").hidden = true;
+        $("back").style.visibility = "hidden";
         $("approved").hidden = false;
         await sleep(600);
         await invoke("open_server");
