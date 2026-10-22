@@ -84,7 +84,9 @@
     <p>Enter your nectar address. You'll approve this iPad from a phone or computer that's already signed in.</p>
     <form id="form">
       <label for="server">Address</label>
-      <input id="server" name="server" type="url" inputmode="url" autocapitalize="off" autocorrect="off"
+      <!-- Text, not type=url: a bare host (the placeholder's own form) isn't a valid URL, and the form wouldn't submit.
+           The shell adds https:// itself. inputmode keeps the URL keyboard. -->
+      <input id="server" name="server" type="text" inputmode="url" autocapitalize="off" autocorrect="off"
              spellcheck="false" placeholder="nectar.example.com" required>
       <button class="primary" id="go" type="submit">Get a code</button>
     </form>
