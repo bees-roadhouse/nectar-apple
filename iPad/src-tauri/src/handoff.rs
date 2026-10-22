@@ -48,6 +48,12 @@ pub fn server_origin(input: &str) -> Result<String, String> {
     Ok(url.origin().ascii_serialization())
 }
 
+/// An origin as the launch page pre-fills it (Capping, #131): `https://` dropped, since it's what a bare host means;
+/// plain `http://` kept.
+pub fn shown_address(origin: &str) -> String {
+    origin.strip_prefix("https://").unwrap_or(origin).to_string()
+}
+
 fn is_local(host: &str) -> bool {
     host == "localhost"
         || host.ends_with(".local")
@@ -81,6 +87,17 @@ mod tests {
         assert!(server_origin("http://nectar.beesroadhouse.com").is_err());
         assert!(server_origin("ftp://nectar.test").is_err());
         assert!(server_origin("").is_err());
+    }
+
+    #[test]
+    fn the_last_server_is_shown_as_it_would_be_typed() {
+        assert_eq!(shown_address("https://nectar.beesroadhouse.com"), "nectar.beesroadhouse.com");
+        assert_eq!(shown_address("https://nectar.test:8443"), "nectar.test:8443");
+        // Plain http stays visible, so it reads back as the exception it is, and round-trips.
+        assert_eq!(shown_address("http://192.168.67.20:8096"), "http://192.168.67.20:8096");
+        for origin in ["https://nectar.beesroadhouse.com", "http://nectar.local"] {
+            assert_eq!(server_origin(&shown_address(origin)).unwrap(), origin);
+        }
     }
 
     #[test]

@@ -6,7 +6,9 @@
 <title>Nectar</title>
 <style>
   /* The launch screen only; the web client brings its own look once signed in. The tokens and values are the
-     Brand & Visual Identity Standard's (KB page 2451): charcoal and gold, dark only. */
+     Brand & Visual Identity Standard's (KB page 2451), in its Media-app variant (nectar): charcoal and gold, dark
+     only, capsule buttons with no glow, 12 px text fields with Gold on focus, sentence case. Layout and wording are
+     Capping's (nectar-apple #131). */
   :root {
     --brh-bg: #111214;
     --brh-card: #1d2024;
@@ -17,6 +19,7 @@
     --brh-text: #f2f3f5;
     --brh-text2: #c4c8ce;
     --brh-err: #e06b52;
+    --brh-ok: #8fbf6a;
     color-scheme: dark;
   }
   * { box-sizing: border-box; }
@@ -27,56 +30,137 @@
     padding: env(safe-area-inset-top) 24px env(safe-area-inset-bottom);
   }
   main { width: min(520px, 100%); }
-  h1 { font-size: 34px; margin: 0 0 6px; letter-spacing: -0.01em; }
+  main.wide { width: min(860px, 100%); }
+  .mark { display: block; height: 44px; width: auto; margin-bottom: 28px; }
+  h1 { font-size: 34px; margin: 0 0 6px; }
   p { margin: 0 0 18px; color: var(--brh-text2); }
   label { display: block; font-size: 15px; color: var(--brh-text2); margin-bottom: 8px; }
   input {
     width: 100%; font: inherit; color: var(--brh-text); background: var(--brh-card);
     border: 1px solid var(--brh-line-dim); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px;
+    outline: none; transition: border-color 150ms;
   }
-  button {
-    font: inherit; font-weight: 600; color: var(--brh-gold-ink); background: var(--brh-gold);
-    border: 0; border-radius: 12px; padding: 14px 22px; min-height: 48px;
+  input:focus { border-color: var(--brh-gold); }
+  .primary {
+    display: block; width: 100%; height: 48px; font: inherit; font-weight: 600;
+    color: var(--brh-gold-ink); background: var(--brh-gold); border: 0; border-radius: 999px;
   }
-  button:active { background: var(--brh-gold-hi); }
-  button[disabled] { opacity: 0.5; }
+  .primary:active { background: var(--brh-gold-hi); }
+  .primary:focus-visible { outline: 2px solid var(--brh-gold-hi); outline-offset: 3px; }
+  .primary[disabled] { opacity: 0.5; }
+  .quiet {
+    font: inherit; font-size: 15px; color: var(--brh-text2); background: none; border: 0; padding: 8px 0;
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+
+  /* The code screen: one object, centred; side by side on a wide landscape screen. */
+  #wait { display: grid; justify-items: center; text-align: center; gap: 0 48px; }
+  #wait .copy { display: grid; justify-items: center; }
   .code { font: 600 48px/1.1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.08em; margin: 8px 0 16px; }
   .qr { background: #fff; border-radius: 12px; padding: 12px; width: fit-content; margin-bottom: 16px; }
   .qr svg { display: block; width: 240px; height: 240px; }
-  .error { color: var(--brh-err); }
+  .swap { transition: opacity 200ms; }
+  .swap.out { opacity: 0; }
+  @media (min-width: 900px) and (orientation: landscape) {
+    #wait { grid-template-columns: 1fr auto; align-items: center; text-align: left; }
+    #wait .copy { justify-items: start; }
+    #wait .qr { margin-bottom: 0; }
+  }
+  .status { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; color: var(--brh-text2); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--brh-gold); animation: pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: 0.25; } }
+  @media (prefers-reduced-motion: reduce) { .dot { animation: none; } .swap { transition: none; } }
+  .approved { display: flex; align-items: center; gap: 12px; font-size: 24px; font-weight: 600; color: var(--brh-text); }
+  .approved svg { width: 32px; height: 32px; color: var(--brh-ok); }
+
+  .error { color: var(--brh-err); margin-top: 12px; }
   [hidden] { display: none !important; }
 </style>
 </head>
 <body>
-<main>
+<main id="main">
   <section id="ask">
-    <h1>Nectar</h1>
-    <p>Sign in to your server. You'll approve this iPad from a phone or computer that's already signed in.</p>
+    <img class="mark" src="brand/nectar-lockup.svg" alt="nectar" width="136" height="44">
+    <p>Enter your nectar address. You'll approve this iPad from a phone or computer that's already signed in.</p>
     <form id="form">
-      <label for="server">Server</label>
+      <label for="server">Address</label>
       <input id="server" name="server" type="url" inputmode="url" autocapitalize="off" autocorrect="off"
              spellcheck="false" placeholder="nectar.example.com" required>
-      <button id="go" type="submit">Get a code</button>
+      <button class="primary" id="go" type="submit">Get a code</button>
     </form>
   </section>
   <section id="wait" hidden>
-    <h1>Approve this iPad</h1>
-    <p>On a signed-in phone or computer, go to <strong id="where"></strong> and enter:</p>
-    <div class="code" id="code"></div>
-    <div class="qr" id="qr"></div>
-    <p>Or scan the code with a phone's camera. This waits until it's approved.</p>
+    <div class="copy">
+      <h1>Approve this iPad</h1>
+      <p>On a signed-in phone or computer, go to <strong id="where"></strong> and enter:</p>
+      <div class="code swap" id="code"></div>
+      <p class="status" id="waiting"><span class="dot" aria-hidden="true"></span>Waiting for approval…</p>
+      <div class="approved" id="approved" role="status" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Approved
+      </div>
+      <button class="quiet" id="back" type="button">Use a different address</button>
+    </div>
+    <div>
+      <div class="qr swap" id="qr"></div>
+      <p>Or scan this with your phone's camera.</p>
+    </div>
   </section>
   <p class="error" id="error" role="alert" hidden></p>
 </main>
 <script>
   const { invoke } = window.__TAURI__.core;
   const $ = (id) => document.getElementById(id);
-  const fail = (message) => {
-    $("error").textContent = String(message);
-    $("error").hidden = false;
+  const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
+  // Each code shown gets a turn; a reply for an older turn (one replaced or abandoned) is ignored.
+  let turn = 0;
+
+  const showAsk = () => {
+    $("main").classList.remove("wide");
     $("ask").hidden = false;
     $("wait").hidden = true;
     $("go").disabled = false;
+  };
+  const fail = (message) => {
+    $("error").textContent = String(message);
+    $("error").hidden = false;
+    showAsk();
+  };
+  const show = (code) => {
+    $("where").textContent = code.verification_uri.replace(/^https?:\/\//, "");
+    $("code").textContent = code.user_code;
+    $("qr").innerHTML = code.qr_svg;
+  };
+
+  // Shows a code and waits on it, renewing an expired one in place.
+  const signIn = async (server) => {
+    const mine = ++turn;
+    show(await invoke("begin_sign_in", { server }));
+    $("main").classList.add("wide");
+    $("ask").hidden = true;
+    $("wait").hidden = false;
+    $("waiting").hidden = false;
+    $("approved").hidden = true;
+    $("back").hidden = false;
+    for (;;) {
+      const result = await invoke("finish_sign_in");
+      if (mine !== turn || result === "cancelled") return;
+      if (result === "approved") {
+        $("waiting").hidden = true;
+        $("back").hidden = true;
+        $("approved").hidden = false;
+        await sleep(600);
+        await invoke("open_server");
+        return;
+      }
+      // "expired": a new code, faded in, with no error.
+      const next = await invoke("begin_sign_in", { server });
+      if (mine !== turn) return;
+      for (const id of ["code", "qr"]) $(id).classList.add("out");
+      await sleep(200);
+      show(next);
+      for (const id of ["code", "qr"]) $(id).classList.remove("out");
+    }
   };
 
   $("form").addEventListener("submit", async (event) => {
@@ -84,18 +168,28 @@
     $("error").hidden = true;
     $("go").disabled = true;
     try {
-      const code = await invoke("begin_sign_in", { server: $("server").value });
-      $("where").textContent = code.verification_uri.replace(/^https?:\/\//, "");
-      $("code").textContent = code.user_code;
-      $("qr").innerHTML = code.qr_svg;
-      $("ask").hidden = true;
-      $("wait").hidden = false;
-      // On approval the shell navigates this window to the server, so success never returns here.
-      await invoke("finish_sign_in");
+      await signIn($("server").value);
     } catch (message) {
       fail(message);
     }
   });
+
+  $("back").addEventListener("click", () => {
+    turn++;
+    invoke("cancel_sign_in").catch(() => {});
+    showAsk();
+    $("server").focus();
+  });
+
+  // A returning person taps once: the last server filled in, with focus on Get a code.
+  invoke("last_server").then((server) => {
+    if (server && !$("server").value) {
+      $("server").value = server;
+      $("go").focus();
+    } else {
+      $("server").focus();
+    }
+  }).catch(() => $("server").focus());
 </script>
 </body>
 </html>
