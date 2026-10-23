@@ -21,12 +21,11 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
         super.init(nibName: nil, bundle: nil)
         delegate = self
         let tabs: [(String, String, String)] = [
-            ("Library", "rectangle.stack", "/movies"),
             ("Search", "magnifyingglass", "/search"),
             ("Discover", "sparkles", "/discover"),
         ]
-        // Home is native (#158); the other tabs are web until their native screens land.
-        var stacks: [UINavigationController] = [stack(home(), title: "Home", symbol: "house")]
+        // Home and Library are native (#158); the other tabs are web until their native screens land.
+        var stacks: [UINavigationController] = [stack(home(), title: "Home", symbol: "house"), stack(library(), title: "Library", symbol: "rectangle.stack")]
         stacks += tabs.map { title, symbol, path in
             stack(WebPage(root: path, title: title, session: session, signedOut: signedOut), title: title, symbol: symbol)
         }
@@ -63,6 +62,20 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
             }
         ))
         screen.title = "Home"
+        screen.navigationItem.largeTitleDisplayMode = .always
+        return screen
+    }
+
+    private func library() -> UIViewController {
+        let screen = UIHostingController(rootView: LibraryScreen(session: session, open: { [weak self] card in
+            // Films and series have their native page; an album or a book is the web's until its own lands.
+            if card.itemType == "movie" || card.itemType == "series" {
+                self?.title(card, onTab: 1)
+            } else {
+                self?.push(path: "/item/\(card.id)", title: card.title ?? "", onTab: 1)
+            }
+        }))
+        screen.title = "Library"
         screen.navigationItem.largeTitleDisplayMode = .always
         return screen
     }
