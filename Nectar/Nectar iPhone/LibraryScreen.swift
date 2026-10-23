@@ -188,8 +188,12 @@ private struct Grid: View {
     private var square: Bool { model.library.kind == .music }
 
     var body: some View {
-        let columns = max(3, Int((width - margin * 2 + 12) / (120 + 12)))
-        let cell = (width - margin * 2 - CGFloat(columns - 1) * 12) / CGFloat(columns)
+        // Typed steps: as one expression, CI's compiler gave up type-checking it.
+        let inner: CGFloat = width - margin * 2
+        let fit: CGFloat = (inner + 12) / 132
+        let columns: Int = max(3, Int(fit))
+        let gaps: CGFloat = CGFloat(columns - 1) * 12
+        let cell: CGFloat = (inner - gaps) / CGFloat(columns)
         VStack(alignment: .leading, spacing: 12) {
             if model.total > 0 {
                 Text(model.library.kind.count(model.total)).font(.subheadline).foregroundStyle(.secondary).padding(.horizontal, margin)
