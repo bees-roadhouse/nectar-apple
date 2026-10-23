@@ -145,7 +145,7 @@ final class HomeModel {
             for (index, library) in libraries.enumerated() {
                 group.addTask {
                     let page = try? await session.media(.recentlyAdded(in: library))
-                    return (index, page.map { Shelf(id: "recent-\(library.id)", title: "Recently Added · \(library.name)", kind: library.kind, cards: $0.items) })
+                    return (index, page.map { Shelf(id: "recent-\(library.id)", title: "New in \(library.name)", kind: library.kind, cards: $0.items) })
                 }
             }
             for (offset, genre) in genres.enumerated() {

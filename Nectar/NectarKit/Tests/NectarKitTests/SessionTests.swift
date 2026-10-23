@@ -95,6 +95,18 @@ struct SessionTests {
         #expect(store.tokens == nil)
     }
 
+    @Test func aWebViewGetsTheCurrentTokenAndAFreshOneOnlyForTheStaleOne() async throws {
+        // The iPhone app's web views take their token from the session, which owns the one refresh (#156).
+        let store = InMemoryTokenStore(TokenSet(accessToken: "jwt-1", tokenType: "Bearer", expiresIn: nil, refreshToken: "r1"))
+        let transport = RoutedTransport(["/token": [(200, rotated)]])
+        let nectar = session(transport, store)
+        #expect(try await nectar.webToken() == "jwt-1")
+        #expect(await transport.calls["/token"] == nil, "no refresh for a token nobody refused")
+        #expect(try await nectar.webToken(replacing: "jwt-1") == "jwt-2")
+        #expect(try await nectar.webToken(replacing: "jwt-1") == "jwt-2", "a second view refused with the old one gets the new")
+        #expect(await transport.calls["/token"] == 1)
+    }
+
     @Test func noTokensMeansSignedOut() async throws {
         let transport = RoutedTransport([:])
         await #expect(throws: NectarSessionError.signedOut) {

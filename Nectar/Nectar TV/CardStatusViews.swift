@@ -6,6 +6,8 @@ extension Color {
     static let brhGold = Color(red: 0xE8 / 255, green: 0xA0 / 255, blue: 0x3A / 255)
     /// `--brh-gold-ink`: lettering on gold.
     static let brhGoldInk = Color(red: 0x1A / 255, green: 0x14 / 255, blue: 0x07 / 255)
+    /// `--brh-ok`: the Upgrading pill, #142's vocabulary as the web has it (gold is for what you tap: Capping, #159).
+    static let brhOk = Color(red: 0x8F / 255, green: 0xBF / 255, blue: 0x6A / 255)
     /// `--brh-err`: a stage that needs an admin.
     static let brhErr = Color(red: 0xE0 / 255, green: 0x6B / 255, blue: 0x52 / 255)
 }
@@ -36,13 +38,24 @@ private struct CardStatusOverlay: ViewModifier {
 /// "Upgrading", with its arrow: an owned title still looking for a better copy.
 struct UpgradingPill: View {
 
+    /// The pill's lettering: caption2 is right at a TV's distance, but on a phone it's 11 pt, under the 12 pt
+    /// floor (Capping, #158), so the phone takes caption1.
+    #if os(tvOS)
+    static let font = Font.caption2
+    #else
+    static let font = Font.caption
+    #endif
+
     var body: some View {
         Label("Upgrading", systemImage: "arrow.up")
-            .font(.caption2.weight(.semibold))
+            .lineLimit(1)
+            .font(Self.font.weight(.semibold))
             .foregroundStyle(Color.brhGoldInk)
+            // On green, as the web draws it; the TV followed gold in #142 before the vocabulary was settled.
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            .background(Color.brhGold, in: Capsule())
+            .background(Color.brhOk, in: Capsule())
+            .fixedSize()
             .accessibilityLabel("Upgrading")
     }
 }
@@ -54,7 +67,7 @@ struct ArrivalFoot: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            if let glyph { Image(systemName: glyph).font(.caption2).foregroundStyle(tint) }
+            if let glyph { Image(systemName: glyph).font(UpgradingPill.font).foregroundStyle(tint) }
             Track(arrival: arrival, tint: tint)
         }
         .padding(.horizontal, 8)
