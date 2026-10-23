@@ -24,6 +24,7 @@
 		78B3FB6C62587C8E95809EB3 /* SignInModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C5743A7D197AEA2D91A2408 /* SignInModel.swift */; };
 		803312CA733007F9BB89C9EE /* LibraryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63DE94A8834248B7D394AAD /* LibraryModel.swift */; };
 		81ABB7C5FB943A27E51E7CE4 /* SearchScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = E56AB1FEB721B958598AC244 /* SearchScreen.swift */; };
+		82A81A6CAD363760DDB1A3EA /* AccountScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F77DE340F8FF8179F74596D6 /* AccountScreen.swift */; };
 		8D45E7330983F819AB189085 /* PreloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43EB08DAAF458E5153B0C80E /* PreloadManager.swift */; };
 		978E0952E71BDEF00E664F99 /* WebPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78BAED1018FD02DE7E69338D /* WebPage.swift */; };
 		98CE401BFB278D55D2294F1D /* ServerModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88AC49082808E5A727E9706D /* ServerModel.swift */; };
@@ -81,6 +82,7 @@
 		E56AB1FEB721B958598AC244 /* SearchScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchScreen.swift; sourceTree = "<group>"; };
 		E5B71018F923FFAE3EF75008 /* NectarKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NectarKit; path = ../NectarKit; sourceTree = SOURCE_ROOT; };
 		F5AD0197CBA1A6EF00423524 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
+		F77DE340F8FF8179F74596D6 /* AccountScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountScreen.swift; sourceTree = "<group>"; };
 		F789E66CE2BDCF053BBDC515 /* AuthenticationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AuthenticationServices.framework; path = System/Library/Frameworks/AuthenticationServices.framework; sourceTree = SDKROOT; };
 		F850BC6F6427ACAE1D20FB25 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FD752F54E662AF45E56C4603 /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
@@ -123,6 +125,7 @@
 		31D82F20147FC785EADF1F6E /* Nectar iPhone */ = {
 			isa = PBXGroup;
 			children = (
+				F77DE340F8FF8179F74596D6 /* AccountScreen.swift */,
 				F850BC6F6427ACAE1D20FB25 /* Assets.xcassets */,
 				AF6D25A4A11EB94825ADB58F /* DiscoverScreen.swift */,
 				4448FD47C2D58C30D3B35C4E /* Frame.swift */,
@@ -263,6 +266,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F08B7390C6306F099382E126 /* AccountModel.swift in Sources */,
+				82A81A6CAD363760DDB1A3EA /* AccountScreen.swift in Sources */,
 				F3C9C585422B2A05DDF29D44 /* ActivityModel.swift in Sources */,
 				ABE3FDF15F818C54FB9AB5CB /* CachedImage.swift in Sources */,
 				A1ED6336F6ECC4E9D8F943AB /* CardStatusViews.swift in Sources */,
