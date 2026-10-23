@@ -264,7 +264,10 @@ private struct MomentRow: View {
             HStack(alignment: .top, spacing: 12) {
                 CachedImage(url: frame, maxPixelSize: 336, blurHash: nil) { image in
                     image.resizable().scaledToFill()
-                } placeholder: { Color.brhCard }
+                } placeholder: {
+                    // A song with no art says so with the kind's glyph, rather than looking like it's still loading.
+                    Color.brhCard.overlay { if mode == .audio { Image(systemName: "music.note").foregroundStyle(.secondary) } }
+                }
                 // A song's art is square; a moment's frame is the picture's shape.
                 .frame(width: mode == .audio ? 63 : 112, height: 63)
                 .clipShape(.rect(cornerRadius: 6))
