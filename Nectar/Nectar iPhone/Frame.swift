@@ -332,8 +332,14 @@ final class More: UITableViewController {
         } else {
             content.image = UIImage(systemName: row.symbol)
         }
+        // Scan a code presents the camera rather than pushing a page: a line saying what it's for, and no chevron.
+        let presents = row.path == More.scan
+        if presents {
+            content.secondaryText = "Approve another device's sign-in"
+            content.secondaryTextProperties.color = .secondaryLabel
+        }
         cell.contentConfiguration = content
-        cell.accessoryType = .disclosureIndicator
+        cell.accessoryType = presents ? .none : .disclosureIndicator
         return cell
     }
 
