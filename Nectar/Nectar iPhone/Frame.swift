@@ -52,7 +52,7 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
     }
 
     /// A page came on screen: it's the most recent, and anything past the limit gives its process back.
-    fileprivate func seen(_ page: WebPage) {
+    func seen(_ page: WebPage) {
         recent.removeAll { $0 === page }
         recent.insert(page, at: 0)
         for older in recent.dropFirst(Self.liveLimit) where older.isLive {
