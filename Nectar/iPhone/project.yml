@@ -1,0 +1,52 @@
+# The Nectar app's iPhone target (nectar-apple #156): native frame, NectarKit shared with Nectar TV. Generated into
+# NectarPhone.xcodeproj with `xcodegen generate` from this folder; the generated project is committed.
+name: NectarPhone
+options:
+  bundleIdPrefix: com.beesroadhouse.nectar
+  deploymentTarget:
+    iOS: "26.0"
+packages:
+  NectarKit:
+    path: ../NectarKit
+targets:
+  Nectar:
+    type: application
+    platform: iOS
+    sources:
+      - path: "../Nectar iPhone"
+      # The device-flow screen's model, shared with the TV as it is.
+      - path: "../Nectar TV/SignInModel.swift"
+    dependencies:
+      - package: NectarKit
+      - sdk: AuthenticationServices.framework
+      - sdk: WebKit.framework
+    info:
+      path: "../Nectar iPhone/Info.plist"
+      properties:
+        CFBundleDisplayName: Nectar
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        UILaunchScreen:
+          UIColorName: ""
+        UIUserInterfaceStyle: Dark
+        UIBackgroundModes: [audio]
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSCameraUsageDescription: Nectar uses the camera to scan another device's sign-in code.
+    settings:
+      base:
+        PRODUCT_NAME: Nectar
+        PRODUCT_BUNDLE_IDENTIFIER: com.beesroadhouse.nectar.ios
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "6.0"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: B5SARBZDRT
+        ENABLE_PREVIEWS: YES

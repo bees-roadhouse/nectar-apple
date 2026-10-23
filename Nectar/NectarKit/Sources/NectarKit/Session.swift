@@ -159,6 +159,15 @@ public actor NectarSession {
         return request
     }
 
+    /// The access token for a web view inside the app (the iPhone app's frame, #156): the current one, or a fresh one
+    /// when `stale` is the token the page was refused with. Shares the session's single refresh, so several web
+    /// views refused at once refresh once.
+    public func webToken(replacing stale: String? = nil) async throws -> String {
+        guard let tokens = store.tokens else { throw NectarSessionError.signedOut }
+        guard let stale, stale == tokens.accessToken else { return tokens.accessToken }
+        return try await refreshed(after: tokens).accessToken
+    }
+
     // MARK: - Refresh
 
     private func refreshed(after stale: TokenSet) async throws -> TokenSet {

@@ -1,0 +1,402 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		078195A399FAAE08482E61FC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F850BC6F6427ACAE1D20FB25 /* Assets.xcassets */; };
+		28C20CF4553A617E3493C536 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5AD0197CBA1A6EF00423524 /* SignInView.swift */; };
+		38BA0AD720DD08DF32374CA3 /* WebAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B5F77FD74E60A02A0F31D67 /* WebAuth.swift */; };
+		3C5DC5C84AA068DEA1EF6151 /* PhoneModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 166EB8D80371E473D2F659AB /* PhoneModel.swift */; };
+		697D7DBF449A4D713E926666 /* AuthenticationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F789E66CE2BDCF053BBDC515 /* AuthenticationServices.framework */; };
+		6CC5DFA4EB3535F03F62BDB7 /* NectarPhoneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C19EEAEF5402B7F83F6E48DC /* NectarPhoneApp.swift */; };
+		6F0B556DB143EDFCAB888695 /* Frame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4448FD47C2D58C30D3B35C4E /* Frame.swift */; };
+		78B3FB6C62587C8E95809EB3 /* SignInModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C5743A7D197AEA2D91A2408 /* SignInModel.swift */; };
+		978E0952E71BDEF00E664F99 /* WebPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78BAED1018FD02DE7E69338D /* WebPage.swift */; };
+		B547AF30CD8D5C58C8F7C00F /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FD752F54E662AF45E56C4603 /* WebKit.framework */; };
+		F35E792576A337FF8CA5D995 /* NectarKit in Frameworks */ = {isa = PBXBuildFile; productRef = B904F2A288B695B110A032C3 /* NectarKit */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		166EB8D80371E473D2F659AB /* PhoneModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneModel.swift; sourceTree = "<group>"; };
+		1C5743A7D197AEA2D91A2408 /* SignInModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInModel.swift; sourceTree = "<group>"; };
+		3B5F77FD74E60A02A0F31D67 /* WebAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebAuth.swift; sourceTree = "<group>"; };
+		4448FD47C2D58C30D3B35C4E /* Frame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Frame.swift; sourceTree = "<group>"; };
+		78BAED1018FD02DE7E69338D /* WebPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebPage.swift; sourceTree = "<group>"; };
+		78F09EDA9026A598D45FA992 /* Nectar.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Nectar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8772ECA24FFF2286A4436B72 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		C19EEAEF5402B7F83F6E48DC /* NectarPhoneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NectarPhoneApp.swift; sourceTree = "<group>"; };
+		E5B71018F923FFAE3EF75008 /* NectarKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NectarKit; path = ../NectarKit; sourceTree = SOURCE_ROOT; };
+		F5AD0197CBA1A6EF00423524 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
+		F789E66CE2BDCF053BBDC515 /* AuthenticationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AuthenticationServices.framework; path = System/Library/Frameworks/AuthenticationServices.framework; sourceTree = SDKROOT; };
+		F850BC6F6427ACAE1D20FB25 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		FD752F54E662AF45E56C4603 /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		1E838576C37BC7F47E5D93BE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F35E792576A337FF8CA5D995 /* NectarKit in Frameworks */,
+				697D7DBF449A4D713E926666 /* AuthenticationServices.framework in Frameworks */,
+				B547AF30CD8D5C58C8F7C00F /* WebKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		174DF4AA5C228FD69A917869 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				F789E66CE2BDCF053BBDC515 /* AuthenticationServices.framework */,
+				FD752F54E662AF45E56C4603 /* WebKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		1DF66B21583926BE9C194033 = {
+			isa = PBXGroup;
+			children = (
+				31D82F20147FC785EADF1F6E /* Nectar iPhone */,
+				AE85988A464C7F6E87E85BBE /* Nectar TV */,
+				448E974BD4602195907A8E5E /* Packages */,
+				174DF4AA5C228FD69A917869 /* Frameworks */,
+				8A93A4BBC13220F71A2CA1FC /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		31D82F20147FC785EADF1F6E /* Nectar iPhone */ = {
+			isa = PBXGroup;
+			children = (
+				F850BC6F6427ACAE1D20FB25 /* Assets.xcassets */,
+				4448FD47C2D58C30D3B35C4E /* Frame.swift */,
+				8772ECA24FFF2286A4436B72 /* Info.plist */,
+				C19EEAEF5402B7F83F6E48DC /* NectarPhoneApp.swift */,
+				166EB8D80371E473D2F659AB /* PhoneModel.swift */,
+				F5AD0197CBA1A6EF00423524 /* SignInView.swift */,
+				3B5F77FD74E60A02A0F31D67 /* WebAuth.swift */,
+				78BAED1018FD02DE7E69338D /* WebPage.swift */,
+			);
+			name = "Nectar iPhone";
+			path = "../Nectar iPhone";
+			sourceTree = "<group>";
+		};
+		448E974BD4602195907A8E5E /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				E5B71018F923FFAE3EF75008 /* NectarKit */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		8A93A4BBC13220F71A2CA1FC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				78F09EDA9026A598D45FA992 /* Nectar.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		AE85988A464C7F6E87E85BBE /* Nectar TV */ = {
+			isa = PBXGroup;
+			children = (
+				1C5743A7D197AEA2D91A2408 /* SignInModel.swift */,
+			);
+			name = "Nectar TV";
+			path = "../Nectar TV";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		C6CDE72454AA35FE043623A0 /* Nectar */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1F0B782124EADE433DBC7446 /* Build configuration list for PBXNativeTarget "Nectar" */;
+			buildPhases = (
+				36FEB52E0D2A1ED2FE8CDD8C /* Sources */,
+				D0B7B83FFD61938144D319B9 /* Resources */,
+				1E838576C37BC7F47E5D93BE /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Nectar;
+			packageProductDependencies = (
+				B904F2A288B695B110A032C3 /* NectarKit */,
+			);
+			productName = Nectar;
+			productReference = 78F09EDA9026A598D45FA992 /* Nectar.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		741E5CED7D43D616A0AA9F46 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					C6CDE72454AA35FE043623A0 = {
+						DevelopmentTeam = B5SARBZDRT;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = EB3BD1CA4798E1F8C3D8479F /* Build configuration list for PBXProject "NectarPhone" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 1DF66B21583926BE9C194033;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				6CC852A4D2A3CDE4D457723D /* XCLocalSwiftPackageReference "../NectarKit" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 8A93A4BBC13220F71A2CA1FC /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				C6CDE72454AA35FE043623A0 /* Nectar */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D0B7B83FFD61938144D319B9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				078195A399FAAE08482E61FC /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		36FEB52E0D2A1ED2FE8CDD8C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6F0B556DB143EDFCAB888695 /* Frame.swift in Sources */,
+				6CC5DFA4EB3535F03F62BDB7 /* NectarPhoneApp.swift in Sources */,
+				3C5DC5C84AA068DEA1EF6151 /* PhoneModel.swift in Sources */,
+				78B3FB6C62587C8E95809EB3 /* SignInModel.swift in Sources */,
+				28C20CF4553A617E3493C536 /* SignInView.swift in Sources */,
+				38BA0AD720DD08DF32374CA3 /* WebAuth.swift in Sources */,
+				978E0952E71BDEF00E664F99 /* WebPage.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		3E7DABEE62A266435C50508B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		57418FDCAE97BB934BBBC14E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		58A2345D12BC26A907A4A208 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = B5SARBZDRT;
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = "../Nectar iPhone/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.beesroadhouse.nectar.ios;
+				PRODUCT_NAME = Nectar;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		6BD8F5D30AB9D6BE128BA7B7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = B5SARBZDRT;
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = "../Nectar iPhone/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.beesroadhouse.nectar.ios;
+				PRODUCT_NAME = Nectar;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1F0B782124EADE433DBC7446 /* Build configuration list for PBXNativeTarget "Nectar" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6BD8F5D30AB9D6BE128BA7B7 /* Debug */,
+				58A2345D12BC26A907A4A208 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		EB3BD1CA4798E1F8C3D8479F /* Build configuration list for PBXProject "NectarPhone" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				57418FDCAE97BB934BBBC14E /* Debug */,
+				3E7DABEE62A266435C50508B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		6CC852A4D2A3CDE4D457723D /* XCLocalSwiftPackageReference "../NectarKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../NectarKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B904F2A288B695B110A032C3 /* NectarKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NectarKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 741E5CED7D43D616A0AA9F46 /* Project object */;
+}
