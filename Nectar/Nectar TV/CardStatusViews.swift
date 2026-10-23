@@ -48,12 +48,14 @@ struct UpgradingPill: View {
 
     var body: some View {
         Label("Upgrading", systemImage: "arrow.up")
+            .lineLimit(1)
             .font(Self.font.weight(.semibold))
             .foregroundStyle(Color.brhGoldInk)
             // On green, as the web draws it; the TV followed gold in #142 before the vocabulary was settled.
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(Color.brhOk, in: Capsule())
+            .fixedSize()
             .accessibilityLabel("Upgrading")
     }
 }
