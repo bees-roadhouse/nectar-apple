@@ -33,6 +33,8 @@ struct AccountScreen: View {
     private var revoking: JellyfinCredential?
     @State
     private var unlinking: SignInProvider?
+    @Environment(\.dynamicTypeSize)
+    private var typeSize
 
     var body: some View {
         List {
@@ -216,12 +218,14 @@ struct AccountScreen: View {
     private var devices: some View {
         Section {
             ForEach(model.devices ?? []) { device in
-                HStack {
+                // At the accessibility sizes the plate goes under the name, so the name keeps the row's width.
+                let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout())
+                layout {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(device.name)
                         Text(deviceLine(device)).font(.footnote).foregroundStyle(.secondary)
                     }
-                    Spacer()
+                    if !typeSize.isAccessibilitySize { Spacer() }
                     if device.isCurrent {
                         Text("This iPhone").font(.caption.weight(.semibold)).padding(.horizontal, 8).padding(.vertical, 3)
                             .background(Color.brhCard, in: .capsule)
