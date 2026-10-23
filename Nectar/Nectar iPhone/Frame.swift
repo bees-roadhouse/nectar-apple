@@ -200,9 +200,23 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
 
     /// A More row: its web page pushed onto More's stack, with the system's swipe back.
     private func open(_ row: More.Row) {
+        guard row.path != More.scan else { return scan() }
         if row.path == "/settings/account" { return account() }
         let page = WebPage(root: row.path, title: row.title, session: session, signedOut: signedOut)
         (viewControllers?.last as? UINavigationController)?.pushViewController(page, animated: true)
+    }
+
+    /// The camera over everything; an accepted code opens the native approve screen (#165), where the person confirms.
+    private func scan() {
+        Task {
+            let base = await session.baseURL
+            let origin = "\(base.scheme ?? "https")://\(base.host() ?? "")" + (base.port.map { ":\($0)" } ?? "")
+            NectarScanner.scan(from: self, origin: origin) { [weak self] link in
+                guard let self, let link, let url = URLComponents(string: link),
+                      let code = url.queryItems?.first(where: { $0.name == "code" })?.value else { return }
+                present(UIHostingController(rootView: ApproveDevice(session: session, code: code)), animated: true)
+            }
+        }
     }
 
     /// Account, native (#165 slice 1), pushed on More; Sign out lives at its foot now, not More's.
@@ -254,13 +268,20 @@ final class More: UITableViewController {
         let path: String
     }
 
+    /// The row that opens the camera rather than a page.
+    static let scan = "scan:"
+
     private let session: NectarSession
     private let open: (Row) -> Void
     private var user: NectarUser?
 
     private var groups: [[Row]] {
         [
-            [Row(title: user?.username ?? "Account", symbol: "person.crop.circle", path: "/settings/account")],
+            [
+                Row(title: user?.username ?? "Account", symbol: "person.crop.circle", path: "/settings/account"),
+                // The camera, for another device's sign-in code (#167): the TV's or a desktop's QR.
+                Row(title: "Scan a code", symbol: "qrcode.viewfinder", path: More.scan),
+            ],
             [
                 Row(title: "Playlists", symbol: "music.note.list", path: "/playlists"),
                 Row(title: "Collections", symbol: "square.stack", path: "/collections"),
@@ -307,14 +328,20 @@ final class More: UITableViewController {
         var content = cell.defaultContentConfiguration()
         let row = groups[indexPath.section][indexPath.row]
         content.text = row.title
-        if indexPath.section == 0, let initial = user?.username.first {
+        if indexPath.section == 0, indexPath.row == 0, let initial = user?.username.first {
             // The account: the gold initial, as the web's header showed it.
             content.image = Self.initial(String(initial).uppercased())
         } else {
             content.image = UIImage(systemName: row.symbol)
         }
+        // Scan a code presents the camera rather than pushing a page: a line saying what it's for, and no chevron.
+        let presents = row.path == More.scan
+        if presents {
+            content.secondaryText = "Approve another device's sign-in"
+            content.secondaryTextProperties.color = .secondaryLabel
+        }
         cell.contentConfiguration = content
-        cell.accessoryType = .disclosureIndicator
+        cell.accessoryType = presents ? .none : .disclosureIndicator
         return cell
     }
 
