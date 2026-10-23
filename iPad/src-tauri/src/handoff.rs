@@ -11,7 +11,7 @@ pub const FRAGMENT_KEY: &str = "nectar_shell_token";
 /// - It sets `__NECTAR_SHELL__`, which nectar reads when it needs it (nectar #750):
 ///   - `nativeHls` makes the player use `<video src>`, so it's AVPlayer underneath;
 ///   - `refreshToken` and `signedOut` go to the shell. Only the signed-in server's origin is allowed to call them.
-pub const INIT_SCRIPT: &str = r#"(() => {
+const INIT_SCRIPT: &str = r#"(() => {
   const match = location.hash.match(/(?:^#|&)nectar_shell_token=([^&]*)/);
   if (match) {
     const token = decodeURIComponent(match[1]);
@@ -22,12 +22,36 @@ pub const INIT_SCRIPT: &str = r#"(() => {
   const shell = (command) =>
     window.__TAURI_INTERNALS__ ? window.__TAURI_INTERNALS__.invoke(command) : Promise.resolve(null);
   window.__NECTAR_SHELL__ = {
-    version: 1,
+    version: 2,
     nativeHls: true,
+    device: "{DEVICE}",
     refreshToken: () => shell("refresh_token"),
     signedOut: () => shell("signed_out"),
   };
+  // nectar's own sign-in page never shows in the shell (Nate, 2026-10-23): a password there makes a browser
+  // session, not this device's, and passkeys can't work in an app's web view. Landing on it means signed out, so
+  // the shell's code screen takes over, with "Sign in on this iPhone" in the system sheet, where passkeys and
+  // Safari's passwords work (#144). The router moves by history, so both its calls are watched, and a full load.
+  const SIGN_IN = /^\/(login|setup)(\/|$)/;
+  const away = () => {
+    if (location.protocol === "tauri:" || !SIGN_IN.test(location.pathname)) return;
+    try { sessionStorage.removeItem("nectar_token"); } catch (e) {}
+    document.cookie = "nectar_session=; Path=/; Max-Age=0; SameSite=Lax";
+    shell("signed_out");
+  };
+  for (const name of ["pushState", "replaceState"]) {
+    const original = history[name].bind(history);
+    history[name] = (...args) => { const result = original(...args); away(); return result; };
+  }
+  addEventListener("popstate", away);
+  away();
 })();"#;
+
+/// The script with this device in it: `device` is "iPhone" or "iPad", for the shell-only touches the web client
+/// makes (Forage, #144: version 2). Layout keys off media queries, never off this.
+pub fn init_script(device: &'static str) -> String {
+    INIT_SCRIPT.replace("{DEVICE}", device)
+}
 
 /// What someone typed for a server, as an origin: `https://` added when there's no scheme, and any path dropped.
 /// Plain `http` is allowed only for a local address, since the token rides on every request.
@@ -113,6 +137,21 @@ mod tests {
         assert!(INIT_SCRIPT.contains(r#"sessionStorage.setItem("nectar_token""#));
         assert!(INIT_SCRIPT.contains(r#""nectar_session=""#));
         assert!(INIT_SCRIPT.contains(FRAGMENT_KEY));
-        assert!(INIT_SCRIPT.contains("version: 1") && INIT_SCRIPT.contains("nativeHls: true"));
+        assert!(INIT_SCRIPT.contains("nativeHls: true"));
+    }
+
+    #[test]
+    fn the_script_says_which_device_it_is_on() {
+        let script = init_script("iPhone");
+        assert!(script.contains("version: 2") && script.contains(r#"device: "iPhone""#));
+        assert!(!script.contains("{DEVICE}"));
+    }
+
+    #[test]
+    fn nectars_sign_in_page_hands_back_to_the_shell() {
+        // A password on the web's /login makes a browser session; the shell's code screen makes a device one.
+        assert!(INIT_SCRIPT.contains(r#"SIGN_IN = /^\/(login|setup)(\/|$)/"#));
+        assert!(INIT_SCRIPT.contains(r#"sessionStorage.removeItem("nectar_token")"#));
+        assert!(INIT_SCRIPT.contains(r#"shell("signed_out")"#) && INIT_SCRIPT.contains("pushState"));
     }
 }

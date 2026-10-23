@@ -26,6 +26,11 @@
     ],
     "android": {
       "debugApplicationIdSuffix": ".debug"
+    },
+    "iOS": {
+      "frameworks": [
+        "AuthenticationServices"
+      ]
     }
   }
 }
