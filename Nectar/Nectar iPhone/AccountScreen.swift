@@ -398,7 +398,7 @@ private struct ChangePassword: View {
                     SecureField("Confirm", text: $confirm).textContentType(.newPassword)
                 } footer: {
                     Text(new.isEmpty || confirm.isEmpty || new == confirm
-                        ? "At least 12 characters. Changing it signs out every other device, which sign in again with the new password."
+                        ? "At least 12 characters. Every other device signs out and signs in again with the new password."
                         : "The two new passwords don't match.")
                 }
                 Section {
@@ -426,9 +426,7 @@ private struct ChangePassword: View {
                     Button("Sign in", action: done)
                 }
             } message: {
-                Text(keptSignedIn
-                    ? "Every other device was signed out. This iPhone stays signed in."
-                    : "Every device was signed out, this iPhone too. Sign in again with your new password.")
+                Text(keptSignedIn ? "This iPhone stays signed in." : "Sign in again on this iPhone.")
             }
         }
         .modifier(Sensitive())
