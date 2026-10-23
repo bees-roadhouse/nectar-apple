@@ -21,12 +21,13 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
         super.init(nibName: nil, bundle: nil)
         delegate = self
         let tabs: [(String, String, String)] = [
-            ("Home", "house", "/"),
             ("Library", "rectangle.stack", "/movies"),
             ("Search", "magnifyingglass", "/search"),
             ("Discover", "sparkles", "/discover"),
         ]
-        var stacks: [UINavigationController] = tabs.map { title, symbol, path in
+        // Home is native (#158); the other tabs are web until their native screens land.
+        var stacks: [UINavigationController] = [stack(home(), title: "Home", symbol: "house")]
+        stacks += tabs.map { title, symbol, path in
             stack(WebPage(root: path, title: title, session: session, signedOut: signedOut), title: title, symbol: symbol)
         }
         stacks.append(stack(More(session: session, open: { [weak self] row in self?.open(row) }, signOut: signedOut), title: "More", symbol: "ellipsis"))
@@ -43,6 +44,25 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
         stack.tabBarItem = UITabBarItem(title: title, image: UIImage(systemName: symbol), selectedImage: nil)
         stack.delegate = self
         return stack
+    }
+
+    private func home() -> UIViewController {
+        let model = HomeModel(session: session, signedOut: signedOut)
+        let screen = UIHostingController(rootView: HomeScreen(
+            model: model,
+            open: { [weak self] card in self?.push(path: "/item/\(card.id)", title: card.title ?? "", onTab: 0) },
+            openDiscover: { [weak self] _ in self?.push(path: "/discover", title: "Discover", onTab: 0) }
+        ))
+        screen.title = "Home"
+        screen.navigationItem.largeTitleDisplayMode = .always
+        return screen
+    }
+
+    /// A web page pushed onto a tab's stack, until its native screen lands.
+    private func push(path: String, title: String, onTab tab: Int) {
+        let page = WebPage(root: path, title: title, session: session, signedOut: signedOut)
+        page.navigationItem.largeTitleDisplayMode = .never
+        (viewControllers?[tab] as? UINavigationController)?.pushViewController(page, animated: true)
     }
 
     /// A More row: its web page pushed onto More's stack, with the system's swipe back.

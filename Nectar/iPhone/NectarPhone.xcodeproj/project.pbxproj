@@ -29,6 +29,7 @@
 		A1ED6336F6ECC4E9D8F943AB /* CardStatusViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64CBB980A399CACD745B6DBF /* CardStatusViews.swift */; };
 		ABE3FDF15F818C54FB9AB5CB /* CachedImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CDEBAA3D531D83289CF74E4 /* CachedImage.swift */; };
 		B547AF30CD8D5C58C8F7C00F /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FD752F54E662AF45E56C4603 /* WebKit.framework */; };
+		BC11E64DB66FD6CDA3EC1406 /* HomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D84E692AE9CB9E7311B65B44 /* HomeScreen.swift */; };
 		C2913725FF836BA69C49B42A /* ItemDetailModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C299E22052A0EE39B61A7B55 /* ItemDetailModel.swift */; };
 		C7C05639177F09B8D33519E5 /* TitleCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3470885CB9602C46D7CD6FF /* TitleCatalog.swift */; };
 		E6BE14FD78F0235D1CAB0B90 /* LibrarySearchModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D71B495270536E69BE0651AA /* LibrarySearchModel.swift */; };
@@ -66,6 +67,7 @@
 		C3470885CB9602C46D7CD6FF /* TitleCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TitleCatalog.swift; sourceTree = "<group>"; };
 		D5290B2E341E1B3899B6054F /* DiscoverState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverState.swift; sourceTree = "<group>"; };
 		D71B495270536E69BE0651AA /* LibrarySearchModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibrarySearchModel.swift; sourceTree = "<group>"; };
+		D84E692AE9CB9E7311B65B44 /* HomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreen.swift; sourceTree = "<group>"; };
 		DE4EE47DB464A9FC9C7C16A8 /* DiscoverModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverModel.swift; sourceTree = "<group>"; };
 		E5B71018F923FFAE3EF75008 /* NectarKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NectarKit; path = ../NectarKit; sourceTree = SOURCE_ROOT; };
 		F5AD0197CBA1A6EF00423524 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
@@ -113,6 +115,7 @@
 			children = (
 				F850BC6F6427ACAE1D20FB25 /* Assets.xcassets */,
 				4448FD47C2D58C30D3B35C4E /* Frame.swift */,
+				D84E692AE9CB9E7311B65B44 /* HomeScreen.swift */,
 				8772ECA24FFF2286A4436B72 /* Info.plist */,
 				C19EEAEF5402B7F83F6E48DC /* NectarPhoneApp.swift */,
 				166EB8D80371E473D2F659AB /* PhoneModel.swift */,
@@ -253,6 +256,7 @@
 				449AFF47CF83E92D6138E5C1 /* Durations.swift in Sources */,
 				6F0B556DB143EDFCAB888695 /* Frame.swift in Sources */,
 				FB0AA563A0BBF12296E74CEB /* HomeModel.swift in Sources */,
+				BC11E64DB66FD6CDA3EC1406 /* HomeScreen.swift in Sources */,
 				C2913725FF836BA69C49B42A /* ItemDetailModel.swift in Sources */,
 				803312CA733007F9BB89C9EE /* LibraryModel.swift in Sources */,
 				E6BE14FD78F0235D1CAB0B90 /* LibrarySearchModel.swift in Sources */,

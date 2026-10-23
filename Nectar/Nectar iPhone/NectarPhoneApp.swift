@@ -1,3 +1,4 @@
+import AVFoundation
 import NectarKit
 import SwiftUI
 
@@ -7,6 +8,11 @@ struct NectarPhoneApp: App {
 
     @State
     private var model = PhoneModel()
+
+    init() {
+        // Playback, so nectar's sound keeps going with the phone locked or another app in front.
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
+    }
 
     var body: some Scene {
         WindowGroup {
