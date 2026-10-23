@@ -151,8 +151,10 @@ fn device(shell: State<'_, Shell>) -> &'static str {
 /// device can sign in there (Safari's saved passwords fill it) and approve this one (Capping, #144). The code's own
 /// poll sees the approval and closes the sheet; closing it without approving just leaves the code screen. The URL
 /// is the server's own, from the pending code; the page can't choose it.
+/// Async so it runs off the main thread: `sheet` hands the work to the main thread and waits for it, which would
+/// deadlock from a plain command (Tauri runs those on the main thread).
 #[tauri::command]
-fn open_approval(app: AppHandle, shell: State<'_, Shell>) -> Result<(), String> {
+async fn open_approval(app: AppHandle, shell: State<'_, Shell>) -> Result<(), String> {
     let target = shell.approval.lock().unwrap().clone().ok_or("There's no code waiting.")?;
     let parsed = url::Url::parse(&target).map_err(|_| "The server sent an approval link that isn't a web address.")?;
     if !matches!(parsed.scheme(), "https" | "http") {
