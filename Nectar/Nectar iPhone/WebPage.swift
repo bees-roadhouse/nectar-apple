@@ -115,6 +115,12 @@ final class WebPage: UIViewController, WKScriptMessageHandlerWithReply, WKNaviga
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        // UIKit shows the large title only with the scroll view at -adjustedContentInset.top, not at 0, where a
+        // fresh page starts (Capping, #159): put a page that's at the top there, so the title is large on load.
+        let scroll = webView.scrollView
+        if place.scrollY == 0, scroll.contentOffset.y <= 0 {
+            scroll.setContentOffset(CGPoint(x: 0, y: -scroll.adjustedContentInset.top), animated: false)
+        }
         if snapshot != nil, place.scrollY == 0 { settle() }
     }
 

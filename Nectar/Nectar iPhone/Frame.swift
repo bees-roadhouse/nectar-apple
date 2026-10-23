@@ -22,14 +22,14 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
         delegate = self
         let tabs: [(String, String, String)] = [
             ("Home", "house", "/"),
-            ("Library", "square.grid.2x2", "/movies"),
+            ("Library", "rectangle.stack", "/movies"),
             ("Search", "magnifyingglass", "/search"),
             ("Discover", "sparkles", "/discover"),
         ]
         var stacks: [UINavigationController] = tabs.map { title, symbol, path in
             stack(WebPage(root: path, title: title, session: session, signedOut: signedOut), title: title, symbol: symbol)
         }
-        stacks.append(stack(More(open: { [weak self] row in self?.open(row) }), title: "More", symbol: "ellipsis"))
+        stacks.append(stack(More(session: session, open: { [weak self] row in self?.open(row) }, signOut: signedOut), title: "More", symbol: "ellipsis"))
         setViewControllers(stacks, animated: false)
         tabBar.tintColor = UIColor(red: 0xE8 / 255, green: 0xA0 / 255, blue: 0x3A / 255, alpha: 1)
     }
@@ -77,7 +77,9 @@ extension Frame: UINavigationControllerDelegate {
     }
 }
 
-/// More: the pages that aren't tabs, as the system's own list.
+/// More: what isn't a tab, and what the web's header carried before frame mode took it away (Capping, #159), as the
+/// system's inset groups: the account, the collections of things, requests and activity, the Console and Settings, and
+/// Sign out.
 @MainActor
 final class More: UITableViewController {
 
@@ -87,17 +89,33 @@ final class More: UITableViewController {
         let path: String
     }
 
-    private let rows = [
-        Row(title: "Playlists", symbol: "music.note.list", path: "/playlists"),
-        Row(title: "Collections", symbol: "rectangle.stack", path: "/collections"),
-        Row(title: "Requests", symbol: "tray.and.arrow.down", path: "/requests"),
-        Row(title: "Activity", symbol: "clock.arrow.circlepath", path: "/activity"),
-        Row(title: "Settings", symbol: "gearshape", path: "/settings"),
-    ]
+    private let session: NectarSession
     private let open: (Row) -> Void
+    private let signOut: () -> Void
+    private var user: NectarUser?
 
-    init(open: @escaping (Row) -> Void) {
+    private var groups: [[Row]] {
+        [
+            [Row(title: user?.username ?? "Account", symbol: "person.crop.circle", path: "/settings/account")],
+            [
+                Row(title: "Playlists", symbol: "music.note.list", path: "/playlists"),
+                Row(title: "Collections", symbol: "square.stack", path: "/collections"),
+                Row(title: "People", symbol: "person.2", path: "/people"),
+                Row(title: "Genres", symbol: "tag", path: "/genres"),
+            ],
+            [
+                Row(title: "Requests", symbol: "tray.and.arrow.down", path: "/requests"),
+                Row(title: "Activity", symbol: "clock.arrow.circlepath", path: "/activity"),
+            ],
+            (user?.isAdmin == true ? [Row(title: "Console", symbol: "slider.horizontal.3", path: "/console")] : [])
+                + [Row(title: "Settings", symbol: "gearshape", path: "/settings")],
+        ]
+    }
+
+    init(session: NectarSession, open: @escaping (Row) -> Void, signOut: @escaping () -> Void) {
+        self.session = session
         self.open = open
+        self.signOut = signOut
         super.init(style: .insetGrouped)
         title = "More"
         navigationItem.largeTitleDisplayMode = .always
@@ -106,13 +124,39 @@ final class More: UITableViewController {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("not from a storyboard") }
 
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { rows.count }
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        Task {
+            user = try? await session.currentUser()
+            tableView.reloadData()
+        }
+    }
+
+    override func numberOfSections(in tableView: UITableView) -> Int { groups.count + 1 }
+
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        section < groups.count ? groups[section].count : 1
+    }
 
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = UITableViewCell(style: .default, reuseIdentifier: nil)
         var content = cell.defaultContentConfiguration()
-        content.text = rows[indexPath.row].title
-        content.image = UIImage(systemName: rows[indexPath.row].symbol)
+        guard indexPath.section < groups.count else {
+            content.text = "Sign out"
+            content.textProperties.color = .systemRed
+            content.image = UIImage(systemName: "rectangle.portrait.and.arrow.right")
+            content.imageProperties.tintColor = .systemRed
+            cell.contentConfiguration = content
+            return cell
+        }
+        let row = groups[indexPath.section][indexPath.row]
+        content.text = row.title
+        if indexPath.section == 0, let initial = user?.username.first {
+            // The account: the gold initial, as the web's header showed it.
+            content.image = Self.initial(String(initial).uppercased())
+        } else {
+            content.image = UIImage(systemName: row.symbol)
+        }
         cell.contentConfiguration = content
         cell.accessoryType = .disclosureIndicator
         return cell
@@ -120,7 +164,24 @@ final class More: UITableViewController {
 
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        open(rows[indexPath.row])
+        guard indexPath.section < groups.count else { return signOut() }
+        open(groups[indexPath.section][indexPath.row])
+    }
+
+    /// A gold disc with the account's initial, at the row's image size.
+    private static func initial(_ letter: String) -> UIImage {
+        let size = CGSize(width: 29, height: 29)
+        return UIGraphicsImageRenderer(size: size).image { _ in
+            UIColor(red: 0xE8 / 255, green: 0xA0 / 255, blue: 0x3A / 255, alpha: 1).setFill()
+            UIBezierPath(ovalIn: CGRect(origin: .zero, size: size)).fill()
+            let text = letter as NSString
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 15, weight: .semibold),
+                .foregroundColor: UIColor(red: 0x1A / 255, green: 0x14 / 255, blue: 0x07 / 255, alpha: 1),
+            ]
+            let box = text.size(withAttributes: attributes)
+            text.draw(at: CGPoint(x: (size.width - box.width) / 2, y: (size.height - box.height) / 2), withAttributes: attributes)
+        }
     }
 }
 
