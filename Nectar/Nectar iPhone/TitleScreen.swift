@@ -66,6 +66,13 @@ struct TitleScreen: View {
                 }
                 .padding(.horizontal, margin)
             }
+            if detail.itemType == "series", !model.seasons.isEmpty {
+                Section {
+                    episodes(detail, margin: margin)
+                } header: {
+                    seasonChips(margin: margin)
+                }
+            }
             if !detail.cast.isEmpty {
                 Shelf(title: "Cast", margin: margin) {
                     ForEach(detail.cast) { member in
@@ -84,13 +91,6 @@ struct TitleScreen: View {
                         }
                         .buttonStyle(Pressed())
                     }
-                }
-            }
-            if detail.itemType == "series", !model.seasons.isEmpty {
-                Section {
-                    episodes(detail, margin: margin)
-                } header: {
-                    seasonChips(margin: margin)
                 }
             }
             facts(detail).padding(.horizontal, margin)
@@ -172,9 +172,19 @@ struct TitleScreen: View {
     /// own, so the capsule under it doesn't move when the words arrive.
     @ViewBuilder
     private func status(_ detail: ItemDetail) -> some View {
+        let pipeline = CardStatus.of(detail.pipeline, owned: true)
         Group {
-            if let status = CardStatus.of(detail.pipeline, owned: true) {
-                DetailStatus(status: status)
+            if case let .arriving(arrival) = pipeline, arrival.state != .waiting {
+                // Something is moving for the title: the pipeline's line and bar, in the state's place.
+                DetailStatus(status: .arriving(arrival))
+            } else if let state = detail.libraryState {
+                // #789: the server's pill and sentence, as every client says them (Capping, #159).
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    StatePill(state: state)
+                    Text(state.sentence).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+            } else if let pipeline {
+                DetailStatus(status: pipeline)
             } else if let following = CardStatus.following(detail.pipeline, isSeries: detail.itemType == "series") {
                 Text(following).font(.subheadline).foregroundStyle(.secondary)
             }
@@ -316,6 +326,28 @@ struct TitleScreen: View {
 
 private extension String {
     var nilIfEmpty: String? { isEmpty ? nil : self }
+}
+
+/// #686's pill for a library state: active (Upgrading with its arrow, missing episodes) on the green, the rest on the
+/// at-rest plate, caption1 at 12 pt.
+private struct StatePill: View {
+    let state: LibraryState
+
+    var body: some View {
+        Label {
+            Text(state.label)
+        } icon: {
+            if state.state == "upgrading" { Image(systemName: "arrow.up") }
+        }
+        .labelStyle(.titleAndIcon)
+        .font(UpgradingPill.font.weight(.semibold))
+        .foregroundStyle(state.isActive ? Color.brhGoldInk : .secondary)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(state.isActive ? Color.brhOk : Color.brhCard, in: .capsule)
+        .overlay { if !state.isActive { Capsule().stroke(Color.brhLineDim) } }
+        .fixedSize()
+    }
 }
 
 /// The one gold capsule, full width at 48 pt.
