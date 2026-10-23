@@ -149,7 +149,7 @@ private final class ScannerScreen: UIViewController {
 }
 
 /// The camera, through VisionKit's scanner where it's supported, or AVFoundation's capture session.
-private class Camera {
+private class Camera: NSObject {
     func start() {}
     func stop() {}
     func layout(in bounds: CGRect) {}
