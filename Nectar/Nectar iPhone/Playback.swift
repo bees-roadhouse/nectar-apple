@@ -14,6 +14,8 @@ final class Playback {
     private(set) var current: PlayerModel?
     /// Full screen, or the mini player on the dock.
     var expanded = false
+    /// In the system's picture in picture window: the dock steps aside, since the picture is already floating.
+    var pictureInPicture = false
     /// The rest of a season after the current episode.
     private var queue: [MediaCard] = []
     /// Told when a title or a queue ends, so the screen that started it can refresh its rows and marks.
@@ -64,16 +66,21 @@ final class Playback {
     private func stopCurrent() {
         current?.stop()
         current = nil
+        pictureInPicture = false
     }
 }
 
 /// The system's player, full screen, for whatever `Playback` has: its controls, PiP, AirPlay and track menus, nothing
 /// of ours over them. Dismissing it minimises to the dock; it doesn't stop.
+/// Picture in picture is the system's: its button, and the automatic one when the app leaves while full screen. Back
+/// from the floating window, the same controller is presented again, so the picture carries on without a cut.
 @MainActor
-final class FullPlayer: AVPlayerViewController {
+final class FullPlayer: AVPlayerViewController, AVPlayerViewControllerDelegate {
 
     private let playback: Playback
     private var failure: UIHostingController<Failure>?
+    /// Presents this controller again when picture in picture hands back; Frame does it, since it owns presenting.
+    var restore: ((FullPlayer, @escaping () -> Void) -> Void)?
 
     init(playback: Playback) {
         self.playback = playback
@@ -82,6 +89,26 @@ final class FullPlayer: AVPlayerViewController {
         allowsPictureInPicturePlayback = true
         canStartPictureInPictureAutomaticallyFromInline = true
         updatesNowPlayingInfoCenter = true
+        delegate = self
+    }
+
+    nonisolated func playerViewControllerWillStartPictureInPicture(_ controller: AVPlayerViewController) {
+        MainActor.assumeIsolated { playback.pictureInPicture = true }
+    }
+
+    nonisolated func playerViewControllerDidStopPictureInPicture(_ controller: AVPlayerViewController) {
+        MainActor.assumeIsolated { playback.pictureInPicture = false }
+    }
+
+    nonisolated func playerViewController(
+        _ controller: AVPlayerViewController,
+        restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completion: @escaping (Bool) -> Void
+    ) {
+        nonisolated(unsafe) let completion = completion
+        MainActor.assumeIsolated {
+            guard let restore, presentingViewController == nil else { return completion(true) }
+            restore(self) { completion(true) }
+        }
     }
 
     @available(*, unavailable)

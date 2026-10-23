@@ -16,6 +16,8 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
     let playback: Playback
     private lazy var dock = UIHostingController(rootView: MiniPlayer(playback: playback))
     private static let dockHeight: CGFloat = 64
+    /// The full player for what's playing, kept so picture in picture comes back to the same controller.
+    private var full: FullPlayer?
     /// The web pages most recently seen first, for choosing which to reclaim.
     private var recent: [WebPage] = []
 
@@ -58,26 +60,45 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
     /// The dock shows while something plays and isn't full screen; the full player comes and goes with `expanded`.
     private func followPlayback() {
         withObservationTracking {
-            arrange(playing: playback.current != nil, expanded: playback.expanded)
+            arrange(playing: playback.current != nil, expanded: playback.expanded, floating: playback.pictureInPicture)
         } onChange: { [weak self] in
             Task { @MainActor in self?.followPlayback() }
         }
     }
 
-    private func arrange(playing: Bool, expanded: Bool) {
-        let docked = playing && !expanded
+    private func arrange(playing: Bool, expanded: Bool, floating: Bool) {
+        let docked = playing && !expanded && !floating
         dock.view.isHidden = !docked
         // Every tab's content clears the dock while it's there.
         for stack in viewControllers ?? [] {
             stack.additionalSafeAreaInsets.bottom = docked ? Self.dockHeight + 8 : 0
         }
-        let full = presentedViewController as? FullPlayer
-        if expanded, playing, full == nil, presentedViewController == nil {
+        if !playing { full = nil }
+        let shown = presentedViewController as? FullPlayer
+        if expanded, playing, shown == nil, presentedViewController == nil {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            present(FullPlayer(playback: playback), animated: true)
-        } else if !expanded || !playing, let full, !full.isBeingDismissed {
-            full.dismiss(animated: true)
+            present(fullPlayer(), animated: true)
+        } else if !expanded || !playing, let shown, !shown.isBeingDismissed {
+            shown.dismiss(animated: true)
         }
+    }
+
+    /// One full player per title, so a title back from picture in picture returns to the controller that has it.
+    private func fullPlayer() -> FullPlayer {
+        if let full { return full }
+        let made = FullPlayer(playback: playback)
+        made.restore = { [weak self] player, done in
+            guard let self else { return done() }
+            // Whatever is up (a sheet, a menu) makes way for the player.
+            let present = { self.present(player, animated: true) { self.playback.expanded = true; done() } }
+            if let presented = presentedViewController, presented !== player {
+                presented.dismiss(animated: false, completion: present)
+            } else {
+                present()
+            }
+        }
+        full = made
+        return made
     }
 
     private func stack(_ root: UIViewController, title: String, symbol: String) -> UINavigationController {
