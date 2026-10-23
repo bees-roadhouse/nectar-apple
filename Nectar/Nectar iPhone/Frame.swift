@@ -50,7 +50,7 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
         let model = HomeModel(session: session, signedOut: signedOut)
         let screen = UIHostingController(rootView: HomeScreen(
             model: model,
-            open: { [weak self] card in self?.push(path: "/item/\(card.id)", title: card.title ?? "", onTab: 0) },
+            open: { [weak self] card in self?.title(card, onTab: 0) },
             openDiscover: { [weak self] _ in self?.push(path: "/discover", title: "Discover", onTab: 0) },
             seeAll: { [weak self] shelf in
                 // "recent-<library>" opens the library, "genre-<name>" the genre, as web pages until theirs are native.
@@ -65,6 +65,26 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
         screen.title = "Home"
         screen.navigationItem.largeTitleDisplayMode = .always
         return screen
+    }
+
+    /// A title's native page (#158), pushed onto a tab's stack: the bar transparent over its hero, the system's bar with
+    /// the name once the hero scrolls away.
+    private func title(_ card: MediaCard, onTab tab: Int) {
+        guard let stack = viewControllers?[tab] as? UINavigationController else { return }
+        let model = ItemDetailModel(id: card.id, session: session, playlistAdding: PlaylistAdding(session: session))
+        let screen = UIHostingController(rootView: TitleScreen(
+            model: model,
+            open: { [weak self] card in self?.title(card, onTab: tab) },
+            openPerson: { [weak self] person in self?.push(path: "/person/\(person.id)", title: person.name, onTab: tab) },
+            back: { [weak stack] in _ = stack?.popViewController(animated: true) }
+        ))
+        screen.title = card.title
+        screen.navigationItem.largeTitleDisplayMode = .never
+        let clear = UINavigationBarAppearance()
+        clear.configureWithTransparentBackground()
+        clear.titleTextAttributes = [.foregroundColor: UIColor.clear]
+        screen.navigationItem.scrollEdgeAppearance = clear
+        stack.pushViewController(screen, animated: true)
     }
 
     /// A web page pushed onto a tab's stack, until its native screen lands.

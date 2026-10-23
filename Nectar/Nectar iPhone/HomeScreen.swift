@@ -110,10 +110,10 @@ struct HomeScreen: View {
 }
 
 /// The kit's snappy spring (response 0.3, damping 0.86), until feel.json's Swift output carries it (hive-mind #366).
-private let snappy = Animation.spring(response: 0.3, dampingFraction: 0.86)
+let snappy = Animation.spring(response: 0.3, dampingFraction: 0.86)
 
 /// A shelf's header row (44 pt: the title, and See all where it goes somewhere), then its cards sideways, snapping.
-private struct Shelf<Cards: View>: View {
+struct Shelf<Cards: View>: View {
     let title: String
     let margin: CGFloat
     var seeAll: (() -> Void)?
@@ -236,7 +236,7 @@ private struct Hero: View {
 }
 
 /// Page 2451's capsules at 44 pt: gold with gold-ink lettering, or the card with a dim line.
-private struct CapsuleStyle: ButtonStyle {
+struct CapsuleStyle: ButtonStyle {
     let primary: Bool
 
     func makeBody(configuration: Configuration) -> some View {
@@ -307,7 +307,7 @@ private struct WideCard: View {
 }
 
 /// A poster, 2:3 at 120 with radius 8, its title and year under it (and For You's reason, two lines kept).
-private struct Poster: View {
+struct Poster: View {
     static let width: Double = 120
 
     let title: String
@@ -341,7 +341,7 @@ private struct Poster: View {
 }
 
 /// The long-press preview: the poster at full size, with the card's status words.
-private struct Preview: View {
+struct Preview: View {
     let card: MediaCard
     let session: NectarSession
 
@@ -366,7 +366,7 @@ private struct Preview: View {
 }
 
 /// The touch press: into the page at 0.97 on the kit's spring; a touch that becomes a scroll fires nothing.
-private struct Pressed: ButtonStyle {
+struct Pressed: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
@@ -415,7 +415,7 @@ private struct Nothing: View {
 }
 
 /// Add to playlist, as a sheet: the playlists, or a new one by name.
-private struct AddToPlaylist: View {
+struct AddToPlaylist: View {
     let target: PlaylistAdding.Target
     let model: PlaylistAdding
 
@@ -497,7 +497,7 @@ struct PlayerScreen: View {
     }
 }
 
-private struct SystemPlayer: UIViewControllerRepresentable {
+struct SystemPlayer: UIViewControllerRepresentable {
     let player: AVPlayer
 
     func makeUIViewController(context: Context) -> AVPlayerViewController {
