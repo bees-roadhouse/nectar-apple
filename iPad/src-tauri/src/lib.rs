@@ -3,6 +3,8 @@ mod handoff;
 mod servers;
 mod store;
 #[cfg(target_os = "ios")]
+mod share;
+#[cfg(target_os = "ios")]
 mod web_auth;
 
 use serde::Serialize;
@@ -126,7 +128,7 @@ struct CodeView {
 }
 
 #[tauri::command]
-async fn begin_sign_in(server: String, name: Option<String>, shell: State<'_, Shell>) -> Result<CodeView, String> {
+async fn begin_sign_in(server: String, name: Option<String>, app: AppHandle, shell: State<'_, Shell>) -> Result<CodeView, String> {
     shell.cancel.notify_waiters();
     let origin = handoff::server_origin(&server)?;
     let endpoints = auth::discover(&shell.net, &origin).await.map_err(|e| auth::explain(&e, &origin))?;
@@ -136,7 +138,8 @@ async fn begin_sign_in(server: String, name: Option<String>, shell: State<'_, Sh
         .map(|qr| qr.render::<qrcode::render::svg::Color>().min_dimensions(240, 240).build())
         .unwrap_or_default();
     let view = CodeView { user_code: code.user_code.clone(), verification_uri: code.verification_uri.clone(), expires_in: code.expires_in, qr_svg };
-    *shell.approval.lock().unwrap() = Some(target);
+    *shell.approval.lock().unwrap() = Some(target.clone());
+    offer(&app, Some(target));
     *shell.pending.lock().unwrap() = Some(Pending { origin, name, endpoints, code });
     Ok(view)
 }
@@ -166,23 +169,48 @@ async fn open_approval(app: AppHandle, shell: State<'_, Shell>) -> Result<(), St
 /// Opens the sign-in sheet at `url`, or closes the one that's open (`None`). On the main thread, where UIKit is.
 fn sheet(app: &AppHandle, url: Option<String>) -> Result<(), String> {
     #[cfg(target_os = "ios")]
-    {
-        let window = app.get_webview_window("main").ok_or("The app's window is gone.")?;
-        let (sent, got) = std::sync::mpsc::channel();
-        window
-            .with_webview(move |view| {
-                let _ = sent.send(match &url {
-                    Some(url) => web_auth::open(url, view.view_controller()),
-                    None => Ok(web_auth::close()),
-                });
-            })
-            .map_err(|e| e.to_string())?;
-        return got.recv().map_err(|e| e.to_string())?;
-    }
+    return on_main(app, move |controller| match &url {
+        Some(url) => web_auth::open(url, controller),
+        None => Ok(web_auth::close()),
+    })?;
     #[cfg(not(target_os = "ios"))]
     {
         let _ = (app, url);
         Err("Signing in on this device needs iOS.".into())
+    }
+}
+
+/// Offers the code's approval link to the person's other devices through Handoff while it's shown (`None` stops),
+/// so the Mac's Dock opens it in Safari (#148). Best effort: Handoff may be off.
+fn offer(app: &AppHandle, url: Option<String>) {
+    #[cfg(target_os = "ios")]
+    let _ = on_main(app, move |_| share::offer(url.as_deref()));
+    #[cfg(not(target_os = "ios"))]
+    let _ = (app, url);
+}
+
+/// Runs `work` on the main thread with the webview's view controller, and waits for it. Only from off the main
+/// thread (an async command), or it deadlocks.
+#[cfg(target_os = "ios")]
+fn on_main<R: Send + 'static>(app: &AppHandle, work: impl FnOnce(*mut std::ffi::c_void) -> R + Send + 'static) -> Result<R, String> {
+    let window = app.get_webview_window("main").ok_or("The app's window is gone.")?;
+    let (sent, got) = std::sync::mpsc::channel();
+    window.with_webview(move |view| { let _ = sent.send(work(view.view_controller())); }).map_err(|e| e.to_string())?;
+    got.recv().map_err(|e| e.to_string())
+}
+
+/// "Send to another device" (Nate, 2026-10-23: "send to your desktop via airplay or something"): the system share
+/// sheet with the code's approval link, for AirDrop, Messages, Mail or Copy (#148). `from` is the control's frame
+/// in the page, where an iPad's popover points. As with the sign-in sheet, the link is the pending code's own.
+#[tauri::command]
+async fn share_approval(from: [f64; 4], app: AppHandle, shell: State<'_, Shell>) -> Result<(), String> {
+    let target = shell.approval.lock().unwrap().clone().ok_or("There's no code waiting.")?;
+    #[cfg(target_os = "ios")]
+    return on_main(&app, move |controller| share::share(&target, controller, from))?;
+    #[cfg(not(target_os = "ios"))]
+    {
+        let _ = (app, target, from);
+        Err("Sharing needs iOS.".into())
     }
 }
 
@@ -266,6 +294,7 @@ async fn finish_sign_in(app: AppHandle, shell: State<'_, Shell>) -> Result<&'sta
     // The sign-in sheet, if the person approved in it, has done its job (or its code has); nothing else closes it.
     shell.approval.lock().unwrap().take();
     let _ = sheet(&app, None);
+    offer(&app, None);
     match outcome.map_err(|e| e.to_string())? {
         auth::Outcome::Approved(tokens) => {
             let landing = signed_in(&app, &shell, origin, name, endpoints, tokens)?;
@@ -397,7 +426,7 @@ pub fn run() {
     let kind = device_kind();
     tauri::Builder::default()
         .manage(Shell { net, device: kind, store: store::Keychain, session: Mutex::new(None), pending: Mutex::new(None), approval: Mutex::new(None), handover: Mutex::new(None), cancel: tokio::sync::Notify::new() })
-        .invoke_handler(tauri::generate_handler![begin_sign_in, servers, save_server, remove_server, open_saved, resume, finish_sign_in, cancel_sign_in, open_server, refresh_token, signed_out, device, open_approval])
+        .invoke_handler(tauri::generate_handler![begin_sign_in, servers, save_server, remove_server, open_saved, resume, finish_sign_in, cancel_sign_in, open_server, refresh_token, signed_out, device, open_approval, share_approval])
         .setup(|app| {
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .initialization_script(handoff::init_script(kind))
