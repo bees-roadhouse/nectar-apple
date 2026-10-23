@@ -11,7 +11,7 @@ struct LibraryView: View {
     private var searching = false
 
     init(library: Library, session: NectarSession) {
-        _model = State(initialValue: LibraryModel(library: library, session: session))
+        _model = State(initialValue: LibraryModel(library: library, session: session, posterWidth: LibraryPoster.Shape(library.kind).size.width))
     }
 
     private var shape: LibraryPoster.Shape { .init(model.library.kind) }

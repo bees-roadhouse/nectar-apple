@@ -1,12 +1,6 @@
 import NectarKit
 import SwiftUI
 
-/// Titles to play one after another: a playlist, or a series from an episode on.
-struct PlayQueue: Identifiable {
-    let id = UUID()
-    let cards: [MediaCard]
-}
-
 /// Plays a queue: one player per title, the next when one ends, back to where it was opened after the last
 /// (or whenever the viewer leaves).
 struct QueuePlayer: View {

@@ -14,8 +14,26 @@ targets:
     platform: iOS
     sources:
       - path: "../Nectar iPhone"
-      # The device-flow screen's model, shared with the TV as it is.
+      # The TV app's models and its two portable views, shared as they are (#158): the screens are the phone's own.
       - path: "../Nectar TV/SignInModel.swift"
+      - path: "../Nectar TV/AccountModel.swift"
+      - path: "../Nectar TV/ActivityModel.swift"
+      - path: "../Nectar TV/DiscoverModel.swift"
+      - path: "../Nectar TV/HomeModel.swift"
+      - path: "../Nectar TV/ItemDetailModel.swift"
+      - path: "../Nectar TV/LibraryModel.swift"
+      - path: "../Nectar TV/LibrarySearchModel.swift"
+      - path: "../Nectar TV/PlayerModel.swift"
+      - path: "../Nectar TV/PlaylistsModel.swift"
+      - path: "../Nectar TV/PreloadManager.swift"
+      - path: "../Nectar TV/SearchModel.swift"
+      - path: "../Nectar TV/ServerModel.swift"
+      - path: "../Nectar TV/CachedImage.swift"
+      - path: "../Nectar TV/CardStatusViews.swift"
+      - path: "../Nectar TV/PlaylistAdding.swift"
+      - path: "../Nectar TV/PlayQueue.swift"
+      - path: "../Nectar TV/Durations.swift"
+      - path: "../Nectar TV/DiscoverState.swift"
     dependencies:
       - package: NectarKit
       - sdk: AuthenticationServices.framework

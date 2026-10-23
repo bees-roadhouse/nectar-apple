@@ -105,10 +105,9 @@ private struct Waiting: LabelStyle {
 }
 
 extension Color {
-    /// The Brand & Visual Identity Standard's media-app roles (KB page 2451), as the shell's launch page uses them.
+    /// The Brand & Visual Identity Standard's media-app roles (KB page 2451) the TV's `CardStatusViews` doesn't already
+    /// carry (gold and gold-ink are there).
     static let brhNight = Color(red: 0x11 / 255, green: 0x12 / 255, blue: 0x14 / 255)
     static let brhCard = Color(red: 0x1D / 255, green: 0x20 / 255, blue: 0x24 / 255)
     static let brhLineDim = Color(red: 0x2A / 255, green: 0x2D / 255, blue: 0x32 / 255)
-    static let brhGold = Color(red: 0xE8 / 255, green: 0xA0 / 255, blue: 0x3A / 255)
-    static let brhGoldInk = Color(red: 0x1A / 255, green: 0x14 / 255, blue: 0x07 / 255)
 }

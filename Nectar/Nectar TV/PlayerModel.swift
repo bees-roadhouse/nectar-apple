@@ -142,7 +142,10 @@ final class PlayerModel: Identifiable {
     /// holding up the first frame.
     private func describe(_ item: AVPlayerItem?) {
         guard let item else { return }
+        // `externalMetadata` is tvOS's; the iPhone app's Now Playing comes through MPNowPlayingInfoCenter (#157).
+        #if os(tvOS)
         item.externalMetadata = NowPlaying.metadata(for: card, detail: nil, artwork: nil)
+        #endif
         let session = session, card = card
         Task { [weak self, weak item] in
             async let detail = try? session.detail(card.id)
@@ -151,7 +154,11 @@ final class PlayerModel: Identifiable {
             let fetched = await detail
             let full = NowPlaying.metadata(for: card, detail: fetched, artwork: artwork)
             await MainActor.run {
+                #if os(tvOS)
                 item?.externalMetadata = full
+                #else
+                _ = (item, full)
+                #endif
                 self?.source = fetched?.source
             }
         }
