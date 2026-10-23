@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-share-approval"
+description = "Enables the share_approval command without any pre-configured scope."
+commands.allow = ["share_approval"]
+
+[[permission]]
+identifier = "deny-share-approval"
+description = "Denies the share_approval command without any pre-configured scope."
+commands.deny = ["share_approval"]

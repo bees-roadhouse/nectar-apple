@@ -71,6 +71,7 @@
   .secondary:focus-visible { outline: 2px solid var(--brh-gold-hi); outline-offset: 3px; }
   .here { width: min(320px, 100%); margin-top: 18px; }
   .fallback { display: none; }
+  .send { margin: 0 0 12px; min-height: 44px; }
   /* The iPhone's code screen (Capping, #144): the button first, no QR, the code as one line. */
   .phone #wait .here { width: 100%; margin: 12px 0 8px; }
   .phone #wait .on-other, .phone #wait #code, .phone #wait .qr-box { display: none; }
@@ -159,6 +160,9 @@
       </div>
       <!-- A phone can't scan its own screen: there, the code is this one line (Capping, #144). -->
       <p class="fallback">Or enter <strong id="code-line"></strong> on a device that's signed in.</p>
+      <!-- The approval link, with the code in it, to the person's Mac or another phone: AirDrop, Messages, Mail or
+           Copy, through the system share sheet (Nate, 2026-10-23, #148). -->
+      <button class="quiet send" id="send" type="button">Send this code to another device</button>
     </div>
     <div class="qr-box">
       <div class="qr swap" id="qr"></div>
@@ -276,6 +280,7 @@
     $("back").textContent = servers.length ? "Choose another server" : "Use a different address";
     $("back").style.visibility = "";
     $("here-wrap").style.visibility = "";
+    $("send").style.visibility = "";
     for (;;) {
       const result = await invoke("finish_sign_in");
       if (mine !== turn || result === "cancelled") return;
@@ -283,6 +288,7 @@
         $("waiting").hidden = true;
         $("back").style.visibility = "hidden";
         $("here-wrap").style.visibility = "hidden";
+        $("send").style.visibility = "hidden";
         $("approved").hidden = false;
         await sleep(600);
         await invoke("open_server");
@@ -361,6 +367,10 @@
   });
 
   $("here").addEventListener("click", () => invoke("open_approval").catch((error) => say(error)));
+  $("send").addEventListener("click", () => {
+    const r = $("send").getBoundingClientRect();
+    invoke("share_approval", { from: [r.x, r.y, r.width, r.height] }).catch((error) => say(error));
+  });
   $("back").addEventListener("click", () => {
     turn++;
     invoke("cancel_sign_in").catch(() => {});
