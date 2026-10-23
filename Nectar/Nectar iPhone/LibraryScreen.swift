@@ -15,6 +15,8 @@ struct LibraryScreen: View {
     /// One model per library, so switching back keeps its place and its filters.
     @State
     private var models: [Library.ID: LibraryModel] = [:]
+    @State
+    private var filtering = false
 
     var body: some View {
         GeometryReader { proxy in
@@ -33,9 +35,26 @@ struct LibraryScreen: View {
                 }
             }
             .contentMargins(.bottom, 32, for: .scrollContent)
+            .refreshable { await current?.reload() }
         }
         .background(Color.brhNight)
-        .toolbar { if let model = current { ToolbarItem(placement: .topBarTrailing) { Sorting(model: model) } } }
+        .toolbar {
+            if let model = current {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Sorting(model: model)
+                    if !model.filters.genres.isEmpty || !model.filters.resolutions.isEmpty {
+                        Button { filtering = true } label: {
+                            Image(systemName: "line.3.horizontal.decrease.circle").accessibilityLabel("Filter")
+                        }
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $filtering) {
+            if let model = current {
+                Filters(model: model).presentationDetents([.medium]).presentationDragIndicator(.visible)
+            }
+        }
         .task {
             guard libraries == nil else { return }
             libraries = (try? await session.libraries()) ?? []
@@ -53,6 +72,18 @@ struct LibraryScreen: View {
     }
 
     private func chips(margin: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ScrollViewReader { reader in
+                libraryChips(margin: margin)
+                    .onChange(of: selected, initial: true) { _, id in if let id { reader.scrollTo(id, anchor: .center) } }
+            }
+            if let model = current { ActiveFilters(model: model, margin: margin) }
+        }
+        .padding(.bottom, 4)
+        .background(Color.brhNight)
+    }
+
+    private func libraryChips(margin: CGFloat) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(libraries ?? []) { library in
@@ -67,12 +98,76 @@ struct LibraryScreen: View {
                             .overlay { if !on { Capsule().stroke(Color.brhLineDim) } }
                             .frame(minHeight: 44)
                     }
+                    .id(library.id)
                 }
             }
         }
         .contentMargins(.horizontal, margin, for: .scrollContent)
-        .padding(.bottom, 4)
-        .background(Color.brhNight)
+    }
+}
+
+/// The filters that are on, as chips under the libraries, each undone with its ×, so the grid's state is visible and
+/// undoable without opening the sheet (Capping, #158).
+private struct ActiveFilters: View {
+    let model: LibraryModel
+    let margin: CGFloat
+
+    var body: some View {
+        let on: [(String, (inout LibraryQuery) -> Void)] = [
+            model.query.genre.map { ($0, { $0.genre = nil }) },
+            model.query.resolution.map { ($0, { $0.resolution = nil }) },
+        ].compactMap(\.self)
+        if !on.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(on, id: \.0) { label, clear in
+                        Button { Task { await model.change(clear) } } label: {
+                            HStack(spacing: 6) {
+                                Text(label)
+                                Image(systemName: "xmark").imageScale(.small)
+                            }
+                            .font(.subheadline)
+                            .padding(.horizontal, 12)
+                            .frame(minHeight: 32)
+                            .background(Color.brhCard, in: .capsule)
+                            .overlay { Capsule().stroke(Color.brhLineDim) }
+                            .frame(minHeight: 44)
+                        }
+                        .accessibilityLabel("Remove \(label)")
+                    }
+                }
+            }
+            .contentMargins(.horizontal, margin, for: .scrollContent)
+        }
+    }
+}
+
+/// The filters, as a medium sheet with the system's rows.
+private struct Filters: View {
+    let model: LibraryModel
+    @Environment(\.dismiss)
+    private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if !model.filters.genres.isEmpty {
+                    Picker("Genre", selection: Binding(get: { model.query.genre }, set: { genre in Task { await model.change { $0.genre = genre } } })) {
+                        Text("All genres").tag(String?.none)
+                        ForEach(model.filters.genres, id: \.self) { Text($0).tag(String?.some($0)) }
+                    }
+                }
+                if !model.filters.resolutions.isEmpty {
+                    Picker("Resolution", selection: Binding(get: { model.query.resolution }, set: { resolution in Task { await model.change { $0.resolution = resolution } } })) {
+                        Text("Any resolution").tag(String?.none)
+                        ForEach(model.filters.resolutions, id: \.self) { Text($0).tag(String?.some($0)) }
+                    }
+                }
+            }
+            .navigationTitle("Filter")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        }
     }
 }
 
@@ -97,18 +192,29 @@ private struct Grid: View {
         let cell = (width - margin * 2 - CGFloat(columns - 1) * 12) / CGFloat(columns)
         VStack(alignment: .leading, spacing: 12) {
             if model.total > 0 {
-                Text(model.library.kind.count(model.total)).font(.footnote).foregroundStyle(.secondary).padding(.horizontal, margin)
+                Text(model.library.kind.count(model.total)).font(.subheadline).foregroundStyle(.secondary).padding(.horizontal, margin)
             }
             switch model.state {
             case .loading where model.items.isEmpty:
                 Placeholders(width: width, margin: margin, square: square)
             case .failed where model.items.isEmpty:
                 Text("Can't reach nectar right now.").foregroundStyle(.secondary).padding(.horizontal, margin)
+            case .loaded where model.items.isEmpty:
+                // An empty library, or nothing left after the filters: the one-thing pattern, one line.
+                Text(model.query.genre != nil || model.query.resolution != nil ? "Nothing matches these filters." : "Nothing in this library yet.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 240)
             default:
                 LazyVGrid(columns: Array(repeating: GridItem(.fixed(cell), spacing: 12, alignment: .top), count: columns), alignment: .leading, spacing: 18) {
                     ForEach(model.items) { card in
                         tile(card, cell: cell)
                             .task { await model.loadMore(after: card) }
+                    }
+                    // The next page's tiles at their size, six at a time, never a spinner.
+                    if model.items.count < model.total {
+                        ForEach(0 ..< 6, id: \.self) { _ in
+                            RoundedRectangle(cornerRadius: 8).fill(Color.brhCard).frame(width: cell, height: square ? cell : cell * 1.5)
+                        }
                     }
                 }
                 .padding(.horizontal, margin)
@@ -153,23 +259,12 @@ private struct Sorting: View {
             Picker("Sort", selection: Binding(get: { model.query.sort }, set: { sort in Task { await model.change { $0.sort = sort } } })) {
                 ForEach(LibraryQuery.Sort.allCases, id: \.self) { sort in Text(label(sort)).tag(sort) }
             }
-            Toggle("Descending", isOn: Binding(get: { model.query.descending }, set: { on in Task { await model.change { $0.descending = on } } }))
-            if !model.filters.genres.isEmpty {
-                Picker("Genre", selection: Binding(get: { model.query.genre }, set: { genre in Task { await model.change { $0.genre = genre } } })) {
-                    Text("All genres").tag(String?.none)
-                    ForEach(model.filters.genres, id: \.self) { Text($0).tag(String?.some($0)) }
-                }
-                .pickerStyle(.menu)
-            }
-            if !model.filters.resolutions.isEmpty {
-                Picker("Resolution", selection: Binding(get: { model.query.resolution }, set: { resolution in Task { await model.change { $0.resolution = resolution } } })) {
-                    Text("Any resolution").tag(String?.none)
-                    ForEach(model.filters.resolutions, id: \.self) { Text($0).tag(String?.some($0)) }
-                }
-                .pickerStyle(.menu)
+            Picker("Order", selection: Binding(get: { model.query.descending }, set: { on in Task { await model.change { $0.descending = on } } })) {
+                Text("Ascending").tag(false)
+                Text("Descending").tag(true)
             }
         } label: {
-            Image(systemName: "line.3.horizontal.decrease.circle").accessibilityLabel("Sort and filter")
+            Image(systemName: "arrow.up.arrow.down.circle").accessibilityLabel("Sort")
         }
     }
 

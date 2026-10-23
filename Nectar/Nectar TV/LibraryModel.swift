@@ -72,7 +72,8 @@ final class LibraryModel {
         opened = card
     }
 
-    private func reload() async {
+    /// The first page again: pull to refresh on the phone (#158), and every change of the query.
+    func reload() async {
         state = .loading
         do {
             let page = try await session.media(query)
