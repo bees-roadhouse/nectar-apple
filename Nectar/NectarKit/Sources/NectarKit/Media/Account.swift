@@ -206,6 +206,15 @@ public struct SignInProvider: Equatable, Identifiable, Sendable {
     public let id: String
     public let name: String
     public let linked: Bool
+    /// The provider's own account page, where its passkeys live (Keycloak's Signing in); nil when it has none.
+    public var accountURL: URL?
+
+    public init(id: String, name: String, linked: Bool, accountURL: URL? = nil) {
+        self.id = id
+        self.name = name
+        self.linked = linked
+        self.accountURL = accountURL
+    }
 }
 
 /// A Jellyfin app credential just made: the password is shown once and kept nowhere.
@@ -234,13 +243,13 @@ extension NectarSession {
 
     /// Every provider the server offers, marked with this account's links.
     public func signInProviders() async throws -> [SignInProvider] {
-        struct Status: Decodable { struct Provider: Decodable { let id: String; let name: String? }; let providers: [Provider]? }
+        struct Status: Decodable { struct Provider: Decodable { let id: String; let name: String?; let account_url: URL? }; let providers: [Provider]? }
         struct Linked: Decodable { struct Identity: Decodable { let provider_id: String? }; let identities: [Identity] }
         async let status = get("api/v1/settings/setup-status")
         async let identities = get("api/v1/users/me/identities")
         let offered = try JSONDecoder().decode(Status.self, from: try await status).providers ?? []
         let linked = Set(try JSONDecoder().decode(Linked.self, from: try await identities).identities.compactMap(\.provider_id))
-        return offered.map { SignInProvider(id: $0.id, name: $0.name ?? $0.id, linked: linked.contains($0.id)) }
+        return offered.map { SignInProvider(id: $0.id, name: $0.name ?? $0.id, linked: linked.contains($0.id), accountURL: $0.account_url) }
     }
 
     /// Where to send the person to link a provider: nectar hands out the provider's URL for this signed-in account.

@@ -169,6 +169,13 @@ struct AccountScreen: View {
                 if provider.linked {
                     LabeledContent(provider.name, value: "Linked")
                         .swipeActions { Button("Remove", role: .destructive) { unlinking = provider } }
+                    // Passkeys live with the provider (Keycloak's Signing in page), in the system's sign-in sheet.
+                    if let account = provider.accountURL {
+                        Button { WebAuth.shared.open(account) } label: {
+                            Label("Passkeys and sign-in at \(provider.name)", systemImage: "person.badge.key")
+                        }
+                        .foregroundStyle(.primary)
+                    }
                 } else {
                     Button("Link \(provider.name)…") { link(provider) }.foregroundStyle(.primary)
                 }

@@ -93,12 +93,12 @@ struct AccountManageTests {
 
     @Test func providersAreMarkedWithThisAccountsLinks() async throws {
         let server = Server([
-            "GET /api/v1/settings/setup-status": (200, #"{"providers":[{"id":"keycloak","name":"Roadhouse"},{"id":"google","name":"Google"}]}"#),
+            "GET /api/v1/settings/setup-status": (200, #"{"providers":[{"id":"keycloak","name":"Roadhouse","account_url":"https://id.test/realms/r/account/#/security/signingin"},{"id":"google","name":"Google","account_url":null}]}"#),
             "GET /api/v1/users/me/identities": (200, #"{"identities":[{"provider_id":"keycloak"}]}"#),
         ])
         let providers = try await session(server).signInProviders()
         #expect(providers == [
-            SignInProvider(id: "keycloak", name: "Roadhouse", linked: true),
+            SignInProvider(id: "keycloak", name: "Roadhouse", linked: true, accountURL: URL(string: "https://id.test/realms/r/account/#/security/signingin")),
             SignInProvider(id: "google", name: "Google", linked: false),
         ])
     }
