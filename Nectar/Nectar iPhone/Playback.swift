@@ -123,13 +123,25 @@ final class FullPlayer: AVPlayerViewController {
         }
     }
 
+    /// Whether it was playing as the dismissal began: the system pauses its player on the way out.
+    private var wasPlaying = false
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        wasPlaying = (player?.rate ?? 0) > 0
+    }
+
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         // Gone by the system's close or a swipe down: down to the dock, still playing.
         guard isBeingDismissed || presentingViewController == nil else { return }
-        let wasPlaying = (player?.rate ?? 0) > 0
         if playback.expanded { playback.expanded = false }
-        if wasPlaying { player?.play() }
+        // The system pauses after this returns, so play on the next beat.
+        guard wasPlaying, let player else { return }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(150))
+            if player.rate == 0 { player.play() }
+        }
     }
 }
 
@@ -182,8 +194,9 @@ struct MiniPlayer: View {
     }
 
     private func bar(_ model: PlayerModel) -> some View {
-        let player: AVPlayer? = if case let .playing(player, _) = model.phase { player } else { nil }
-        let (position, duration) = times(player, model)
+        let playing: (AVPlayer, PlaybackDecision)? = if case let .playing(player, decision) = model.phase { (player, decision) } else { nil }
+        let player = playing?.0
+        let (position, duration) = times(playing, model)
         return HStack(spacing: 12) {
             PictureView(player: player)
                 .frame(width: 71, height: 40)
@@ -225,10 +238,14 @@ struct MiniPlayer: View {
         .accessibilityAction(named: "Expand") { playback.expanded = true }
     }
 
-    private func times(_ player: AVPlayer?, _ model: PlayerModel) -> (Double, Double) {
-        let position = player.map { $0.currentTime().seconds }.flatMap { $0.isFinite ? $0 : nil } ?? 0
-        let duration = player?.currentItem?.duration.seconds ?? .nan
-        return (position, duration.isFinite ? duration : model.card.runtimeSeconds ?? 0)
+    /// Where it is in the title's own seconds: a transcode's stream starts at its resume offset, as the model counts.
+    private func times(_ playing: (AVPlayer, PlaybackDecision)?, _ model: PlayerModel) -> (Double, Double) {
+        guard let (player, decision) = playing else { return (model.card.progressSeconds ?? 0, model.card.runtimeSeconds ?? 0) }
+        let offset = decision.strategy == .hls ? decision.startOffsetSeconds : 0
+        let raw = player.currentTime().seconds
+        let stream = player.currentItem?.duration.seconds ?? .nan
+        let duration = model.card.runtimeSeconds ?? (stream.isFinite ? stream + offset : 0)
+        return ((raw.isFinite ? raw : 0) + offset, duration)
     }
 
     /// The show and episode, or the time left; "Converting for this phone" while a transcode starts.
