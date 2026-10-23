@@ -9,7 +9,7 @@ use objc2::runtime::AnyObject;
 use objc2::{AllocAnyThread, MainThreadMarker, MainThreadOnly};
 use objc2_core_foundation::{CGPoint, CGRect, CGSize};
 use objc2_foundation::{NSArray, NSString, NSURL, NSUserActivity, NSUserActivityTypeBrowsingWeb};
-use objc2_ui_kit::{UIActivityViewController, UIViewController};
+use objc2_ui_kit::{UIActivityViewController, UIDevice, UIUserInterfaceIdiom, UIViewController};
 
 thread_local! {
     /// The Handoff offer while a code is shown.
@@ -26,12 +26,21 @@ pub fn share(url: &str, controller: *mut c_void, from: [f64; 4]) -> Result<(), S
     let sheet = unsafe {
         UIActivityViewController::initWithActivityItems_applicationActivities(UIActivityViewController::alloc(main), &items, None)
     };
-    if let (Some(popover), Some(view)) = (sheet.popoverPresentationController(), controller.view()) {
-        let [x, y, w, h] = from;
-        popover.setSourceView(Some(&view));
-        popover.setSourceRect(CGRect::new(CGPoint::new(x, y), CGSize::new(w, h)));
+    // Only an iPad's sheet is a popover from the control. On an iPhone it's left to the system's own bottom sheet: a
+    // source given there made iOS 26 draw it as a clipped miniature by the control (Nate's iPhone, 2026-10-23).
+    if UIDevice::currentDevice(main).userInterfaceIdiom() == UIUserInterfaceIdiom::Pad {
+        if let (Some(popover), Some(view)) = (sheet.popoverPresentationController(), controller.view()) {
+            let [x, y, w, h] = from;
+            popover.setSourceView(Some(&view));
+            popover.setSourceRect(CGRect::new(CGPoint::new(x, y), CGSize::new(w, h)));
+        }
     }
-    controller.presentViewController_animated_completion(&sheet, true, None);
+    // From the window's top controller, so the sheet sits over the whole app, not inside the webview's.
+    let mut top = controller.view().and_then(|view| view.window()).and_then(|window| window.rootViewController());
+    while let Some(presented) = top.as_ref().and_then(|c| c.presentedViewController()) {
+        top = Some(presented);
+    }
+    top.as_deref().unwrap_or(controller).presentViewController_animated_completion(&sheet, true, None);
     Ok(())
 }
 
