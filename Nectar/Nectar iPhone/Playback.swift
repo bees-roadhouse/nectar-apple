@@ -225,7 +225,7 @@ struct MiniPlayer: View {
         let player = playing?.0
         let (position, duration) = times(playing, model)
         return HStack(spacing: 12) {
-            PictureView(player: player, playback: playback)
+            PictureView(player: player, playback: playback, active: !playback.expanded)
                 .frame(width: 71, height: 40)
                 .background(Color.black)
                 .clipShape(.rect(cornerRadius: 6))
@@ -293,11 +293,16 @@ struct MiniPlayer: View {
 private struct PictureView: UIViewRepresentable {
     let player: AVPlayer?
     let playback: Playback
+    /// Only while docked: with the full player up, two layers on one player both offering picture in picture left the
+    /// system choosing the hidden one, and leaving the app paused instead of floating (Nate, 2026-10-23).
+    let active: Bool
 
     func makeUIView(context: Context) -> PlayerLayerView { PlayerLayerView(playback: playback) }
 
     func updateUIView(_ view: PlayerLayerView, context: Context) {
-        if view.playerLayer.player !== player { view.playerLayer.player = player }
+        let wanted = active ? player : nil
+        if view.playerLayer.player !== wanted { view.playerLayer.player = wanted }
+        view.offersPictureInPicture = active
     }
 
     final class PlayerLayerView: UIView, AVPictureInPictureControllerDelegate {
@@ -305,6 +310,9 @@ private struct PictureView: UIViewRepresentable {
         var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
         private let playback: Playback
         private var pictureInPicture: AVPictureInPictureController?
+        var offersPictureInPicture = true {
+            didSet { pictureInPicture?.canStartPictureInPictureAutomaticallyFromInline = offersPictureInPicture }
+        }
 
         init(playback: Playback) {
             self.playback = playback
