@@ -12,12 +12,17 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
 
     private let session: NectarSession
     private let signedOut: () -> Void
+    /// The app's one player, and its mini player on the dock above the tab bar (#157).
+    let playback: Playback
+    private lazy var dock = UIHostingController(rootView: MiniPlayer(playback: playback))
+    private static let dockHeight: CGFloat = 64
     /// The web pages most recently seen first, for choosing which to reclaim.
     private var recent: [WebPage] = []
 
     init(session: NectarSession, signedOut: @escaping () -> Void) {
         self.session = session
         self.signedOut = signedOut
+        playback = Playback(session: session)
         super.init(nibName: nil, bundle: nil)
         delegate = self
         let tabs: [(String, String, String)] = [
@@ -37,6 +42,46 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("not from a storyboard") }
 
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        addChild(dock)
+        dock.view.backgroundColor = .clear
+        view.addSubview(dock.view)
+        dock.didMove(toParent: self)
+        followPlayback()
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        dock.view.frame = CGRect(x: 8, y: tabBar.frame.minY - Self.dockHeight - 8, width: view.bounds.width - 16, height: Self.dockHeight)
+        view.bringSubviewToFront(dock.view)
+    }
+
+    /// The dock shows while something plays and isn't full screen; the full player comes and goes with `expanded`.
+    private func followPlayback() {
+        withObservationTracking {
+            arrange(playing: playback.current != nil, expanded: playback.expanded)
+        } onChange: { [weak self] in
+            Task { @MainActor in self?.followPlayback() }
+        }
+    }
+
+    private func arrange(playing: Bool, expanded: Bool) {
+        let docked = playing && !expanded
+        dock.view.isHidden = !docked
+        // Every tab's content clears the dock while it's there.
+        for stack in viewControllers ?? [] {
+            stack.additionalSafeAreaInsets.bottom = docked ? Self.dockHeight + 8 : 0
+        }
+        let full = presentedViewController as? FullPlayer
+        if expanded, playing, full == nil, presentedViewController == nil {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            present(FullPlayer(playback: playback), animated: true)
+        } else if !expanded || !playing, let full, !full.isBeingDismissed {
+            full.dismiss(animated: true)
+        }
+    }
+
     private func stack(_ root: UIViewController, title: String, symbol: String) -> UINavigationController {
         let stack = UINavigationController(rootViewController: root)
         stack.navigationBar.prefersLargeTitles = true
@@ -49,6 +94,7 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
         let model = HomeModel(session: session, signedOut: signedOut)
         let screen = UIHostingController(rootView: HomeScreen(
             model: model,
+            playback: playback,
             open: { [weak self] card in self?.title(card, onTab: 0) },
             openDiscover: { [weak self] _ in self?.push(path: "/discover", title: "Discover", onTab: 0) },
             seeAll: { [weak self] shelf in
@@ -87,6 +133,7 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
         let model = ItemDetailModel(id: card.id, session: session, playlistAdding: PlaylistAdding(session: session))
         let screen = UIHostingController(rootView: TitleScreen(
             model: model,
+            playback: playback,
             open: { [weak self] card in self?.title(card, onTab: tab) },
             openPerson: { [weak self] person in self?.push(path: "/person/\(person.id)", title: person.name, onTab: tab) },
             back: { [weak stack] in _ = stack?.popViewController(animated: true) }

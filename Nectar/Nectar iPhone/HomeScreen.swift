@@ -8,6 +8,7 @@ import SwiftUI
 struct HomeScreen: View {
 
     let model: HomeModel
+    let playback: Playback
     let open: (MediaCard) -> Void
     let openDiscover: (Recommendation) -> Void
     /// A shelf's See all: its library or genre, by the shelf's id ("recent-<library>" or "genre-<name>").
@@ -43,8 +44,11 @@ struct HomeScreen: View {
         }
         .background(Color.brhNight)
         .task { if case .loading = model.continueWatching { await model.load() } }
-        .fullScreenCover(item: Binding(get: { model.playing }, set: { if $0 == nil { model.finishedPlaying() } })) { player in
-            PlayerScreen(model: player) { model.finishedPlaying() }
+        // Play goes to the app's one player (#157), which minimises to the dock; Home refreshes when it ends.
+        .onChange(of: model.playing?.id) {
+            guard let player = model.playing else { return }
+            model.playing = nil
+            playback.play(player) { Task { await model.load() } }
         }
         .sheet(item: $adding) { target in
             AddToPlaylist(target: target, model: model.playlistAdding)

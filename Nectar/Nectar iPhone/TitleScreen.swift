@@ -7,6 +7,7 @@ import SwiftUI
 struct TitleScreen: View {
 
     let model: ItemDetailModel
+    let playback: Playback
     let open: (MediaCard) -> Void
     let openPerson: (ItemDetail.CastMember) -> Void
     let back: () -> Void
@@ -34,11 +35,16 @@ struct TitleScreen: View {
         }
         .background(Color.brhNight)
         .task { if case .loading = model.detail { await model.load() } }
-        .fullScreenCover(item: Binding(get: { model.playing }, set: { if $0 == nil { model.finishedPlaying() } })) { player in
-            PlayerScreen(model: player) { model.finishedPlaying() }
+        // Play and an episode go to the app's one player (#157); the page refreshes its marks when it ends.
+        .onChange(of: model.playing?.id) {
+            guard let player = model.playing else { return }
+            model.playing = nil
+            playback.play(player) { Task { await model.load() } }
         }
-        .fullScreenCover(item: Binding(get: { model.queue }, set: { if $0 == nil { model.finishedQueue() } })) { queue in
-            QueueScreen(queue: queue, session: model.session) { model.finishedQueue() }
+        .onChange(of: model.queue?.id) {
+            guard let queue = model.queue else { return }
+            model.queue = nil
+            playback.play(queue) { Task { await model.load() } }
         }
         .fullScreenCover(item: Binding(get: { model.trailer }, set: { _ in model.trailer = nil })) { trailer in
             SystemPlayer(player: trailer.player).ignoresSafeArea()
