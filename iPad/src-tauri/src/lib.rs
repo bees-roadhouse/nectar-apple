@@ -3,6 +3,8 @@ mod handoff;
 mod servers;
 mod store;
 #[cfg(target_os = "ios")]
+mod scan;
+#[cfg(target_os = "ios")]
 mod share;
 #[cfg(target_os = "ios")]
 mod web_auth;
@@ -214,6 +216,24 @@ async fn share_approval(from: [f64; 4], app: AppHandle, shell: State<'_, Shell>)
     }
 }
 
+/// The web client's "Scan a code" (Nate, 2026-10-23: "i also can't scan qr code right from the profile menu on an
+/// iphone or ipad"): the camera scanner, answered with the code's text, or nothing when cancelled (#149). The web
+/// client decides what the text is; it opens its own `/activate?code=` and nothing else.
+#[tauri::command]
+async fn scan_code(app: AppHandle) -> Result<Option<String>, String> {
+    #[cfg(target_os = "ios")]
+    {
+        let (answer, answered) = tokio::sync::oneshot::channel();
+        on_main(&app, move |controller| scan::start(controller, answer))?;
+        return answered.await.map_err(|_| "The scanner closed without an answer.".to_string())?;
+    }
+    #[cfg(not(target_os = "ios"))]
+    {
+        let _ = app;
+        Err("Scanning needs iOS.".into())
+    }
+}
+
 /// The launch page's list (#135).
 #[tauri::command]
 fn servers(shell: State<'_, Shell>) -> Vec<ServerRow> {
@@ -411,7 +431,8 @@ fn allow_server(app: &AppHandle, origin: &str) {
         .remote(format!("{origin}/*"))
         .window("main")
         .permission("allow-refresh-token")
-        .permission("allow-signed-out");
+        .permission("allow-signed-out")
+        .permission("allow-scan-code");
     let _ = app.add_capability(capability);
 }
 
@@ -426,7 +447,7 @@ pub fn run() {
     let kind = device_kind();
     tauri::Builder::default()
         .manage(Shell { net, device: kind, store: store::Keychain, session: Mutex::new(None), pending: Mutex::new(None), approval: Mutex::new(None), handover: Mutex::new(None), cancel: tokio::sync::Notify::new() })
-        .invoke_handler(tauri::generate_handler![begin_sign_in, servers, save_server, remove_server, open_saved, resume, finish_sign_in, cancel_sign_in, open_server, refresh_token, signed_out, device, open_approval, share_approval])
+        .invoke_handler(tauri::generate_handler![begin_sign_in, servers, save_server, remove_server, open_saved, resume, finish_sign_in, cancel_sign_in, open_server, refresh_token, signed_out, device, open_approval, share_approval, scan_code])
         .setup(|app| {
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .initialization_script(handoff::init_script(kind))

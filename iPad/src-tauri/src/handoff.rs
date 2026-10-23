@@ -22,11 +22,13 @@ const INIT_SCRIPT: &str = r#"(() => {
   const shell = (command) =>
     window.__TAURI_INTERNALS__ ? window.__TAURI_INTERNALS__.invoke(command) : Promise.resolve(null);
   window.__NECTAR_SHELL__ = {
-    version: 2,
+    version: 3,
     nativeHls: true,
     device: "{DEVICE}",
     refreshToken: () => shell("refresh_token"),
     signedOut: () => shell("signed_out"),
+    // The camera scanner (#149): the scanned text, or null when cancelled.
+    scanCode: () => shell("scan_code"),
   };
   // nectar's own sign-in page never shows in the shell (Nate, 2026-10-23): a password there makes a browser
   // session, not this device's, and passkeys can't work in an app's web view. Landing on it means signed out, so
@@ -143,7 +145,8 @@ mod tests {
     #[test]
     fn the_script_says_which_device_it_is_on() {
         let script = init_script("iPhone");
-        assert!(script.contains("version: 2") && script.contains(r#"device: "iPhone""#));
+        assert!(script.contains("version: 3") && script.contains(r#"device: "iPhone""#));
+        assert!(script.contains(r#"scanCode: () => shell("scan_code")"#));
         assert!(!script.contains("{DEVICE}"));
     }
 

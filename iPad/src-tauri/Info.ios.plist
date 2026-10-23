@@ -5,6 +5,9 @@
      audio session's playback category itself when a media element plays, so the shell doesn't. -->
 <plist version="1.0">
 <dict>
+	<!-- The camera scans another device's sign-in QR, from the web client's "Scan a code" (#149). -->
+	<key>NSCameraUsageDescription</key>
+	<string>Nectar uses the camera to scan another device's sign-in code.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

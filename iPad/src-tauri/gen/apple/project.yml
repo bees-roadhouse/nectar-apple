@@ -78,6 +78,7 @@ targets:
       - framework: libapp.a
         embed: false
       - sdk: AuthenticationServices.framework
+      - sdk: AVFoundation.framework
       - sdk: CoreGraphics.framework
       - sdk: Metal.framework
       - sdk: MetalKit.framework

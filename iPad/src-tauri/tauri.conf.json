@@ -29,7 +29,8 @@
     },
     "iOS": {
       "frameworks": [
-        "AuthenticationServices"
+        "AuthenticationServices",
+        "AVFoundation"
       ]
     }
   }
