@@ -37,6 +37,8 @@ struct HomeScreen: View {
                 }
                 .padding(.bottom, 24)
             }
+            // The last shelf clears the floating tab bar.
+            .contentMargins(.bottom, 32, for: .scrollContent)
             .refreshable { await model.load() }
         }
         .background(Color.brhNight)
@@ -226,9 +228,9 @@ private struct Hero: View {
             .clipShape(.rect(cornerRadius: 12))
     }
 
-    /// year · runtime · genre: nectar's cards carry no rating yet.
+    /// rating · year · runtime · genre, as the web's hero has them.
     private func meta(_ card: MediaCard) -> String {
-        [card.year.map(String.init), card.runtimeSeconds.map(Durations.duration), card.genres?.first]
+        [card.communityRating?.percent.map { "\($0)%" }, card.year.map(String.init), card.runtimeSeconds.map(Durations.duration), card.genres?.first]
             .compactMap(\.self).joined(separator: " · ")
     }
 }
@@ -275,16 +277,21 @@ private struct WideCard: View {
                         }
                     }
                 }
-                // The time left on the leading corner, since #142's pill holds the trailing one.
-                .overlay(alignment: .topLeading) {
-                    if let left = timeLeft {
-                        Text(left).font(.caption.weight(.semibold))
-                            .padding(.horizontal, 6).padding(.vertical, 3)
-                            .background(.ultraThinMaterial, in: .capsule)
-                            .padding(8)
+                // The time left top-right, under #142's pill when there is one, as the web has it.
+                .overlay(alignment: .topTrailing) {
+                    VStack(alignment: .trailing, spacing: 6) {
+                        if case .upgrading = CardStatus.of(card.pipeline, owned: true) { UpgradingPill() }
+                        if let left = timeLeft {
+                            Text(left).font(.caption.weight(.semibold))
+                                .padding(.horizontal, 6).padding(.vertical, 3)
+                                .background(.ultraThinMaterial, in: .capsule)
+                        }
                     }
+                    .padding(8)
                 }
-                .cardStatus(CardStatus.of(card.pipeline, owned: true))
+                .overlay(alignment: .bottom) {
+                    if case let .arriving(arrival) = CardStatus.of(card.pipeline, owned: true) { ArrivalFoot(arrival: arrival).padding(8) }
+                }
                 .clipShape(.rect(cornerRadius: 12))
                 Text(card.title ?? "Untitled").font(.subheadline.weight(.medium)).lineLimit(1)
             }

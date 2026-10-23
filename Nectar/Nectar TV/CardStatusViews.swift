@@ -6,6 +6,8 @@ extension Color {
     static let brhGold = Color(red: 0xE8 / 255, green: 0xA0 / 255, blue: 0x3A / 255)
     /// `--brh-gold-ink`: lettering on gold.
     static let brhGoldInk = Color(red: 0x1A / 255, green: 0x14 / 255, blue: 0x07 / 255)
+    /// `--brh-ok`: the Upgrading pill, #142's vocabulary as the web has it (gold is for what you tap: Capping, #159).
+    static let brhOk = Color(red: 0x8F / 255, green: 0xBF / 255, blue: 0x6A / 255)
     /// `--brh-err`: a stage that needs an admin.
     static let brhErr = Color(red: 0xE0 / 255, green: 0x6B / 255, blue: 0x52 / 255)
 }
@@ -48,9 +50,10 @@ struct UpgradingPill: View {
         Label("Upgrading", systemImage: "arrow.up")
             .font(Self.font.weight(.semibold))
             .foregroundStyle(Color.brhGoldInk)
+            // On green, as the web draws it; the TV followed gold in #142 before the vocabulary was settled.
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            .background(Color.brhGold, in: Capsule())
+            .background(Color.brhOk, in: Capsule())
             .accessibilityLabel("Upgrading")
     }
 }
