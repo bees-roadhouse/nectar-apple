@@ -174,7 +174,8 @@ final class WebPage: UIViewController, WKScriptMessageHandlerWithReply, WKNaviga
     /// back to the large bar's top (past the collapsed one) is what makes UIKit open the title again.
     private func keepAtTop(_ scroll: UIScrollView) {
         let top = -max(largeTop, scroll.adjustedContentInset.top)
-        guard !dragged, place.scrollY == 0, scroll.contentOffset.y > top else { return }
+        // Only a page at WKWebView's own top (at or above 0) is moved; one the page itself scrolled is left alone.
+        guard !dragged, place.scrollY == 0, scroll.contentOffset.y > top, scroll.contentOffset.y <= 0 else { return }
         scroll.setContentOffset(CGPoint(x: 0, y: top), animated: false)
     }
 
