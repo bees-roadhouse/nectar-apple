@@ -19,7 +19,8 @@ struct NectarPhoneApp: App {
             Group {
                 switch model.state {
                 case .starting:
-                    ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity).background(Color.brhNight)
+                    // The stored sign-in is checked in a moment: the night, never a spinner (Capping, #158).
+                    Color.brhNight.ignoresSafeArea()
                 case let .signingIn(signIn):
                     SignInView(model: signIn)
                 case let .signedIn(session):

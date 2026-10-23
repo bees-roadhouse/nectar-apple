@@ -36,9 +36,17 @@ private struct CardStatusOverlay: ViewModifier {
 /// "Upgrading", with its arrow: an owned title still looking for a better copy.
 struct UpgradingPill: View {
 
+    /// The pill's lettering: caption2 is right at a TV's distance, but on a phone it's 11 pt, under the 12 pt
+    /// floor (Capping, #158), so the phone takes caption1.
+    #if os(tvOS)
+    static let font = Font.caption2
+    #else
+    static let font = Font.caption
+    #endif
+
     var body: some View {
         Label("Upgrading", systemImage: "arrow.up")
-            .font(.caption2.weight(.semibold))
+            .font(Self.font.weight(.semibold))
             .foregroundStyle(Color.brhGoldInk)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
@@ -54,7 +62,7 @@ struct ArrivalFoot: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            if let glyph { Image(systemName: glyph).font(.caption2).foregroundStyle(tint) }
+            if let glyph { Image(systemName: glyph).font(UpgradingPill.font).foregroundStyle(tint) }
             Track(arrival: arrival, tint: tint)
         }
         .padding(.horizontal, 8)

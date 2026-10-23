@@ -51,7 +51,16 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
         let screen = UIHostingController(rootView: HomeScreen(
             model: model,
             open: { [weak self] card in self?.push(path: "/item/\(card.id)", title: card.title ?? "", onTab: 0) },
-            openDiscover: { [weak self] _ in self?.push(path: "/discover", title: "Discover", onTab: 0) }
+            openDiscover: { [weak self] _ in self?.push(path: "/discover", title: "Discover", onTab: 0) },
+            seeAll: { [weak self] shelf in
+                // "recent-<library>" opens the library, "genre-<name>" the genre, as web pages until theirs are native.
+                if shelf.id.hasPrefix("recent-") {
+                    self?.push(path: "/library/\(shelf.id.dropFirst("recent-".count))", title: shelf.title, onTab: 0)
+                } else if shelf.id.hasPrefix("genre-") {
+                    let name = String(shelf.id.dropFirst("genre-".count))
+                    self?.push(path: "/genre/\(name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name)", title: name, onTab: 0)
+                }
+            }
         ))
         screen.title = "Home"
         screen.navigationItem.largeTitleDisplayMode = .always

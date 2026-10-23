@@ -2,140 +2,258 @@ import AVKit
 import NectarKit
 import SwiftUI
 
-/// Home, native (#158): the TV app's `HomeModel` laid out for the phone. The billboard, Continue Watching, what's
-/// recommended, and the shelves, with #142's status marks on the cards. A card opens its title (web until the native
-/// title page, slice 2); Play opens the native player.
+/// Home, native (#158), to Capping's feel for the phone (#158's spec): the TV app's `HomeModel` in the web's order, so
+/// the two can be judged side by side. The hero's inset cards, then Continue watching, New in each library, the genre
+/// shelves and For You. A card opens its title (web until the native title page); Play opens the native player.
 struct HomeScreen: View {
 
     let model: HomeModel
     let open: (MediaCard) -> Void
     let openDiscover: (Recommendation) -> Void
+    /// A shelf's See all: its library or genre, by the shelf's id ("recent-<library>" or "genre-<name>").
+    let seeAll: (HomeModel.Shelf) -> Void
 
-    @Environment(\.horizontalSizeClass)
-    private var width
+    @State
+    private var adding: PlaylistAdding.Target?
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 28) {
-                if !model.hero.isEmpty {
-                    Billboard(slides: model.hero, session: model.session, play: { slide in Task { await model.play(slide) } }, open: open)
-                }
-                switch model.continueWatching {
-                case .loading:
-                    ProgressView().frame(maxWidth: .infinity).padding(.vertical, 40)
-                case .failed:
-                    Text("Can't reach nectar right now.").foregroundStyle(.secondary).padding(.horizontal)
-                case let .loaded(cards) where !cards.isEmpty:
-                    Shelf(title: "Continue watching") {
-                        ForEach(cards) { card in
-                            WideCard(card: card, session: model.session) { model.play(card) }
-                        }
-                    }
-                case .loaded:
-                    EmptyView()
-                }
-                if !model.forYou.isEmpty {
-                    Shelf(title: "For you") {
-                        ForEach(model.forYou) { recommendation in
-                            Poster(title: recommendation.title, subtitle: recommendation.year.map(String.init),
-                                   url: model.session.resolve(recommendation.posterPath, pixelWidth: Poster.width * 3),
-                                   blurHash: recommendation.posterBlurHash, status: nil) {
-                                if let id = recommendation.mediaItemID, recommendation.inLibrary {
-                                    open(MediaCard(id: id, title: recommendation.title))
-                                } else {
-                                    openDiscover(recommendation)
-                                }
-                            }
+        GeometryReader { proxy in
+            // The system's layout margins as the gutter: 16 on a 390 phone, 20 on a Pro Max.
+            let margin: CGFloat = proxy.size.width >= 428 ? 20 : 16
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    switch model.continueWatching {
+                    case .loading:
+                        Placeholder(width: proxy.size.width, margin: margin)
+                    case .failed:
+                        Text("Can't reach nectar right now.").foregroundStyle(.secondary).padding(.horizontal, margin)
+                    case let .loaded(watching):
+                        if watching.isEmpty, model.shelves.isEmpty, model.hero.isEmpty {
+                            Nothing().frame(minHeight: proxy.size.height * 0.7)
+                        } else {
+                            content(watching, width: proxy.size.width, margin: margin)
                         }
                     }
                 }
-                ForEach(model.shelves) { shelf in
-                    Shelf(title: shelf.title) {
-                        ForEach(shelf.cards) { card in
-                            Poster(title: card.title ?? "Untitled", subtitle: card.year.map(String.init),
-                                   url: model.session.resolve(card.posterPath, pixelWidth: Poster.width * 3),
-                                   blurHash: card.posterBlurHash, status: CardStatus.of(card.pipeline, owned: true)) {
-                                open(card)
-                            }
-                        }
-                    }
-                }
+                .padding(.bottom, 24)
             }
-            .padding(.bottom, 24)
+            .refreshable { await model.load() }
         }
-        .refreshable { await model.load() }
         .background(Color.brhNight)
         .task { if case .loading = model.continueWatching { await model.load() } }
         .fullScreenCover(item: Binding(get: { model.playing }, set: { if $0 == nil { model.finishedPlaying() } })) { player in
             PlayerScreen(model: player) { model.finishedPlaying() }
         }
+        .sheet(item: $adding) { target in
+            AddToPlaylist(target: target, model: model.playlistAdding)
+                .presentationDetents([.medium, .large])
+        }
+    }
+
+    @ViewBuilder
+    private func content(_ watching: [MediaCard], width: CGFloat, margin: CGFloat) -> some View {
+        if !model.hero.isEmpty {
+            Hero(slides: model.hero, session: model.session, width: width, margin: margin,
+                 play: { slide in played(); Task { await model.play(slide) } }, open: open)
+                .padding(.bottom, 8)
+        }
+        if !watching.isEmpty {
+            Shelf(title: "Continue watching", margin: margin) {
+                ForEach(watching) { card in
+                    WideCard(card: card, session: model.session) { model.play(card) }
+                        .contextMenu { actions(card) } preview: { Preview(card: card, session: model.session) }
+                }
+            }
+        }
+        ForEach(model.shelves) { shelf in
+            Shelf(title: shelf.title, margin: margin, seeAll: { seeAll(shelf) }) {
+                ForEach(shelf.cards) { card in
+                    Poster(title: card.title ?? "Untitled", year: card.year, reason: nil,
+                           url: model.session.resolve(card.posterPath, pixelWidth: Poster.width * 3),
+                           blurHash: card.posterBlurHash, status: CardStatus.of(card.pipeline, owned: true)) { open(card) }
+                        .contextMenu { actions(card) } preview: { Preview(card: card, session: model.session) }
+                }
+            }
+        }
+        if !model.forYou.isEmpty {
+            Shelf(title: "For You", margin: margin) {
+                ForEach(model.forYou) { recommendation in
+                    Poster(title: recommendation.title, year: recommendation.year, reason: recommendation.reason ?? " ",
+                           url: model.session.resolve(recommendation.posterPath, pixelWidth: Poster.width * 3),
+                           blurHash: recommendation.posterBlurHash, status: nil) {
+                        if let id = recommendation.mediaItemID, recommendation.inLibrary {
+                            open(MediaCard(id: id, title: recommendation.title))
+                        } else {
+                            openDiscover(recommendation)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// The long-press menu: the system's own, in place of the web's sheet (Capping, #158). nectar has no "mark
+    /// watched" yet, on the web either, so it isn't offered.
+    @ViewBuilder
+    private func actions(_ card: MediaCard) -> some View {
+        Button("Play", systemImage: "play.fill") { played(); model.play(card) }
+        Button("Add to playlist", systemImage: "text.badge.plus") { adding = .owned(id: card.id, title: card.title ?? "") }
+        Button("Details", systemImage: "info.circle") { open(card) }
+    }
+
+    /// A medium tap on Play, from the hero or the menu; never on scroll, paging or press.
+    private func played() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
     }
 }
 
-/// A titled row that scrolls sideways, snapping to its cards.
+/// The kit's snappy spring (response 0.3, damping 0.86), until feel.json's Swift output carries it (hive-mind #366).
+private let snappy = Animation.spring(response: 0.3, dampingFraction: 0.86)
+
+/// A shelf's header row (44 pt: the title, and See all where it goes somewhere), then its cards sideways, snapping.
 private struct Shelf<Cards: View>: View {
     let title: String
+    let margin: CGFloat
+    var seeAll: (() -> Void)?
     @ViewBuilder
     let cards: () -> Cards
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title).font(.title3.bold()).padding(.horizontal)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(title).font(.title3.weight(.semibold)).lineLimit(1)
+                Spacer()
+                if let seeAll {
+                    Button(action: seeAll) {
+                        HStack(spacing: 2) {
+                            Text("See all")
+                            Image(systemName: "chevron.forward").imageScale(.small)
+                        }
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .frame(minHeight: 44)
+                    }
+                }
+            }
+            .frame(minHeight: 44)
+            .padding(.horizontal, margin)
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 12) { cards() }
                     .scrollTargetLayout()
-                    .padding(.horizontal)
             }
+            .contentMargins(.horizontal, margin, for: .scrollContent)
             .scrollTargetBehavior(.viewAligned)
         }
     }
 }
 
-/// The billboard: what's being watched, then what's new, a page each.
-private struct Billboard: View {
+/// The hero: inset cards at 4:5, a page at a time, the dots under; it never moves on its own.
+private struct Hero: View {
     let slides: [HeroSlide]
     let session: NectarSession
+    let width: CGFloat
+    let margin: CGFloat
     let play: (HeroSlide) -> Void
     let open: (MediaCard) -> Void
 
+    @State
+    private var current: HeroSlide.ID?
+
+    private var cardWidth: CGFloat { width - margin * 2 }
+
     var body: some View {
-        TabView {
-            ForEach(slides) { slide in
-                // The page's own size holds the picture: filled and cropped to it, never wider than the screen.
-                Color.brhCard
-                    .overlay {
-                        CachedImage(url: session.resolve(slide.card.backdropPath, pixelWidth: 1200), maxPixelSize: 1200,
-                                    blurHash: slide.card.backdropBlurHash) { image in
-                            image.resizable().scaledToFill()
-                        } placeholder: { Color.brhCard }
+        VStack(spacing: 12) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: margin) {
+                    ForEach(slides) { slide in
+                        card(slide).frame(width: cardWidth, height: cardWidth * 1.25).id(slide.id)
                     }
-                    .clipped()
-                    .overlay {
-                        LinearGradient(colors: [.clear, Color.brhNight.opacity(0.95)], startPoint: .center, endPoint: .bottom)
-                    }
-                    .overlay(alignment: .bottomLeading) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(slide.card.title ?? "").font(.title.bold()).lineLimit(2)
-                        HStack(spacing: 12) {
-                            Button(slide.resumable ? "Resume" : "Play", systemImage: "play.fill") { play(slide) }
-                                .buttonStyle(.borderedProminent)
-                            Button("Details", systemImage: "info.circle") { open(slide.card) }
-                                .buttonStyle(.bordered)
-                        }
-                        .controlSize(.large)
-                    }
-                    .padding()
-                    .padding(.bottom, 24)
-                    }
+                }
+                .scrollTargetLayout()
             }
+            .contentMargins(.horizontal, margin, for: .scrollContent)
+            .scrollTargetBehavior(.viewAligned)
+            .scrollPosition(id: $current)
+            HStack(spacing: 8) {
+                ForEach(slides) { slide in
+                    Circle()
+                        .fill(slide.id == (current ?? slides.first?.id) ? Color.brhGold : Color.secondary.opacity(0.4))
+                        .frame(width: 6, height: 6)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .accessibilityHidden(true)
         }
-        .tabViewStyle(.page)
-        .frame(height: 440)
+    }
+
+    private func card(_ slide: HeroSlide) -> some View {
+        Color.brhCard
+            .overlay {
+                CachedImage(url: session.resolve(slide.card.backdropPath ?? slide.card.posterPath, pixelWidth: 1200), maxPixelSize: 1200,
+                            blurHash: slide.card.backdropBlurHash) { image in
+                    image.resizable().scaledToFill()
+                } placeholder: { Color.brhCard }
+            }
+            .clipped()
+            .overlay {
+                LinearGradient(stops: [.init(color: .clear, location: 0.45), .init(color: .brhNight, location: 1)], startPoint: .top, endPoint: .bottom)
+            }
+            .overlay(alignment: .bottomLeading) {
+                VStack(alignment: .leading, spacing: 8) {
+                    if let logo = session.resolve(slide.card.logoPath, pixelWidth: 800) {
+                        CachedImage(url: logo, maxPixelSize: 800) { image in
+                            image.resizable().scaledToFit()
+                        } placeholder: {
+                            Text(slide.card.title ?? "").font(.system(size: 28, weight: .bold)).lineLimit(2)
+                        }
+                        .frame(maxWidth: cardWidth * 0.7, maxHeight: 72, alignment: .leading)
+                    } else {
+                        Text(slide.card.title ?? "").font(.system(size: 28, weight: .bold)).lineLimit(2)
+                    }
+                    Text(meta(slide.card)).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                    HStack(spacing: 12) {
+                        Button { play(slide) } label: {
+                            Label(slide.resumable ? "Resume" : "Play", systemImage: "play.fill")
+                        }
+                        .buttonStyle(CapsuleStyle(primary: true))
+                        Button { open(slide.card) } label: { Text("Details") }
+                            .buttonStyle(CapsuleStyle(primary: false))
+                    }
+                    .padding(.top, 4)
+                }
+                .padding(16)
+            }
+            .clipShape(.rect(cornerRadius: 12))
+    }
+
+    /// year · runtime · genre: nectar's cards carry no rating yet.
+    private func meta(_ card: MediaCard) -> String {
+        [card.year.map(String.init), card.runtimeSeconds.map(Durations.duration), card.genres?.first]
+            .compactMap(\.self).joined(separator: " · ")
     }
 }
 
-/// A Continue Watching card: the backdrop, how far in, and the title.
+/// Page 2451's capsules at 44 pt: gold with gold-ink lettering, or the card with a dim line.
+private struct CapsuleStyle: ButtonStyle {
+    let primary: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .foregroundStyle(primary ? Color.brhGoldInk : .primary)
+            .padding(.horizontal, 20)
+            .frame(minHeight: 44)
+            .background(primary ? Color.brhGold : Color.brhCard.opacity(0.85), in: .capsule)
+            .overlay { if !primary { Capsule().stroke(Color.brhLineDim) } }
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(snappy, value: configuration.isPressed)
+    }
+}
+
+/// A Continue watching card: 16:9 at 240, the time left top-left, the 2 pt gold hairline along the foot.
 private struct WideCard: View {
+    static let width: CGFloat = 240
+
     let card: MediaCard
     let session: NectarSession
     let play: () -> Void
@@ -143,32 +261,51 @@ private struct WideCard: View {
     var body: some View {
         Button(action: play) {
             VStack(alignment: .leading, spacing: 6) {
-                CachedImage(url: session.resolve(card.backdropPath ?? card.posterPath, pixelWidth: 800), maxPixelSize: 800,
+                CachedImage(url: session.resolve(card.backdropPath ?? card.posterPath, pixelWidth: 720), maxPixelSize: 720,
                             blurHash: card.backdropBlurHash) { image in
                     image.resizable().scaledToFill()
                 } placeholder: { Color.brhCard }
-                .frame(width: 260, height: 146)
-                .clipShape(.rect(cornerRadius: 12))
-                .overlay(alignment: .bottom) {
+                .frame(width: Self.width, height: Self.width * 9 / 16)
+                .clipped()
+                .overlay(alignment: .bottomLeading) {
                     if let progress = card.progress {
-                        ProgressView(value: progress).tint(.brhGold).padding(10)
+                        GeometryReader { box in
+                            Rectangle().fill(Color.brhGold).frame(width: box.size.width * progress, height: 2)
+                                .frame(maxHeight: .infinity, alignment: .bottom)
+                        }
+                    }
+                }
+                // The time left on the leading corner, since #142's pill holds the trailing one.
+                .overlay(alignment: .topLeading) {
+                    if let left = timeLeft {
+                        Text(left).font(.caption.weight(.semibold))
+                            .padding(.horizontal, 6).padding(.vertical, 3)
+                            .background(.ultraThinMaterial, in: .capsule)
+                            .padding(8)
                     }
                 }
                 .cardStatus(CardStatus.of(card.pipeline, owned: true))
-                Text(card.title ?? "Untitled").font(.subheadline).lineLimit(1)
+                .clipShape(.rect(cornerRadius: 12))
+                Text(card.title ?? "Untitled").font(.subheadline.weight(.medium)).lineLimit(1)
             }
-            .frame(width: 260, alignment: .leading)
+            .frame(width: Self.width, alignment: .leading)
         }
         .buttonStyle(Pressed())
     }
+
+    private var timeLeft: String? {
+        guard let runtime = card.runtimeSeconds, let at = card.progressSeconds, runtime > at else { return nil }
+        return "\(Durations.duration(runtime - at)) left"
+    }
 }
 
-/// A poster with its title and year under it.
+/// A poster, 2:3 at 120 with radius 8, its title and year under it (and For You's reason, two lines kept).
 private struct Poster: View {
     static let width: Double = 120
 
     let title: String
-    let subtitle: String?
+    let year: Int?
+    let reason: String?
     let url: URL?
     let blurHash: String?
     let status: CardStatus?
@@ -176,15 +313,19 @@ private struct Poster: View {
 
     var body: some View {
         Button(action: open) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 3) {
                 CachedImage(url: url, maxPixelSize: Int(Self.width * 3), blurHash: blurHash) { image in
                     image.resizable().scaledToFill()
                 } placeholder: { Color.brhCard }
                 .frame(width: Self.width, height: Self.width * 1.5)
-                .clipShape(.rect(cornerRadius: 12))
                 .cardStatus(status)
-                Text(title).font(.caption).lineLimit(1)
-                Text(subtitle ?? " ").font(.caption2).foregroundStyle(.secondary)
+                .clipShape(.rect(cornerRadius: 8))
+                .shadow(color: .black.opacity(0.3), radius: 6, y: 3)
+                Text(title).font(.subheadline.weight(.medium)).lineLimit(1).padding(.top, 3)
+                Text(year.map(String.init) ?? " ").font(.footnote).foregroundStyle(.secondary)
+                if let reason {
+                    Text(reason).font(.caption).foregroundStyle(.secondary).lineLimit(2, reservesSpace: true)
+                }
             }
             .frame(width: Self.width, alignment: .leading)
         }
@@ -192,12 +333,133 @@ private struct Poster: View {
     }
 }
 
-/// The touch press: pressed into the page at 0.97 on the snappy spring (Capping's touch spec), never a hover lift.
+/// The long-press preview: the poster at full size, with the card's status words.
+private struct Preview: View {
+    let card: MediaCard
+    let session: NectarSession
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            CachedImage(url: session.resolve(card.posterPath, pixelWidth: 900), maxPixelSize: 900, blurHash: card.posterBlurHash) { image in
+                image.resizable().scaledToFill()
+            } placeholder: { Color.brhCard }
+            .frame(width: 280, height: 420)
+            .clipped()
+            VStack(alignment: .leading, spacing: 2) {
+                Text(card.title ?? "Untitled").font(.headline)
+                if let words = CardStatus.of(card.pipeline, owned: true)?.words {
+                    Text(words).font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+            .padding([.horizontal, .bottom], 12)
+        }
+        .frame(width: 280)
+        .background(Color.brhCard)
+    }
+}
+
+/// The touch press: into the page at 0.97 on the kit's spring; a touch that becomes a scroll fires nothing.
 private struct Pressed: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.snappy(duration: 0.2), value: configuration.isPressed)
+            .animation(snappy, value: configuration.isPressed)
+    }
+}
+
+/// Home arriving whole: the final geometry, redacted, never a spinner or "Loading…".
+private struct Placeholder: View {
+    let width: CGFloat
+    let margin: CGFloat
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            RoundedRectangle(cornerRadius: 12).fill(Color.brhCard)
+                .frame(width: width - margin * 2, height: (width - margin * 2) * 1.25)
+                .padding(.horizontal, margin)
+                .padding(.bottom, 8 + 18)
+            ForEach(0 ..< 2, id: \.self) { _ in
+                VStack(alignment: .leading, spacing: 12) {
+                    RoundedRectangle(cornerRadius: 4).fill(Color.brhCard).frame(width: width * 0.36, height: 20)
+                        .frame(minHeight: 44)
+                    HStack(spacing: 12) {
+                        ForEach(0 ..< 4, id: \.self) { _ in
+                            RoundedRectangle(cornerRadius: 8).fill(Color.brhCard).frame(width: 120, height: 180)
+                        }
+                    }
+                }
+                .padding(.horizontal, margin)
+            }
+        }
+        .accessibilityLabel("Loading")
+    }
+}
+
+/// An empty Home: the one-thing pattern.
+private struct Nothing: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            Image("Lockup").resizable().scaledToFit().frame(height: 44)
+            Text("Nothing here yet").font(.title3.weight(.semibold))
+            Text("Ask whoever runs your nectar to add a library.").font(.subheadline).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+/// Add to playlist, as a sheet: the playlists, or a new one by name.
+private struct AddToPlaylist: View {
+    let target: PlaylistAdding.Target
+    let model: PlaylistAdding
+
+    @Environment(\.dismiss)
+    private var dismiss
+    @State
+    private var playlists: [Playlist]?
+    @State
+    private var newName = ""
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    HStack {
+                        TextField("New playlist", text: $newName).submitLabel(.done).onSubmit(create)
+                        Button("Add", action: create).disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                }
+                Section {
+                    if let playlists {
+                        ForEach(playlists) { playlist in
+                            Button(playlist.name) {
+                                Task {
+                                    await model.add(target, to: playlist)
+                                    dismiss()
+                                }
+                            }
+                        }
+                    } else {
+                        ProgressView()
+                    }
+                }
+                if let failure = model.failure {
+                    Text(failure).foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("Add to playlist")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .task { playlists = await model.playlists(for: target) }
+        }
+    }
+
+    private func create() {
+        let name = newName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        Task {
+            await model.add(target, toNewPlaylistNamed: name)
+            dismiss()
+        }
     }
 }
 
