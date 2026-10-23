@@ -28,6 +28,23 @@ const INIT_SCRIPT: &str = r#"(() => {
     refreshToken: () => shell("refresh_token"),
     signedOut: () => shell("signed_out"),
   };
+  // nectar's own sign-in page never shows in the shell (Nate, 2026-10-23): a password there makes a browser
+  // session, not this device's, and passkeys can't work in an app's web view. Landing on it means signed out, so
+  // the shell's code screen takes over, with "Sign in on this iPhone" in the system sheet, where passkeys and
+  // Safari's passwords work (#144). The router moves by history, so both its calls are watched, and a full load.
+  const SIGN_IN = /^\/(login|setup)(\/|$)/;
+  const away = () => {
+    if (location.protocol === "tauri:" || !SIGN_IN.test(location.pathname)) return;
+    try { sessionStorage.removeItem("nectar_token"); } catch (e) {}
+    document.cookie = "nectar_session=; Path=/; Max-Age=0; SameSite=Lax";
+    shell("signed_out");
+  };
+  for (const name of ["pushState", "replaceState"]) {
+    const original = history[name].bind(history);
+    history[name] = (...args) => { const result = original(...args); away(); return result; };
+  }
+  addEventListener("popstate", away);
+  away();
 })();"#;
 
 /// The script with this device in it: `device` is "iPhone" or "iPad", for the shell-only touches the web client
@@ -128,5 +145,13 @@ mod tests {
         let script = init_script("iPhone");
         assert!(script.contains("version: 2") && script.contains(r#"device: "iPhone""#));
         assert!(!script.contains("{DEVICE}"));
+    }
+
+    #[test]
+    fn nectars_sign_in_page_hands_back_to_the_shell() {
+        // A password on the web's /login makes a browser session; the shell's code screen makes a device one.
+        assert!(INIT_SCRIPT.contains(r#"SIGN_IN = /^\/(login|setup)(\/|$)/"#));
+        assert!(INIT_SCRIPT.contains(r#"sessionStorage.removeItem("nectar_token")"#));
+        assert!(INIT_SCRIPT.contains(r#"shell("signed_out")"#) && INIT_SCRIPT.contains("pushState"));
     }
 }
