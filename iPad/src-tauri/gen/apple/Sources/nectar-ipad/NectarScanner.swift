@@ -325,12 +325,15 @@ private final class Overlay: UIView {
         torch.accessibilityValue = on ? "On" : "Off"
     }
 
+    /// The four corners of the frame, each turning on the frame's own 16 pt radius, so the hit reads as the
+    /// brackets closing rather than changing shape (Capping, #151).
     private static func corners(_ r: CGRect) -> UIBezierPath {
-        let arm = r.width * 0.16, path = UIBezierPath()
+        let arm = r.width * 0.16, radius: CGFloat = 16, path = UIBezierPath()
         for (corner, dx, dy) in [(CGPoint(x: r.minX, y: r.minY), 1.0, 1.0), (CGPoint(x: r.maxX, y: r.minY), -1.0, 1.0),
                                  (CGPoint(x: r.minX, y: r.maxY), 1.0, -1.0), (CGPoint(x: r.maxX, y: r.maxY), -1.0, -1.0)] {
             path.move(to: CGPoint(x: corner.x, y: corner.y + dy * arm))
-            path.addLine(to: corner)
+            path.addLine(to: CGPoint(x: corner.x, y: corner.y + dy * radius))
+            path.addQuadCurve(to: CGPoint(x: corner.x + dx * radius, y: corner.y), controlPoint: corner)
             path.addLine(to: CGPoint(x: corner.x + dx * arm, y: corner.y))
         }
         return path
