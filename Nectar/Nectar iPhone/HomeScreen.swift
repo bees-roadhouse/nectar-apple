@@ -123,11 +123,14 @@ struct Shelf<Cards: View>: View {
     var seeAll: (() -> Void)?
     @ViewBuilder
     let cards: () -> Cards
+    @Environment(\.dynamicTypeSize)
+    private var typeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(title).font(.title3.weight(.semibold)).lineLimit(1)
+                // Wraps before it truncates at the accessibility sizes (#171).
+                Text(title).font(.title3.weight(.semibold)).lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
                 Spacer()
                 if let seeAll {
                     Button(action: seeAll) {
@@ -164,15 +167,19 @@ private struct Hero: View {
 
     @State
     private var current: HeroSlide.ID?
+    @Environment(\.dynamicTypeSize)
+    private var typeSize
 
     private var cardWidth: CGFloat { width - margin * 2 }
+    /// The accessibility sizes: the card grows to its words, which wrap, and the capsules stack (#171).
+    private var big: Bool { typeSize.isAccessibilitySize }
 
     var body: some View {
         VStack(spacing: 12) {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: margin) {
                     ForEach(slides) { slide in
-                        card(slide).frame(width: cardWidth, height: cardWidth * 1.25).id(slide.id)
+                        card(slide).frame(width: cardWidth, height: big ? nil : cardWidth * 1.25).id(slide.id)
                     }
                 }
                 .scrollTargetLayout()
@@ -192,7 +199,23 @@ private struct Hero: View {
         }
     }
 
+    @ViewBuilder
     private func card(_ slide: HeroSlide) -> some View {
+        if big {
+            // The words decide the height; the art sits behind them, darker so they read.
+            words(slide)
+                .frame(width: cardWidth, alignment: .leading)
+                .frame(minHeight: cardWidth * 1.25, alignment: .bottomLeading)
+                .background { art(slide, from: 0.1) }
+                .clipShape(.rect(cornerRadius: 12))
+        } else {
+            art(slide, from: 0.45)
+                .overlay(alignment: .bottomLeading) { words(slide) }
+                .clipShape(.rect(cornerRadius: 12))
+        }
+    }
+
+    private func art(_ slide: HeroSlide, from clear: Double) -> some View {
         Color.brhCard
             .overlay {
                 CachedImage(url: session.resolve(slide.card.backdropPath ?? slide.card.posterPath, pixelWidth: 1200), maxPixelSize: 1200,
@@ -202,9 +225,11 @@ private struct Hero: View {
             }
             .clipped()
             .overlay {
-                LinearGradient(stops: [.init(color: .clear, location: 0.45), .init(color: .brhNight, location: 1)], startPoint: .top, endPoint: .bottom)
+                LinearGradient(stops: [.init(color: .clear, location: clear), .init(color: .brhNight, location: 1)], startPoint: .top, endPoint: .bottom)
             }
-            .overlay(alignment: .bottomLeading) {
+    }
+
+    private func words(_ slide: HeroSlide) -> some View {
                 VStack(alignment: .leading, spacing: 8) {
                     if let logo = session.resolve(slide.card.logoPath, pixelWidth: 800) {
                         CachedImage(url: logo, maxPixelSize: 800) { image in
@@ -216,20 +241,23 @@ private struct Hero: View {
                     } else {
                         Text(slide.card.title ?? "").font(.system(size: 28, weight: .bold)).lineLimit(2)
                     }
-                    Text(meta(slide.card)).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
-                    HStack(spacing: 12) {
+                    Text(meta(slide.card)).font(.subheadline).foregroundStyle(.secondary).lineLimit(big ? nil : 1)
+                    // A capsule's label never breaks inside a word: at the accessibility sizes they stack, full width.
+                    let layout = big ? AnyLayout(VStackLayout(spacing: 12)) : AnyLayout(HStackLayout(spacing: 12))
+                    layout {
                         Button { play(slide) } label: {
-                            Label(slide.resumable ? "Resume" : "Play", systemImage: "play.fill")
+                            Label(slide.resumable ? "Resume" : "Play", systemImage: "play.fill").lineLimit(1)
+                                .frame(maxWidth: big ? .infinity : nil)
                         }
                         .buttonStyle(CapsuleStyle(primary: true))
-                        Button { open(slide.card) } label: { Text("Details") }
-                            .buttonStyle(CapsuleStyle(primary: false))
+                        Button { open(slide.card) } label: {
+                            Text("Details").lineLimit(1).frame(maxWidth: big ? .infinity : nil)
+                        }
+                        .buttonStyle(CapsuleStyle(primary: false))
                     }
                     .padding(.top, 4)
                 }
                 .padding(16)
-            }
-            .clipShape(.rect(cornerRadius: 12))
     }
 
     /// rating · year · runtime · genre, as the web's hero has them.
@@ -263,6 +291,8 @@ private struct WideCard: View {
     let card: MediaCard
     let session: NectarSession
     let play: () -> Void
+    @Environment(\.dynamicTypeSize)
+    private var typeSize
 
     var body: some View {
         Button(action: play) {
@@ -283,7 +313,7 @@ private struct WideCard: View {
                 }
                 // #142's pill top-right; the time left bottom-right, 8 pt above the hairline it describes (Capping, #159).
                 .overlay(alignment: .topTrailing) {
-                    if case .upgrading = CardStatus.of(card.pipeline, owned: true) { UpgradingPill().padding(8) }
+                    if case .upgrading = CardStatus.of(card.pipeline, owned: true), !typeSize.isAccessibilitySize { UpgradingPill().padding(8) }
                 }
                 .overlay(alignment: .bottomTrailing) {
                     if let left = timeLeft {
@@ -297,7 +327,8 @@ private struct WideCard: View {
                     if case let .arriving(arrival) = CardStatus.of(card.pipeline, owned: true) { ArrivalFoot(arrival: arrival).padding(8) }
                 }
                 .clipShape(.rect(cornerRadius: 12))
-                Text(card.title ?? "Untitled").font(.subheadline.weight(.medium)).lineLimit(1)
+                Text(card.title ?? "Untitled").font(.subheadline.weight(.medium)).lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
+                StatusUnderTitle(status: CardStatus.of(card.pipeline, owned: true))
             }
             .frame(width: Self.width, alignment: .leading)
         }
@@ -321,6 +352,8 @@ struct Poster: View {
     let blurHash: String?
     let status: CardStatus?
     let open: () -> Void
+    @Environment(\.dynamicTypeSize)
+    private var typeSize
 
     var body: some View {
         Button(action: open) {
@@ -332,7 +365,8 @@ struct Poster: View {
                 .cardStatus(status)
                 .clipShape(.rect(cornerRadius: 8))
                 .shadow(color: .black.opacity(0.3), radius: 6, y: 3)
-                Text(title).font(.subheadline.weight(.medium)).lineLimit(1).padding(.top, 3)
+                Text(title).font(.subheadline.weight(.medium)).lineLimit(typeSize.isAccessibilitySize ? 2 : 1).padding(.top, 3)
+                StatusUnderTitle(status: status)
                 Text(year.map(String.init) ?? " ").font(.footnote).foregroundStyle(.secondary)
                 if let reason {
                     Text(reason).font(.caption).foregroundStyle(.secondary).lineLimit(2, reservesSpace: true)

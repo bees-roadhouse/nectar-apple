@@ -12,6 +12,18 @@ extension Color {
     static let brhErr = Color(red: 0xE0 / 255, green: 0x6B / 255, blue: 0x52 / 255)
 }
 
+/// The Upgrading pill as a line under a card's title, where it goes at the accessibility text sizes (Capping, #171):
+/// grown with the type, it would cover the art. Nothing at the other sizes, where it sits on the art.
+struct StatusUnderTitle: View {
+    let status: CardStatus?
+    @Environment(\.dynamicTypeSize)
+    private var typeSize
+
+    var body: some View {
+        if typeSize.isAccessibilitySize, case .upgrading = status { UpgradingPill() }
+    }
+}
+
 extension View {
     /// Where a card's title stands (#125, Capping's table, the same as the web's): the gold Upgrading pill at the
     /// top trailing corner, or a thin line at the foot for a title on its way in. Nothing for a plain owned title.
@@ -23,11 +35,14 @@ extension View {
 private struct CardStatusOverlay: ViewModifier {
 
     let status: CardStatus?
+    @Environment(\.dynamicTypeSize)
+    private var typeSize
 
     func body(content: Content) -> some View {
         content
             .overlay(alignment: .topTrailing) {
-                if case .upgrading = status { UpgradingPill().padding(10) }
+                // At the accessibility sizes the pill leaves the art for a line under the title (`StatusUnderTitle`).
+                if case .upgrading = status, !typeSize.isAccessibilitySize { UpgradingPill().padding(10) }
             }
             .overlay(alignment: .bottom) {
                 if case let .arriving(arrival) = status { ArrivalFoot(arrival: arrival).padding(10) }

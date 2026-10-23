@@ -241,6 +241,7 @@ private struct Grid: View {
                 .clipShape(.rect(cornerRadius: 8))
                 .shadow(color: .black.opacity(0.3), radius: 6, y: 3)
                 Text(card.title ?? "Untitled").font(.subheadline.weight(.medium)).lineLimit(1).padding(.top, 3)
+                StatusUnderTitle(status: CardStatus.of(card.pipeline, owned: true))
                 Text(card.year.map(String.init) ?? " ").font(.footnote).foregroundStyle(.secondary)
             }
         }
