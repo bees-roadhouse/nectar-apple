@@ -23,6 +23,8 @@ final class WebPage: UIViewController, WKScriptMessageHandlerWithReply, WKNaviga
     /// Watching the page's size until the person first drags it, to keep a page that's at the top at the top.
     private var sizeWatch: NSKeyValueObservation?
     private var dragged = false
+    /// The scroll view's top inset under the large title, before a load collapses it: the page's true top.
+    private var largeTop: CGFloat = 0
 
     /// One process pool and data store for every page, so they share the session's cookie and storage.
     private static let configurationBase: WKWebViewConfiguration = {
@@ -56,19 +58,20 @@ final class WebPage: UIViewController, WKScriptMessageHandlerWithReply, WKNaviga
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        if web == nil { Task { await load() } }
+        guard web == nil else { return }
+        // The web view goes in now, before the screen lays out, so UIKit has its scroll view for the large title from
+        // the first frame (added later, after the token, the title collapsed on load: Capping, #159). The page loads
+        // once the token is in hand.
+        let web = makeWeb()
+        Task { await start(web) }
     }
 
     // MARK: - Loading, reclaiming and coming back
 
-    private func load() async {
-        guard web == nil, let token = try? await session.webToken() else { return signedOut() }
+    private func makeWeb() -> WKWebView {
         let configuration = Self.configurationBase.copy() as! WKWebViewConfiguration
-        let controller = WKUserContentController()
-        controller.addUserScript(WKUserScript(source: Bridge.script(origin: PhoneModel.server, token: token, device: UIDevice.current.model),
-                                              injectionTime: .atDocumentStart, forMainFrameOnly: true))
-        controller.addScriptMessageHandler(self, contentWorld: .page, name: Bridge.handler)
-        configuration.userContentController = controller
+        configuration.userContentController = WKUserContentController()
+        configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: Bridge.handler)
 
         let web = WKWebView(frame: view.bounds, configuration: configuration)
         web.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -76,18 +79,33 @@ final class WebPage: UIViewController, WKScriptMessageHandlerWithReply, WKNaviga
         web.backgroundColor = view.backgroundColor
         web.scrollView.backgroundColor = view.backgroundColor
         web.allowsBackForwardNavigationGestures = true
+        // The bars' heights are the native side's (the frame contract): the scroll view is inset under them, so the
+        // page starts below the large title and scrolls under the glass. WKWebView doesn't adjust on its own.
+        web.scrollView.contentInsetAdjustmentBehavior = .always
         web.navigationDelegate = self
         view.insertSubview(web, at: 0)
         setContentScrollView(web.scrollView, for: .top)
+        web.layoutIfNeeded()
+        largeTop = web.scrollView.adjustedContentInset.top
         self.web = web
         dragged = false
         web.scrollView.panGestureRecognizer.addTarget(self, action: #selector(beganDragging))
         // UIKit shows the large title only with the scroll view at -adjustedContentInset.top, not at 0, where the page
-        // puts itself whenever it lays out (Capping, #159). Until the person drags, a page meant to be at the top is
-        // put back at the true top each time its content changes size.
+        // puts itself whenever it lays out. Until the person drags, a page meant to be at the top is put back at the
+        // true top each time its content changes size.
         sizeWatch = web.scrollView.observe(\.contentSize, options: [.new]) { [weak self] scroll, _ in
             MainActor.assumeIsolated { self?.keepAtTop(scroll) }
         }
+        return web
+    }
+
+    /// The bridge, with the token for the page's first load, then the page.
+    private func start(_ web: WKWebView) async {
+        guard let token = try? await session.webToken() else { return signedOut() }
+        guard self.web === web else { return }
+        web.configuration.userContentController.addUserScript(WKUserScript(
+            source: Bridge.script(origin: PhoneModel.server, token: token, device: UIDevice.current.model),
+            injectionTime: .atDocumentStart, forMainFrameOnly: true))
         web.load(URLRequest(url: PhoneModel.server.appending(path: place.path)))
     }
 
@@ -123,7 +141,10 @@ final class WebPage: UIViewController, WKScriptMessageHandlerWithReply, WKNaviga
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         // iOS took the page's process back while it was away: come back the same way as a reclaim.
         reclaim()
-        if viewIfLoaded?.window != nil { Task { await load() } }
+        if viewIfLoaded?.window != nil {
+            let web = makeWeb()
+            Task { await start(web) }
+        }
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -131,9 +152,12 @@ final class WebPage: UIViewController, WKScriptMessageHandlerWithReply, WKNaviga
         if snapshot != nil, place.scrollY == 0 { settle() }
     }
 
+    /// A load puts WKWebView at its own zero, which reads as scrolled under the large title and collapses it; going
+    /// back to the large bar's top (past the collapsed one) is what makes UIKit open the title again.
     private func keepAtTop(_ scroll: UIScrollView) {
-        guard !dragged, place.scrollY == 0, scroll.contentOffset.y > -scroll.adjustedContentInset.top else { return }
-        scroll.setContentOffset(CGPoint(x: 0, y: -scroll.adjustedContentInset.top), animated: false)
+        let top = -max(largeTop, scroll.adjustedContentInset.top)
+        guard !dragged, place.scrollY == 0, scroll.contentOffset.y > top else { return }
+        scroll.setContentOffset(CGPoint(x: 0, y: top), animated: false)
     }
 
     @objc private func beganDragging(_ pan: UIPanGestureRecognizer) {
