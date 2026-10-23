@@ -25,6 +25,8 @@ final class WebPage: UIViewController, WKScriptMessageHandlerWithReply, WKNaviga
     private var dragged = false
     /// The scroll view's top inset under the large title, before a load collapses it: the page's true top.
     private var largeTop: CGFloat = 0
+    /// The web view whose page has been asked for, so a view is loaded once.
+    private weak var started: WKWebView?
 
     /// One process pool and data store for every page, so they share the session's cookie and storage.
     private static let configurationBase: WKWebViewConfiguration = {
@@ -51,19 +53,34 @@ final class WebPage: UIViewController, WKScriptMessageHandlerWithReply, WKNaviga
 
     var isLive: Bool { web != nil }
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor = UIColor(red: 0x11 / 255, green: 0x12 / 255, blue: 0x14 / 255, alpha: 1)
+    private static let night = UIColor(red: 0x11 / 255, green: 0x12 / 255, blue: 0x14 / 255, alpha: 1)
+
+    /// The web view is the screen's own view, as UIKit expects of a large title's scroll view: its insets and the
+    /// title are settled before the first layout (as a subview added later, the title collapsed on load: #159).
+    override func loadView() {
+        view = makeWeb()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        guard web == nil else { return }
-        // The web view goes in now, before the screen lays out, so UIKit has its scroll view for the large title from
-        // the first frame (added later, after the token, the title collapsed on load: Capping, #159). The page loads
-        // once the token is in hand.
-        let web = makeWeb()
-        Task { await start(web) }
+        if web == nil {
+            // Coming back after a reclaim: a new web view in place of the picture's holder, the picture on top of it.
+            let web = makeWeb()
+            if let snapshot { web.addSubview(snapshot) }
+            view = web
+        }
+        if let web, started !== web {
+            started = web
+            Task { await start(web) }
+        }
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // The top inset under the large title, the page's true top, while the bar is still large.
+        if let scroll = web?.scrollView, (navigationController?.navigationBar.frame.height ?? 0) > 60 {
+            largeTop = max(largeTop, scroll.adjustedContentInset.top)
+        }
     }
 
     // MARK: - Loading, reclaiming and coming back
@@ -73,20 +90,16 @@ final class WebPage: UIViewController, WKScriptMessageHandlerWithReply, WKNaviga
         configuration.userContentController = WKUserContentController()
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: Bridge.handler)
 
-        let web = WKWebView(frame: view.bounds, configuration: configuration)
-        web.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        let web = WKWebView(frame: .zero, configuration: configuration)
         web.isOpaque = false
-        web.backgroundColor = view.backgroundColor
-        web.scrollView.backgroundColor = view.backgroundColor
+        web.backgroundColor = Self.night
+        web.scrollView.backgroundColor = Self.night
         web.allowsBackForwardNavigationGestures = true
         // The bars' heights are the native side's (the frame contract): the scroll view is inset under them, so the
         // page starts below the large title and scrolls under the glass. WKWebView doesn't adjust on its own.
         web.scrollView.contentInsetAdjustmentBehavior = .always
         web.navigationDelegate = self
-        view.insertSubview(web, at: 0)
         setContentScrollView(web.scrollView, for: .top)
-        web.layoutIfNeeded()
-        largeTop = web.scrollView.adjustedContentInset.top
         self.web = web
         dragged = false
         web.scrollView.panGestureRecognizer.addTarget(self, action: #selector(beganDragging))
@@ -113,17 +126,19 @@ final class WebPage: UIViewController, WKScriptMessageHandlerWithReply, WKNaviga
     func reclaim() {
         guard let web else { return }
         place.scrollY = web.scrollView.contentOffset.y + web.scrollView.adjustedContentInset.top
+        let holder = UIView(frame: view.bounds)
+        holder.backgroundColor = Self.night
         if let picture = web.snapshotView(afterScreenUpdates: false) {
-            picture.frame = view.bounds
+            picture.frame = holder.bounds
             picture.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             snapshot?.removeFromSuperview()
             snapshot = picture
-            view.addSubview(picture)
+            holder.addSubview(picture)
         }
         sizeWatch = nil
         web.configuration.userContentController.removeAllScriptMessageHandlers()
-        web.removeFromSuperview()
         self.web = nil
+        view = holder
     }
 
     /// Back at the same route and scroll: then the picture fades away over 200 ms (Capping, #156).
@@ -143,6 +158,9 @@ final class WebPage: UIViewController, WKScriptMessageHandlerWithReply, WKNaviga
         reclaim()
         if viewIfLoaded?.window != nil {
             let web = makeWeb()
+            if let snapshot { web.addSubview(snapshot) }
+            view = web
+            started = web
             Task { await start(web) }
         }
     }
