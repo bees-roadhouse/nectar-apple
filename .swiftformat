@@ -55,6 +55,7 @@
     yodaConditions
 
 --exclude Nectar, \
+  iPad, \
   Shared/Strings/Strings.swift, \
     fastlane/,				\
 	build/
