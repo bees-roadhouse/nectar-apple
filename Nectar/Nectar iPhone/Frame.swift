@@ -136,14 +136,7 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
     }
 
     private func library() -> UIViewController {
-        let screen = UIHostingController(rootView: LibraryScreen(session: session, open: { [weak self] card in
-            // Films and series have their native page; an album or a book is the web's until its own lands.
-            if card.itemType == "movie" || card.itemType == "series" {
-                self?.title(card, onTab: 1)
-            } else {
-                self?.push(path: "/item/\(card.id)", title: card.title ?? "", onTab: 1)
-            }
-        }))
+        let screen = UIHostingController(rootView: LibraryScreen(session: session, open: { [weak self] card in self?.show(card, onTab: 1) }))
         screen.title = "Library"
         screen.navigationItem.largeTitleDisplayMode = .always
         return screen
@@ -154,13 +147,7 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
         let screen = SearchController(model: model, screen: SearchScreen(
             model: model,
             playback: playback,
-            open: { [weak self] card in
-                if card.itemType == "movie" || card.itemType == "series" {
-                    self?.title(card, onTab: 2)
-                } else {
-                    self?.push(path: "/item/\(card.id)", title: card.title ?? "", onTab: 2)
-                }
-            },
+            open: { [weak self] card in self?.show(card, onTab: 2) },
             openGenre: { [weak self] name in
                 self?.push(path: "/genre/\(name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name)", title: name, onTab: 2)
             },
@@ -171,6 +158,16 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
         screen.title = "Search"
         screen.navigationItem.largeTitleDisplayMode = .always
         return screen
+    }
+
+    /// A card opened from a tab: films and series have their native page; an album, a song or a book is the web's
+    /// until its own lands.
+    private func show(_ card: MediaCard, onTab tab: Int) {
+        if card.itemType == "movie" || card.itemType == "series" {
+            title(card, onTab: tab)
+        } else {
+            push(path: "/item/\(card.id)", title: card.title ?? "", onTab: tab)
+        }
     }
 
     /// A title's native page (#158), pushed onto a tab's stack: the bar transparent over its hero, the system's bar with
