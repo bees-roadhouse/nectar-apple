@@ -15,6 +15,7 @@
 		816E070CE3709D82A8CD378F /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = A889A3792429A12E8C28FAE4 /* main.mm */; };
 		82E42A189E3A1705FD100AB3 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D783EE5CAC4BA9C49F3855C /* QuartzCore.framework */; };
 		A81B1FB3611E4244412155B4 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4B423960A271E1504657DBA8 /* UIKit.framework */; };
+		AACD70D22DD6077312FC58AD /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 86FD9586B11568F130D4C138 /* AVFoundation.framework */; };
 		ABA865D84663EE48EC1F2E50 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 52D8915C3B9BFE5AB3C4D08B /* MetalKit.framework */; };
 		B81B00C3F50C8AEB29237274 /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AD7B5956C2F29D10C45BF737 /* WebKit.framework */; };
 		E54E3AA54755CBCFED14C2D4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 81BC1DBDAB73CE02C60E6710 /* Assets.xcassets */; };
@@ -23,6 +24,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		04892B402C7ADFD158FDF8C5 /* share.rs */ = {isa = PBXFileReference; path = share.rs; sourceTree = "<group>"; };
 		19B095A18E75F7048F8B667C /* auth.rs */ = {isa = PBXFileReference; path = auth.rs; sourceTree = "<group>"; };
 		1D4BB03F82EDEFC681B83DF0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		20AE17204BCF2D2E66A0B6A5 /* web_auth.rs */ = {isa = PBXFileReference; path = web_auth.rs; sourceTree = "<group>"; };
@@ -37,6 +39,7 @@
 		5F3C1F45831E9DE4700F4B1A /* lib.rs */ = {isa = PBXFileReference; path = lib.rs; sourceTree = "<group>"; };
 		697CFE865D98D116F5F2633C /* main.rs */ = {isa = PBXFileReference; path = main.rs; sourceTree = "<group>"; };
 		81BC1DBDAB73CE02C60E6710 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		86FD9586B11568F130D4C138 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		8EA5F1126DAF42646F2E5B8A /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		A254385F713570630FF63B4F /* nectar-ipad_iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "nectar-ipad_iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A6E883B5DE6020F3CA128BA7 /* store.rs */ = {isa = PBXFileReference; path = store.rs; sourceTree = "<group>"; };
@@ -47,6 +50,7 @@
 		E5C553D69F4D97E261A0265C /* nectar-ipad_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "nectar-ipad_iOS.entitlements"; sourceTree = "<group>"; };
 		E8C5A5A6CE0D1F52408DF736 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		F6C24223571E1382F422EF2D /* servers.rs */ = {isa = PBXFileReference; path = servers.rs; sourceTree = "<group>"; };
+		F714A2613E4390D0435D3508 /* scan.rs */ = {isa = PBXFileReference; path = scan.rs; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -56,6 +60,7 @@
 			files = (
 				E666A4AA57040CABE84D9024 /* libapp.a in Frameworks */,
 				FDD0EC075795F1E0107CFD80 /* AuthenticationServices.framework in Frameworks */,
+				AACD70D22DD6077312FC58AD /* AVFoundation.framework in Frameworks */,
 				1C289B5456BEF78C291D999C /* CoreGraphics.framework in Frameworks */,
 				2C56207E1F5EE07DCF51D7FC /* Metal.framework in Frameworks */,
 				ABA865D84663EE48EC1F2E50 /* MetalKit.framework in Frameworks */,
@@ -76,7 +81,9 @@
 				4C99B957DCB57AF7FD282457 /* handoff.rs */,
 				5F3C1F45831E9DE4700F4B1A /* lib.rs */,
 				697CFE865D98D116F5F2633C /* main.rs */,
+				F714A2613E4390D0435D3508 /* scan.rs */,
 				F6C24223571E1382F422EF2D /* servers.rs */,
+				04892B402C7ADFD158FDF8C5 /* share.rs */,
 				A6E883B5DE6020F3CA128BA7 /* store.rs */,
 				20AE17204BCF2D2E66A0B6A5 /* web_auth.rs */,
 			);
@@ -110,6 +117,7 @@
 			isa = PBXGroup;
 			children = (
 				D128E1C00A38C468C39AE1F3 /* AuthenticationServices.framework */,
+				86FD9586B11568F130D4C138 /* AVFoundation.framework */,
 				E8C5A5A6CE0D1F52408DF736 /* CoreGraphics.framework */,
 				3F574F25C9D40C9E6429A0FC /* libapp.a */,
 				2E3C6720F18AC8031B5F3797 /* Metal.framework */,
@@ -164,14 +172,14 @@
 			path = "nectar-ipad";
 			sourceTree = "<group>";
 		};
-		"TEMP_1920E611-793A-4D5F-B82B-7CB86A9C3137" /* x86_64 */ = {
+		"TEMP_41B391CB-375E-474E-9101-71FC5D50A1E0" /* x86_64 */ = {
 			isa = PBXGroup;
 			children = (
 			);
 			path = x86_64;
 			sourceTree = "<group>";
 		};
-		"TEMP_A7425AF6-952D-4A45-9660-6D2032228F53" /* arm64 */ = {
+		"TEMP_B98BAB1D-0563-41E3-9C02-4E5787DB0A3B" /* arm64 */ = {
 			isa = PBXGroup;
 			children = (
 			);
