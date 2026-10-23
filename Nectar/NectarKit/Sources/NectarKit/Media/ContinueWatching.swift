@@ -26,6 +26,8 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
     /// Each image's BlurHash (nectar#376 slice 2); nil until nectar has hashed that image.
     public let posterBlurHash: String?
     public let backdropBlurHash: String?
+    /// Where the title stands on its way into the library (nectar #773); nil when nothing is happening.
+    public let pipeline: TitlePipeline?
 
     public init(
         id: String,
@@ -43,7 +45,8 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
         logoPath: String? = nil,
         genres: [String]? = nil,
         posterBlurHash: String? = nil,
-        backdropBlurHash: String? = nil
+        backdropBlurHash: String? = nil,
+        pipeline: TitlePipeline? = nil
     ) {
         self.id = id
         self.itemType = itemType
@@ -61,6 +64,7 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
         self.genres = genres
         self.posterBlurHash = posterBlurHash
         self.backdropBlurHash = backdropBlurHash
+        self.pipeline = pipeline
     }
 
     enum CodingKeys: String, CodingKey {
@@ -79,6 +83,7 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
         case logoPath = "logo_url"
         case posterBlurHash = "poster_blurhash"
         case backdropBlurHash = "backdrop_blurhash"
+        case pipeline
     }
 
     /// How far through, 0...1, or nil when nectar doesn't know the runtime.

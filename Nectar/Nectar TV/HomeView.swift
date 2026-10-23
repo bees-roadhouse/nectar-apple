@@ -157,6 +157,8 @@ private struct CardView: View {
     let isDefaultFocus: Bool
     let focusScope: Namespace.ID
     let select: () -> Void
+    @FocusState
+    private var focused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -164,8 +166,10 @@ private struct CardView: View {
             Button(action: select) { artworkView }
                 .buttonStyle(.card)
                 .prefersDefaultFocus(isDefaultFocus, in: focusScope)
+                .focused($focused)
 
-            Text(caption)
+            // Focused, a title on its way in says where it is (#125, Capping).
+            Text(focused ? (CardStatus.of(card.pipeline, owned: true)?.words.map { "\(card.title ?? "Untitled") · \($0)" } ?? caption) : caption)
                 .font(.callout)
                 .lineLimit(2, reservesSpace: true)
                 .frame(width: Self.size.width, alignment: .leading)
@@ -188,6 +192,7 @@ private struct CardView: View {
         .frame(width: Self.size.width, height: Self.size.height)
         .clipped()
         .preloadBadge(card.id)
+        .cardStatus(CardStatus.of(card.pipeline, owned: true))
         .overlay(alignment: .bottom) {
             if let progress = card.progress {
                 ProgressView(value: progress)
