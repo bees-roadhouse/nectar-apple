@@ -148,7 +148,8 @@ private final class ScannerScreen: UIViewController {
     }
 }
 
-/// The camera, through VisionKit's scanner where it's supported, or AVFoundation's capture session.
+/// The camera, through VisionKit's scanner where it's supported, or AVFoundation's capture session. Main thread only.
+@MainActor
 private class Camera: NSObject {
     func start() {}
     func stop() {}
@@ -232,9 +233,11 @@ private final class CaptureScanner: Camera, AVCaptureMetadataOutputObjectsDelega
     override func stop() { session.stopRunning() }
     override func layout(in bounds: CGRect) { preview.frame = bounds }
 
-    func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
-        for case let code as AVMetadataMachineReadableCodeObject in metadataObjects {
-            if let text = code.stringValue { found(text); return }
+    // Delivered on the main queue (set above).
+    nonisolated func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
+        let texts = metadataObjects.compactMap { ($0 as? AVMetadataMachineReadableCodeObject)?.stringValue }
+        MainActor.assumeIsolated {
+            if let text = texts.first { found(text) }
         }
     }
 }
