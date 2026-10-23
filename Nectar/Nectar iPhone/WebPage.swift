@@ -165,6 +165,13 @@ final class WebPage: UIViewController, WKScriptMessageHandlerWithReply, WKNaviga
         }
     }
 
+    /// The main frame stays on nectar: a link to anywhere else opens in Safari, where it isn't given the bridge.
+    func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction) async -> WKNavigationActionPolicy {
+        guard action.targetFrame?.isMainFrame ?? true, let url = action.request.url, !Bridge.isNectar(url) else { return .allow }
+        if ["http", "https"].contains(url.scheme?.lowercased() ?? "") { await UIApplication.shared.open(url) }
+        return .cancel
+    }
+
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         keepAtTop(webView.scrollView)
         if snapshot != nil, place.scrollY == 0 { settle() }
@@ -201,6 +208,10 @@ final class WebPage: UIViewController, WKScriptMessageHandlerWithReply, WKNaviga
     // MARK: - The bridge
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) async -> (Any?, String?) {
+        // The handler is reachable from every frame in the web view, whatever the init script checks, so a message
+        // counts only from the main frame on nectar's own origin: an embedded page can't ask for a token (Palp,
+        // hive-mind #372, finding 1).
+        guard Bridge.trusted(message.frameInfo) else { return (nil, "Not from nectar.") }
         guard let body = message.body as? [String: Any], let kind = body["kind"] as? String else { return (nil, nil) }
         switch kind {
         case "refresh":
@@ -227,6 +238,7 @@ final class WebPage: UIViewController, WKScriptMessageHandlerWithReply, WKNaviga
 }
 
 /// The script every framed page gets before its own, and the shapes it sends back.
+@MainActor
 enum Bridge {
 
     static let handler = "nectar"
@@ -280,6 +292,26 @@ enum Bridge {
           away();
         })();
         """
+    }
+
+    /// nectar's own origin, scheme, host and port.
+    static func isNectar(_ url: URL) -> Bool {
+        let server = PhoneModel.server
+        return url.scheme?.lowercased() == server.scheme?.lowercased() && url.host?.lowercased() == server.host?.lowercased()
+            && (url.port ?? defaultPort(url.scheme)) == (server.port ?? defaultPort(server.scheme))
+    }
+
+    /// A message the bridge answers: the main frame, on nectar's origin.
+    static func trusted(_ frame: WKFrameInfo) -> Bool {
+        let origin = frame.securityOrigin
+        let server = PhoneModel.server
+        return frame.isMainFrame && origin.protocol.lowercased() == server.scheme?.lowercased()
+            && origin.host.lowercased() == server.host?.lowercased()
+            && (origin.port == 0 ? defaultPort(origin.protocol) : origin.port) == (server.port ?? defaultPort(server.scheme))
+    }
+
+    private static func defaultPort(_ scheme: String?) -> Int {
+        scheme?.lowercased() == "http" ? 80 : 443
     }
 
     /// A string as a JavaScript literal.
