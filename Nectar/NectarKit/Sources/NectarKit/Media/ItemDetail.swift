@@ -49,6 +49,8 @@ public struct ItemDetail: Decodable, Equatable, Identifiable, Sendable {
     public let trailerPath: String?
     public let chapters: [Chapter]
     public let seasonCount: Int?
+    /// Where the title stands on its way into the library (nectar #773); nil when nothing is happening.
+    public let pipeline: TitlePipeline?
     public let episodeCount: Int?
     /// Where this user stopped; nil when they haven't started, or finished.
     public let resumeSeconds: Double?
@@ -73,6 +75,7 @@ public struct ItemDetail: Decodable, Equatable, Identifiable, Sendable {
         case posterBlurHash = "poster_blurhash"
         case trailerPath = "trailer_url"
         case seasonCount = "season_count"
+        case pipeline
         case episodeCount = "episode_count"
     }
 
@@ -147,6 +150,7 @@ public struct ItemDetail: Decodable, Equatable, Identifiable, Sendable {
         trailerPath = try c.decodeIfPresent(String.self, forKey: .trailerPath)
         chapters = (try? c.decodeIfPresent([Chapter].self, forKey: .chapters)) ?? []
         seasonCount = c.lenientInt(.seasonCount)
+        pipeline = try? c.decodeIfPresent(TitlePipeline.self, forKey: .pipeline)
         episodeCount = c.lenientInt(.episodeCount)
         source = (try? outer.decode(PlaybackSource.self, forKey: .item))
             ?? PlaybackSource(container: nil, videoCodec: nil, resolution: nil, hdr: nil, bitrate: nil, sizeBytes: nil, audioTracks: [])

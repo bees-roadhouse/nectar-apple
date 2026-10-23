@@ -107,6 +107,7 @@ struct ItemDetailView: View {
         VStack(alignment: .leading, spacing: 20) {
             Text(detail.title).font(.largeTitle.bold())
             Text(facts(detail)).foregroundStyle(.secondary)
+            if let status = CardStatus.of(detail.pipeline) { DetailStatus(status: status) }
             if let tagline = detail.tagline, !tagline.isEmpty {
                 Text(tagline).font(.headline).italic()
             }

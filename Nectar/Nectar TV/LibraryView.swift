@@ -135,6 +135,8 @@ struct LibraryPoster: View {
     let shape: Shape
     let artwork: URL?
     let select: () -> Void
+    @FocusState
+    private var focused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -152,15 +154,21 @@ struct LibraryPoster: View {
                 .frame(width: shape.size.width, height: shape.size.height)
                 .clipped()
                 .preloadBadge(card.id)
+                .cardStatus(status)
             }
             .buttonStyle(.card)
+            .focused($focused)
             // The title on one line and the year on its own, so a long title truncates instead of orphaning
             // "· 2011" (Capping, #103).
             VStack(alignment: .leading, spacing: 2) {
                 Text(card.title ?? "Untitled").font(.caption).lineLimit(1)
-                Text(card.year.map(String.init) ?? " ").font(.caption).foregroundStyle(.secondary)
+                // Focused, a title on its way in says where it is in place of its year (#125, Capping).
+                Text(focused ? (status?.words ?? year) : year).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             .frame(width: shape.size.width, alignment: .leading)
         }
     }
+
+    private var status: CardStatus? { CardStatus.of(card.pipeline) }
+    private var year: String { card.year.map(String.init) ?? " " }
 }
