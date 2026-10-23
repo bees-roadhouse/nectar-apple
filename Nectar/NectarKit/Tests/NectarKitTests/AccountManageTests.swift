@@ -54,6 +54,29 @@ struct AccountManageTests {
         #expect(sent["current_password"] as? String == "wrong" && sent["new_password"] as? String == "a-long-new-password")
     }
 
+    /// nectar #830: the device that changed the password keeps going on the pair it's handed back.
+    @Test func aPasswordChangeKeepsThisDeviceOnItsNewPair() async throws {
+        let server = Server(["PUT /api/v1/users/me/password": (200, #"{"ok":true,"token":"jwt-2","device":{"access_token":"jwt-2","refresh_token":"r2","expires_in":900}}"#)])
+        let store = InMemoryTokenStore(TokenSet(accessToken: "jwt-1", tokenType: "Bearer", expiresIn: nil, refreshToken: "r1"))
+        #expect(try await session(server, store: store).changePassword(current: "old-password-long", new: "a-long-new-password"))
+        #expect(store.tokens?.accessToken == "jwt-2" && store.tokens?.refreshToken == "r2")
+    }
+
+    /// Before #830 the answer has no pair: everything was revoked, and the app signs in again.
+    @Test func aPasswordChangeWithoutAPairMeansSigningInAgain() async throws {
+        let server = Server(["PUT /api/v1/users/me/password": (200, #"{"ok":true,"token":"web-jwt"}"#)])
+        let store = InMemoryTokenStore(TokenSet(accessToken: "jwt-1", tokenType: "Bearer", expiresIn: nil, refreshToken: "r1"))
+        #expect(try await session(server, store: store).changePassword(current: "old-password-long", new: "a-long-new-password") == false)
+        #expect(store.tokens?.refreshToken == "r1")
+    }
+
+    @Test func aWrongCurrentPasswordSaysSoInNectarsWords() async throws {
+        let server = Server(["PUT /api/v1/users/me/password": (400, #"{"error":"the current password is wrong"}"#)])
+        await #expect(throws: NectarSessionError.refused(400, "the current password is wrong")) {
+            try await session(server).changePassword(current: "wrong", new: "a-long-new-password")
+        }
+    }
+
     @Test func aRefusalCarriesNectarsWords() async throws {
         let server = Server(["DELETE /api/v1/users/me/identities/keycloak": (400, #"{"error":"This is the account's only way in."}"#)])
         await #expect(throws: NectarSessionError.refused(400, "This is the account's only way in.")) {

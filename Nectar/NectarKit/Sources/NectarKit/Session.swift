@@ -131,6 +131,11 @@ public actor NectarSession {
         }
     }
 
+    /// Takes tokens nectar handed back on a write (a password change keeps this device signed in with a new pair).
+    func adopt(_ tokens: TokenSet) {
+        store.save(tokens)
+    }
+
     /// One try with the current token, never refreshed or retried: for a write where 401 is the answer, not an
     /// expired token. Changing the password answers 401 to a wrong current password, and the usual refresh-and-retry
     /// would end in signing this app out.

@@ -254,15 +254,26 @@ extension NectarSession {
         _ = try await write("DELETE", "api/v1/users/me/identities/\(provider)")
     }
 
-    /// Changes the password. nectar revokes every token issued before it, this app's included, so the caller signs
-    /// in again. A wrong current password is nectar's 401, which here is an answer, not an expired token.
-    public func changePassword(current: String, new: String) async throws {
+    /// Changes the password; true when this device stays signed in. nectar ends every other session. Since nectar
+    /// #830 a device changing its own password gets a new pair back and keeps going; before it, every token was
+    /// revoked, this app's too, and the caller signs in again. A wrong current password was nectar's 401, an answer
+    /// here and not an expired token; #830 makes it a 400 in words.
+    @discardableResult
+    public func changePassword(current: String, new: String) async throws -> Bool {
         struct Change: Encodable, Sendable { let current_password: String; let new_password: String }
+        struct Answer: Decodable {
+            struct Device: Decodable { let access_token: String; let refresh_token: String?; let expires_in: Int? }
+            let device: Device?
+        }
+        let data: Data
         do {
-            _ = try await once("PUT", "api/v1/users/me/password", json: Change(current_password: current, new_password: new))
+            data = try await once("PUT", "api/v1/users/me/password", json: Change(current_password: current, new_password: new))
         } catch NectarSessionError.refused(401, _) {
             throw NectarSessionError.refused(401, "The current password isn't right.")
         }
+        guard let device = (try? JSONDecoder().decode(Answer.self, from: data))?.device, device.refresh_token != nil else { return false }
+        adopt(TokenSet(accessToken: device.access_token, tokenType: "Bearer", expiresIn: device.expires_in, refreshToken: device.refresh_token))
+        return true
     }
 
     /// The risk text and version a new Jellyfin credential has to accept, when the server sends one.

@@ -368,6 +368,9 @@ private struct ChangePassword: View {
     private var refusal: String?
     @State
     private var changed = false
+    /// nectar #830 keeps the device that changed it signed in; before that, this iPhone signs in again too.
+    @State
+    private var keptSignedIn = false
     @Environment(\.dismiss)
     private var dismiss
 
@@ -384,7 +387,7 @@ private struct ChangePassword: View {
                     SecureField("Confirm", text: $confirm).textContentType(.newPassword)
                 } footer: {
                     Text(new.isEmpty || confirm.isEmpty || new == confirm
-                        ? "At least 12 characters. Changing it signs out every device, this iPhone too: you sign in again here with the new password, and so does everything else."
+                        ? "At least 12 characters. Changing it signs out every other device, which sign in again with the new password."
                         : "The two new passwords don't match.")
                 }
                 Section {
@@ -406,9 +409,15 @@ private struct ChangePassword: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
             .alert("Password changed", isPresented: $changed) {
-                Button("Sign in", action: done)
+                if keptSignedIn {
+                    Button("OK") { dismiss() }
+                } else {
+                    Button("Sign in", action: done)
+                }
             } message: {
-                Text("Every device was signed out, this iPhone too. Sign in again with your new password.")
+                Text(keptSignedIn
+                    ? "Every other device was signed out. This iPhone stays signed in."
+                    : "Every device was signed out, this iPhone too. Sign in again with your new password.")
             }
         }
         .modifier(Sensitive())
@@ -421,7 +430,7 @@ private struct ChangePassword: View {
         Task {
             defer { working = false }
             do {
-                try await session.changePassword(current: current, new: new)
+                keptSignedIn = try await session.changePassword(current: current, new: new)
                 current = ""
                 new = ""
                 confirm = ""
