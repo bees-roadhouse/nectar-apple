@@ -225,7 +225,7 @@ struct MiniPlayer: View {
         let player = playing?.0
         let (position, duration) = times(playing, model)
         return HStack(spacing: 12) {
-            PictureView(player: player)
+            PictureView(player: player, playback: playback)
                 .frame(width: 71, height: 40)
                 .background(Color.black)
                 .clipShape(.rect(cornerRadius: 6))
@@ -287,26 +287,57 @@ struct MiniPlayer: View {
     }
 }
 
-/// The live picture at thumbnail size.
+/// The live picture at thumbnail size. It's also where picture in picture starts when the app leaves while the title
+/// plays on the dock (Nate, 2026-10-23: "it doesn't follow me outside of the app"), and a tap on the floating window
+/// comes back to the full player.
 private struct PictureView: UIViewRepresentable {
     let player: AVPlayer?
+    let playback: Playback
 
-    func makeUIView(context: Context) -> PlayerLayerView { PlayerLayerView() }
+    func makeUIView(context: Context) -> PlayerLayerView { PlayerLayerView(playback: playback) }
 
     func updateUIView(_ view: PlayerLayerView, context: Context) {
         if view.playerLayer.player !== player { view.playerLayer.player = player }
     }
 
-    final class PlayerLayerView: UIView {
+    final class PlayerLayerView: UIView, AVPictureInPictureControllerDelegate {
         override class var layerClass: AnyClass { AVPlayerLayer.self }
         var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
+        private let playback: Playback
+        private var pictureInPicture: AVPictureInPictureController?
 
-        override init(frame: CGRect) {
-            super.init(frame: frame)
+        init(playback: Playback) {
+            self.playback = playback
+            super.init(frame: .zero)
             playerLayer.videoGravity = .resizeAspectFill
+            guard AVPictureInPictureController.isPictureInPictureSupported() else { return }
+            let controller = AVPictureInPictureController(playerLayer: playerLayer)
+            controller?.canStartPictureInPictureAutomaticallyFromInline = true
+            controller?.delegate = self
+            pictureInPicture = controller
         }
 
         @available(*, unavailable)
         required init?(coder: NSCoder) { fatalError("not from a storyboard") }
+
+        nonisolated func pictureInPictureControllerWillStartPictureInPicture(_ controller: AVPictureInPictureController) {
+            MainActor.assumeIsolated { playback.pictureInPicture = true }
+        }
+
+        nonisolated func pictureInPictureControllerDidStopPictureInPicture(_ controller: AVPictureInPictureController) {
+            MainActor.assumeIsolated { playback.pictureInPicture = false }
+        }
+
+        /// Back from the floating window: the full player, which takes the same AVPlayer, so the picture carries on.
+        nonisolated func pictureInPictureController(
+            _ controller: AVPictureInPictureController,
+            restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completion: @escaping (Bool) -> Void
+        ) {
+            nonisolated(unsafe) let completion = completion
+            MainActor.assumeIsolated {
+                playback.expanded = true
+                completion(true)
+            }
+        }
     }
 }
