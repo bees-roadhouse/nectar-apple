@@ -27,13 +27,13 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
         playback = Playback(session: session)
         super.init(nibName: nil, bundle: nil)
         delegate = self
-        // Home, Library and Search are native (#158); Discover is web until its native screen lands.
+        // Every tab is native (#158).
         var stacks: [UINavigationController] = [
             stack(home(), title: "Home", symbol: "house"),
             stack(library(), title: "Library", symbol: "rectangle.stack"),
             stack(search(), title: "Search", symbol: "magnifyingglass"),
         ]
-        stacks.append(stack(WebPage(root: "/discover", title: "Discover", session: session, signedOut: signedOut), title: "Discover", symbol: "sparkles"))
+        stacks.append(stack(discover(), title: "Discover", symbol: "sparkles"))
         stacks.append(stack(More(session: session, open: { [weak self] row in self?.open(row) }), title: "More", symbol: "ellipsis"))
         setViewControllers(stacks, animated: false)
         tabBar.tintColor = UIColor(red: 0xE8 / 255, green: 0xA0 / 255, blue: 0x3A / 255, alpha: 1)
@@ -119,7 +119,7 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
             model: model,
             playback: playback,
             open: { [weak self] card in self?.title(card, onTab: 0) },
-            openDiscover: { [weak self] _ in self?.push(path: "/discover", title: "Discover", onTab: 0) },
+            openDiscover: { [weak self] _ in self?.selectedIndex = 3 },
             seeAll: { [weak self] shelf in
                 // "recent-<library>" opens the library, "genre-<name>" the genre, as web pages until theirs are native.
                 if shelf.id.hasPrefix("recent-") {
@@ -156,6 +156,27 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
             }
         ))
         screen.title = "Search"
+        screen.navigationItem.largeTitleDisplayMode = .always
+        return screen
+    }
+
+    private func discover() -> UIViewController {
+        let model = DiscoverModel(session: session, userID: "")
+        let screen = DiscoverController(model: model, screen: DiscoverScreen(
+            model: model,
+            open: { [weak self] item in
+                let detail = UIHostingController(rootView: DiscoverDetail(item: item, model: model))
+                detail.title = item.title
+                detail.navigationItem.largeTitleDisplayMode = .never
+                let clear = UINavigationBarAppearance()
+                clear.configureWithTransparentBackground()
+                clear.titleTextAttributes = [.foregroundColor: UIColor.clear]
+                detail.navigationItem.scrollEdgeAppearance = clear
+                (self?.viewControllers?[3] as? UINavigationController)?.pushViewController(detail, animated: true)
+            },
+            openRequests: { [weak self] in self?.push(path: "/requests", title: "Requests", onTab: 3) }
+        ))
+        screen.title = "Discover"
         screen.navigationItem.largeTitleDisplayMode = .always
         return screen
     }

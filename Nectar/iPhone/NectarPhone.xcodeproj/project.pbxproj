@@ -37,6 +37,7 @@
 		BA361B1176A3D9D279310E30 /* Scanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 616DA5D5FBD9E3A58445A23B /* Scanner.swift */; };
 		BC11E64DB66FD6CDA3EC1406 /* HomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D84E692AE9CB9E7311B65B44 /* HomeScreen.swift */; };
 		C2913725FF836BA69C49B42A /* ItemDetailModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C299E22052A0EE39B61A7B55 /* ItemDetailModel.swift */; };
+		C697B75FBB7E4698FB357E64 /* DiscoverScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF6D25A4A11EB94825ADB58F /* DiscoverScreen.swift */; };
 		C7C05639177F09B8D33519E5 /* TitleCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3470885CB9602C46D7CD6FF /* TitleCatalog.swift */; };
 		E6BE14FD78F0235D1CAB0B90 /* LibrarySearchModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D71B495270536E69BE0651AA /* LibrarySearchModel.swift */; };
 		E7BF8DC19EC821F25A0A69E7 /* TitleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6BBDDB2ECAD156B36B2E653 /* TitleScreen.swift */; };
@@ -69,6 +70,7 @@
 		9C505CAD4BD5A7ED5DDFBC9B /* LibraryScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryScreen.swift; sourceTree = "<group>"; };
 		A6BBDDB2ECAD156B36B2E653 /* TitleScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TitleScreen.swift; sourceTree = "<group>"; };
 		A7C36C7FABDA905FF4D6B5A1 /* HomeModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeModel.swift; sourceTree = "<group>"; };
+		AF6D25A4A11EB94825ADB58F /* DiscoverScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverScreen.swift; sourceTree = "<group>"; };
 		B363A26BE53478C0AD1AB6BF /* AccountModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountModel.swift; sourceTree = "<group>"; };
 		B4C8C67E0AD6CC1755F68D02 /* PlaylistsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistsModel.swift; sourceTree = "<group>"; };
 		B63DE94A8834248B7D394AAD /* LibraryModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryModel.swift; sourceTree = "<group>"; };
@@ -131,6 +133,7 @@
 			children = (
 				F77DE340F8FF8179F74596D6 /* AccountScreen.swift */,
 				F850BC6F6427ACAE1D20FB25 /* Assets.xcassets */,
+				AF6D25A4A11EB94825ADB58F /* DiscoverScreen.swift */,
 				4448FD47C2D58C30D3B35C4E /* Frame.swift */,
 				D84E692AE9CB9E7311B65B44 /* HomeScreen.swift */,
 				8772ECA24FFF2286A4436B72 /* Info.plist */,
@@ -275,6 +278,7 @@
 				ABE3FDF15F818C54FB9AB5CB /* CachedImage.swift in Sources */,
 				A1ED6336F6ECC4E9D8F943AB /* CardStatusViews.swift in Sources */,
 				62B32D505C01107512980B80 /* DiscoverModel.swift in Sources */,
+				C697B75FBB7E4698FB357E64 /* DiscoverScreen.swift in Sources */,
 				FAFEDE51BCB0E111A1D811DA /* DiscoverState.swift in Sources */,
 				449AFF47CF83E92D6138E5C1 /* Durations.swift in Sources */,
 				6F0B556DB143EDFCAB888695 /* Frame.swift in Sources */,

@@ -20,8 +20,9 @@ final class DiscoverModel {
     }
 
     let session: NectarSession
-    /// The signed-in user: their own requests, out of an admin's list of everyone's.
-    let userID: String
+    /// The signed-in user: their own requests, out of an admin's list of everyone's. The phone learns it after the
+    /// screen is made, so it can be set before the first load.
+    var userID: String
     private(set) var trending: Rows = .loading
     private(set) var results: Results = .idle
     var query = ""
@@ -45,6 +46,7 @@ final class DiscoverModel {
 
     func loadTrending() async {
         guard case .loading = trending else { return }
+        if userID.isEmpty, let user = try? await session.currentUser() { userID = user.id }
         wants = (try? await session.myRequestStates(userID: userID)) ?? [:]
         do {
             async let movies = session.discoverTrending(.movie)
@@ -53,6 +55,12 @@ final class DiscoverModel {
         } catch {
             trending = .failed(Self.message(for: error))
         }
+    }
+
+    /// Pull to refresh, or Check again after a failure.
+    func reload() async {
+        trending = .loading
+        await loadTrending()
     }
 
     /// Runs when the query changes; the caller debounces by cancelling the previous task.
