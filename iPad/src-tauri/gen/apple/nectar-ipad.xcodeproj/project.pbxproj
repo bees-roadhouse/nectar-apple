@@ -10,6 +10,7 @@
 		17FEEC2406A4EAA56087D556 /* assets in Resources */ = {isa = PBXBuildFile; fileRef = C00BF10CDFE769A9870FAA87 /* assets */; };
 		1C289B5456BEF78C291D999C /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E8C5A5A6CE0D1F52408DF736 /* CoreGraphics.framework */; };
 		2C56207E1F5EE07DCF51D7FC /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2E3C6720F18AC8031B5F3797 /* Metal.framework */; };
+		43A1D0C7A8D5ECF706421DB0 /* NectarScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F98A1DC8497BC00FF06CF637 /* NectarScanner.swift */; };
 		4EDC38BD48D362082D183D37 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 29D6CD10ACC05060DEFC94D1 /* Security.framework */; };
 		7CCA497E9EF9FF3AD526DEBE /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 8EA5F1126DAF42646F2E5B8A /* LaunchScreen.storyboard */; };
 		816E070CE3709D82A8CD378F /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = A889A3792429A12E8C28FAE4 /* main.mm */; };
@@ -51,6 +52,7 @@
 		E8C5A5A6CE0D1F52408DF736 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		F6C24223571E1382F422EF2D /* servers.rs */ = {isa = PBXFileReference; path = servers.rs; sourceTree = "<group>"; };
 		F714A2613E4390D0435D3508 /* scan.rs */ = {isa = PBXFileReference; path = scan.rs; sourceTree = "<group>"; };
+		F98A1DC8497BC00FF06CF637 /* NectarScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NectarScanner.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -167,19 +169,20 @@
 			isa = PBXGroup;
 			children = (
 				A889A3792429A12E8C28FAE4 /* main.mm */,
+				F98A1DC8497BC00FF06CF637 /* NectarScanner.swift */,
 				D990B17301E630D2551D75AF /* bindings */,
 			);
 			path = "nectar-ipad";
 			sourceTree = "<group>";
 		};
-		"TEMP_41B391CB-375E-474E-9101-71FC5D50A1E0" /* x86_64 */ = {
+		"TEMP_0BE7F359-9CE8-410C-8CF7-F8FDC2D0A4EB" /* x86_64 */ = {
 			isa = PBXGroup;
 			children = (
 			);
 			path = x86_64;
 			sourceTree = "<group>";
 		};
-		"TEMP_B98BAB1D-0563-41E3-9C02-4E5787DB0A3B" /* arm64 */ = {
+		"TEMP_B0B02DED-A219-4B19-A0B0-483791751856" /* arm64 */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -281,6 +284,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				43A1D0C7A8D5ECF706421DB0 /* NectarScanner.swift in Sources */,
 				816E070CE3709D82A8CD378F /* main.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -314,6 +318,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.beesroadhouse.nectar.ipad;
 				PRODUCT_NAME = Nectar;
 				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALID_ARCHS = arm64;
 			};
@@ -408,6 +413,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.beesroadhouse.nectar.ipad;
 				PRODUCT_NAME = Nectar;
 				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALID_ARCHS = arm64;
 			};

@@ -220,16 +220,18 @@ async fn share_approval(from: [f64; 4], app: AppHandle, shell: State<'_, Shell>)
 /// iphone or ipad"): the camera scanner, answered with the code's text, or nothing when cancelled (#149). The web
 /// client decides what the text is; it opens its own `/activate?code=` and nothing else.
 #[tauri::command]
-async fn scan_code(app: AppHandle) -> Result<Option<String>, String> {
+async fn scan_code(app: AppHandle, shell: State<'_, Shell>) -> Result<Option<String>, String> {
+    // The scanner judges a code against the server the shell is signed in to (Capping, #149).
+    let origin = shell.session.lock().unwrap().as_ref().map(|session| session.origin.clone()).ok_or("Sign in first.")?;
     #[cfg(target_os = "ios")]
     {
         let (answer, answered) = tokio::sync::oneshot::channel();
-        on_main(&app, move |controller| scan::start(controller, answer))?;
+        on_main(&app, move |controller| scan::start(controller, &origin, answer))?;
         return answered.await.map_err(|_| "The scanner closed without an answer.".to_string())?;
     }
     #[cfg(not(target_os = "ios"))]
     {
-        let _ = app;
+        let _ = (app, origin);
         Err("Scanning needs iOS.".into())
     }
 }
