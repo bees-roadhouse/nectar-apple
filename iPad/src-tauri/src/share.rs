@@ -9,7 +9,10 @@ use objc2::runtime::AnyObject;
 use objc2::{AllocAnyThread, MainThreadMarker, MainThreadOnly};
 use objc2_core_foundation::{CGPoint, CGRect, CGSize};
 use objc2_foundation::{NSArray, NSString, NSURL, NSUserActivity, NSUserActivityTypeBrowsingWeb};
-use objc2_ui_kit::{UIActivityViewController, UIDevice, UIUserInterfaceIdiom, UIViewController};
+use objc2_ui_kit::{
+    UIActivityViewController, UIDevice, UIModalPresentationStyle, UISheetPresentationControllerDetent, UIUserInterfaceIdiom,
+    UIViewController,
+};
 
 thread_local! {
     /// The Handoff offer while a code is shown.
@@ -28,7 +31,19 @@ pub fn share(url: &str, controller: *mut c_void, from: [f64; 4]) -> Result<(), S
     };
     // Only an iPad's sheet is a popover from the control. On an iPhone it's left to the system's own bottom sheet: a
     // source given there made iOS 26 draw it as a clipped miniature by the control (Nate's iPhone, 2026-10-23).
-    if UIDevice::currentDevice(main).userInterfaceIdiom() == UIUserInterfaceIdiom::Pad {
+    let pad = UIDevice::currentDevice(main).userInterfaceIdiom() == UIUserInterfaceIdiom::Pad;
+    if !pad {
+        // Stated outright on an iPhone: a page sheet at medium and large. Left to adapt, iOS 26 hosted it at the
+        // wrong size, squashed into a corner (Nate's iPhone, 2026-10-23).
+        sheet.setModalPresentationStyle(UIModalPresentationStyle::PageSheet);
+        if let Some(sizes) = sheet.sheetPresentationController() {
+            sizes.setDetents(&NSArray::from_retained_slice(&[
+                UISheetPresentationControllerDetent::mediumDetent(main),
+                UISheetPresentationControllerDetent::largeDetent(main),
+            ]));
+        }
+    }
+    if pad {
         if let (Some(popover), Some(view)) = (sheet.popoverPresentationController(), controller.view()) {
             let [x, y, w, h] = from;
             popover.setSourceView(Some(&view));

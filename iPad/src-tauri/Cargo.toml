@@ -34,7 +34,7 @@ objc2 = "0.6"
 block2 = "0.6"
 objc2-foundation = { version = "0.3", features = ["NSURL", "NSString", "NSError", "NSArray", "NSUserActivity"] }
 objc2-core-foundation = { version = "0.3", features = ["CFCGTypes"] }
-objc2-ui-kit = { version = "0.3", features = ["UIDevice", "UIView", "UIViewController", "UIWindow", "UIResponder", "UIActivityViewController", "UIPopoverPresentationController", "UIPresentationController", "objc2-core-foundation"] }
+objc2-ui-kit = { version = "0.3", features = ["UIDevice", "UIView", "UIViewController", "UIWindow", "UIResponder", "UIActivityViewController", "UIPopoverPresentationController", "UIPresentationController", "UISheetPresentationController", "objc2-core-foundation"] }
 objc2-authentication-services = { version = "0.3", features = ["ASWebAuthenticationSession", "ASFoundation", "block2"] }
 
 [dev-dependencies]
