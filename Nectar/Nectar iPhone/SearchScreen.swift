@@ -188,7 +188,8 @@ private struct TitleRow: View {
                 } placeholder: {
                     Color.brhCard.overlay { Image(systemName: symbol).foregroundStyle(.tertiary) }
                 }
-                .frame(width: 48, height: 72)
+                // Songs and albums have square art; films and series are posters.
+                .frame(width: square ? 72 : 48, height: 72)
                 .clipShape(.rect(cornerRadius: 6))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(hit.title).font(.body.weight(.medium)).foregroundStyle(.primary).lineLimit(2)
@@ -214,6 +215,8 @@ private struct TitleRow: View {
         default: nil
         }
     }
+
+    private var square: Bool { ["album", "track"].contains(hit.itemType) }
 
     private var symbol: String {
         ["album", "track"].contains(hit.itemType) ? "music.note" : "film"
