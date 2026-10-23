@@ -277,17 +277,17 @@ private struct WideCard: View {
                         }
                     }
                 }
-                // The time left top-right, under #142's pill when there is one, as the web has it.
+                // #142's pill top-right; the time left bottom-right, 8 pt above the hairline it describes (Capping, #159).
                 .overlay(alignment: .topTrailing) {
-                    VStack(alignment: .trailing, spacing: 6) {
-                        if case .upgrading = CardStatus.of(card.pipeline, owned: true) { UpgradingPill() }
-                        if let left = timeLeft {
-                            Text(left).font(.caption.weight(.semibold))
-                                .padding(.horizontal, 6).padding(.vertical, 3)
-                                .background(.ultraThinMaterial, in: .capsule)
-                        }
+                    if case .upgrading = CardStatus.of(card.pipeline, owned: true) { UpgradingPill().padding(8) }
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    if let left = timeLeft {
+                        Text(left).font(.caption.weight(.semibold))
+                            .padding(.horizontal, 6).padding(.vertical, 3)
+                            .background(.ultraThinMaterial, in: .capsule)
+                            .padding(.trailing, 8).padding(.bottom, 10)
                     }
-                    .padding(8)
                 }
                 .overlay(alignment: .bottom) {
                     if case let .arriving(arrival) = CardStatus.of(card.pipeline, owned: true) { ArrivalFoot(arrival: arrival).padding(8) }
