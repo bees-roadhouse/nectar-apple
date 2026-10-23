@@ -1,5 +1,9 @@
 import Foundation
 import NectarKit
+import OSLog
+import TVServices
+
+private let log = Logger(subsystem: "com.beesroadhouse.nectar.tv", category: "topshelf")
 
 /// The signed-in home's rows, as the web UI's home has them: continue watching, for you,
 /// recently added in each library, and the top genres.
@@ -130,10 +134,22 @@ final class HomeModel {
         let recent = zip(newFilms, newSeries).flatMap { [$0, $1] } + newFilms.dropFirst(newSeries.count) + newSeries.dropFirst(newFilms.count)
         if case let .loaded(watching) = continueWatching {
             hero = HeroSlide.pick(watching: watching, recent: recent)
+            publishTopShelf(watching: watching, recent: recent)
         }
         forYou = await recommendations ?? []
         self.shelves = await shelves
         await refreshTitleCatalog()
+    }
+
+    /// Hands the Top Shelf extension what Home shows (#74). The system reloads the shelf only when it changed.
+    private func publishTopShelf(watching: [MediaCard], recent: [MediaCard]) {
+        guard let store = TopShelfStore() else { return }
+        let session = session
+        let feed = TopShelfFeed.make(watching: watching, recent: recent) { session.resolve($0, pixelWidth: $1) }
+        guard feed != store.feed else { return }
+        let status = store.save(feed)
+        log.info("top shelf feed: \(feed.watching.count, privacy: .public) watching, \(feed.new.count, privacy: .public) new, saved \(status, privacy: .public)")
+        TVTopShelfContentProvider.topShelfContentDidChange()
     }
 
     /// Recently added in each library, then the top genres best rated; a row with nothing in it is left out.

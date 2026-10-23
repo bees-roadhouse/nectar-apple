@@ -1,5 +1,6 @@
 import Foundation
 import NectarKit
+import TVServices
 import UIKit
 
 /// Where the app is: deciding, signing in on this TV, signed in, or unable to reach nectar.
@@ -83,6 +84,9 @@ final class AppModel {
     func signOut() {
         Task { await session?.signOut() }
         store.save(nil)
+        // The next person to sign in shouldn't find the last one's titles on the Top Shelf.
+        TopShelfStore()?.save(nil)
+        TVTopShelfContentProvider.topShelfContentDidChange()
         beginSignIn()
     }
 
