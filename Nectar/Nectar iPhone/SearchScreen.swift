@@ -97,7 +97,8 @@ struct SearchScreen: View {
         case let .moments(hits):
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(hits) { hit in
-                    MomentRow(hit: hit, mode: model.mode, frame: model.thumbnails[hit.id], margin: margin) { model.play(hit) }
+                    // The frame at the moment, or the poster when nectar has no frame for it (as on the TV).
+                    MomentRow(hit: hit, mode: model.mode, frame: model.thumbnails[hit.id] ?? model.session.resolve(hit.posterPath, pixelWidth: 336), margin: margin) { model.play(hit) }
                 }
             }
         case let .disabled(mode):
