@@ -112,7 +112,7 @@ struct DiscoverScreen: View {
     private func shelf(_ title: String, _ items: [DiscoverItem], margin: CGFloat) -> some View {
         Shelf(title: title, margin: margin) {
             ForEach(items) { item in
-                DiscoverCard(item: item, state: model.state(of: item), width: 120, open: open) { Task { await model.want(item) } }
+                DiscoverCard(item: item, state: model.state(of: item), width: Poster.width, open: open) { Task { await model.want(item) } }
             }
         }
     }
@@ -239,7 +239,7 @@ private struct ShelfPlaceholder: View {
         VStack(alignment: .leading, spacing: 12) {
             RoundedRectangle(cornerRadius: 4).fill(Color.brhCard).frame(width: 180, height: 20).frame(minHeight: 44)
             HStack(spacing: 12) {
-                ForEach(0 ..< 4, id: \.self) { _ in RoundedRectangle(cornerRadius: 8).fill(Color.brhCard).frame(width: 120, height: 180) }
+                ForEach(0 ..< 4, id: \.self) { _ in RoundedRectangle(cornerRadius: 8).fill(Color.brhCard).frame(width: Poster.width, height: Poster.width * 1.5) }
             }
         }
         .padding(.horizontal, margin)
