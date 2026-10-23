@@ -23,6 +23,7 @@
 		6F0B556DB143EDFCAB888695 /* Frame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4448FD47C2D58C30D3B35C4E /* Frame.swift */; };
 		78B3FB6C62587C8E95809EB3 /* SignInModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C5743A7D197AEA2D91A2408 /* SignInModel.swift */; };
 		803312CA733007F9BB89C9EE /* LibraryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63DE94A8834248B7D394AAD /* LibraryModel.swift */; };
+		81ABB7C5FB943A27E51E7CE4 /* SearchScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = E56AB1FEB721B958598AC244 /* SearchScreen.swift */; };
 		8D45E7330983F819AB189085 /* PreloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43EB08DAAF458E5153B0C80E /* PreloadManager.swift */; };
 		978E0952E71BDEF00E664F99 /* WebPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78BAED1018FD02DE7E69338D /* WebPage.swift */; };
 		98CE401BFB278D55D2294F1D /* ServerModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88AC49082808E5A727E9706D /* ServerModel.swift */; };
@@ -75,6 +76,7 @@
 		D71B495270536E69BE0651AA /* LibrarySearchModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibrarySearchModel.swift; sourceTree = "<group>"; };
 		D84E692AE9CB9E7311B65B44 /* HomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreen.swift; sourceTree = "<group>"; };
 		DE4EE47DB464A9FC9C7C16A8 /* DiscoverModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverModel.swift; sourceTree = "<group>"; };
+		E56AB1FEB721B958598AC244 /* SearchScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchScreen.swift; sourceTree = "<group>"; };
 		E5B71018F923FFAE3EF75008 /* NectarKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NectarKit; path = ../NectarKit; sourceTree = SOURCE_ROOT; };
 		F5AD0197CBA1A6EF00423524 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
 		F789E66CE2BDCF053BBDC515 /* AuthenticationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AuthenticationServices.framework; path = System/Library/Frameworks/AuthenticationServices.framework; sourceTree = SDKROOT; };
@@ -127,6 +129,7 @@
 				C19EEAEF5402B7F83F6E48DC /* NectarPhoneApp.swift */,
 				166EB8D80371E473D2F659AB /* PhoneModel.swift */,
 				8CF0F9B84D9B6BACA92F2B3A /* Playback.swift */,
+				E56AB1FEB721B958598AC244 /* SearchScreen.swift */,
 				F5AD0197CBA1A6EF00423524 /* SignInView.swift */,
 				C3470885CB9602C46D7CD6FF /* TitleCatalog.swift */,
 				A6BBDDB2ECAD156B36B2E653 /* TitleScreen.swift */,
@@ -279,6 +282,7 @@
 				45208BD2EC346CF5B8D6CB68 /* PlaylistsModel.swift in Sources */,
 				8D45E7330983F819AB189085 /* PreloadManager.swift in Sources */,
 				31F73B368799C78ED837BABF /* SearchModel.swift in Sources */,
+				81ABB7C5FB943A27E51E7CE4 /* SearchScreen.swift in Sources */,
 				98CE401BFB278D55D2294F1D /* ServerModel.swift in Sources */,
 				78B3FB6C62587C8E95809EB3 /* SignInModel.swift in Sources */,
 				28C20CF4553A617E3493C536 /* SignInView.swift in Sources */,

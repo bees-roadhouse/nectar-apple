@@ -25,15 +25,13 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
         playback = Playback(session: session)
         super.init(nibName: nil, bundle: nil)
         delegate = self
-        let tabs: [(String, String, String)] = [
-            ("Search", "magnifyingglass", "/search"),
-            ("Discover", "sparkles", "/discover"),
+        // Home, Library and Search are native (#158); Discover is web until its native screen lands.
+        var stacks: [UINavigationController] = [
+            stack(home(), title: "Home", symbol: "house"),
+            stack(library(), title: "Library", symbol: "rectangle.stack"),
+            stack(search(), title: "Search", symbol: "magnifyingglass"),
         ]
-        // Home and Library are native (#158); the other tabs are web until their native screens land.
-        var stacks: [UINavigationController] = [stack(home(), title: "Home", symbol: "house"), stack(library(), title: "Library", symbol: "rectangle.stack")]
-        stacks += tabs.map { title, symbol, path in
-            stack(WebPage(root: path, title: title, session: session, signedOut: signedOut), title: title, symbol: symbol)
-        }
+        stacks.append(stack(WebPage(root: "/discover", title: "Discover", session: session, signedOut: signedOut), title: "Discover", symbol: "sparkles"))
         stacks.append(stack(More(session: session, open: { [weak self] row in self?.open(row) }, signOut: signedOut), title: "More", symbol: "ellipsis"))
         setViewControllers(stacks, animated: false)
         tabBar.tintColor = UIColor(red: 0xE8 / 255, green: 0xA0 / 255, blue: 0x3A / 255, alpha: 1)
@@ -122,6 +120,30 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
             }
         }))
         screen.title = "Library"
+        screen.navigationItem.largeTitleDisplayMode = .always
+        return screen
+    }
+
+    private func search() -> UIViewController {
+        let model = SearchModel(session: session)
+        let screen = SearchController(model: model, screen: SearchScreen(
+            model: model,
+            playback: playback,
+            open: { [weak self] card in
+                if card.itemType == "movie" || card.itemType == "series" {
+                    self?.title(card, onTab: 2)
+                } else {
+                    self?.push(path: "/item/\(card.id)", title: card.title ?? "", onTab: 2)
+                }
+            },
+            openGenre: { [weak self] name in
+                self?.push(path: "/genre/\(name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name)", title: name, onTab: 2)
+            },
+            openCollection: { [weak self] collection in
+                self?.push(path: "/collection/\(collection.id)", title: collection.name, onTab: 2)
+            }
+        ))
+        screen.title = "Search"
         screen.navigationItem.largeTitleDisplayMode = .always
         return screen
     }
