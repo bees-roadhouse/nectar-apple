@@ -107,7 +107,12 @@ struct ItemDetailView: View {
         VStack(alignment: .leading, spacing: 20) {
             Text(detail.title).font(.largeTitle.bold())
             Text(facts(detail)).foregroundStyle(.secondary)
-            if let status = CardStatus.of(detail.pipeline) { DetailStatus(status: status) }
+            // Everything on a detail page is in the library: a waiting stage is the monitor at rest, in words (#142).
+            if let status = CardStatus.of(detail.pipeline, owned: true) {
+                DetailStatus(status: status)
+            } else if let following = CardStatus.following(detail.pipeline, isSeries: detail.itemType == "series") {
+                Text(following).font(.callout).foregroundStyle(.secondary)
+            }
             if let tagline = detail.tagline, !tagline.isEmpty {
                 Text(tagline).font(.headline).italic()
             }

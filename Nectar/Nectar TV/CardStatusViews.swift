@@ -4,6 +4,10 @@ import SwiftUI
 extension Color {
     /// Gold, `--brh-gold` on the Brand & Visual Identity Standard (KB page 2451): the Upgrading pill.
     static let brhGold = Color(red: 0xE8 / 255, green: 0xA0 / 255, blue: 0x3A / 255)
+    /// `--brh-gold-ink`: lettering on gold.
+    static let brhGoldInk = Color(red: 0x1A / 255, green: 0x14 / 255, blue: 0x07 / 255)
+    /// `--brh-err`: a stage that needs an admin.
+    static let brhErr = Color(red: 0xE0 / 255, green: 0x6B / 255, blue: 0x52 / 255)
 }
 
 extension View {
@@ -35,7 +39,7 @@ struct UpgradingPill: View {
     var body: some View {
         Label("Upgrading", systemImage: "arrow.up")
             .font(.caption2.weight(.semibold))
-            .foregroundStyle(.black)
+            .foregroundStyle(Color.brhGoldInk)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(Color.brhGold, in: Capsule())
@@ -76,7 +80,7 @@ struct ArrivalFoot: View {
         switch state {
         case .active: .brhGold
         case .waiting, .paused: .secondary
-        case .failed: .red
+        case .failed: .brhErr
         }
     }
 }
@@ -97,14 +101,16 @@ struct Track: View {
                 if let value = arrival.value {
                     Capsule().fill(tint).frame(width: geometry.size.width * min(max(value, 0), 1))
                 } else if arrival.indeterminate {
-                    // A short segment going across; still, under Reduce Motion.
+                    // A short segment going left to right and starting again from the left, the kit's 1.6 s
+                    // (Capping, #142); still, under Reduce Motion.
                     Capsule().fill(tint)
                         .frame(width: geometry.size.width * 0.3)
-                        .offset(x: reduceMotion ? 0 : (sweep ? geometry.size.width * 0.7 : 0))
-                        .animation(reduceMotion ? nil : .easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: sweep)
+                        .offset(x: reduceMotion ? 0 : (sweep ? geometry.size.width : -geometry.size.width * 0.3))
+                        .animation(reduceMotion ? nil : .easeInOut(duration: 1.6).repeatForever(autoreverses: false), value: sweep)
                         .onAppear { sweep = true }
                 }
             }
+            .clipShape(Capsule())
         }
         .frame(height: 4)
     }
@@ -130,7 +136,7 @@ struct DetailStatus: View {
                     if let glyph = ArrivalFoot.glyph(arrival.state) { Image(systemName: glyph) }
                 }
                 .font(.callout)
-                .foregroundStyle(arrival.state == .failed ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+                .foregroundStyle(arrival.state == .failed ? AnyShapeStyle(Color.brhErr) : AnyShapeStyle(.secondary))
                 Track(arrival: arrival, tint: ArrivalFoot.tint(arrival.state)).frame(width: 480)
             }
         }

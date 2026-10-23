@@ -169,7 +169,7 @@ private struct CardView: View {
                 .focused($focused)
 
             // Focused, a title on its way in says where it is (#125, Capping).
-            Text(focused ? (CardStatus.of(card.pipeline)?.words.map { "\(card.title ?? "Untitled") · \($0)" } ?? caption) : caption)
+            Text(focused ? (CardStatus.of(card.pipeline, owned: true)?.words.map { "\(card.title ?? "Untitled") · \($0)" } ?? caption) : caption)
                 .font(.callout)
                 .lineLimit(2, reservesSpace: true)
                 .frame(width: Self.size.width, alignment: .leading)
@@ -192,7 +192,7 @@ private struct CardView: View {
         .frame(width: Self.size.width, height: Self.size.height)
         .clipped()
         .preloadBadge(card.id)
-        .cardStatus(CardStatus.of(card.pipeline))
+        .cardStatus(CardStatus.of(card.pipeline, owned: true))
         .overlay(alignment: .bottom) {
             if let progress = card.progress {
                 ProgressView(value: progress)

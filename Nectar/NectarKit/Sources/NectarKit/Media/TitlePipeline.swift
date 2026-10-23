@@ -74,8 +74,11 @@ public enum CardStatus: Equatable, Sendable {
         return nil
     }
 
-    public static func of(_ pipeline: TitlePipeline?) -> CardStatus? {
+    /// `owned`: the title is already in the library, so a stage that's only waiting (no release, a request) is the
+    /// monitor at rest and shows nothing; only something moving does (Capping, #142). Every TV card is owned.
+    public static func of(_ pipeline: TitlePipeline?, owned: Bool = false) -> CardStatus? {
         guard let pipeline else { return nil }
+        if owned, waitingStages.contains(pipeline.stage) { return nil }
         let total = pipeline.download?.bytesTotal ?? 0
         let fraction = total > 0 ? (pipeline.download?.bytesDone ?? 0) / total : nil
         switch pipeline.stage {
@@ -106,6 +109,15 @@ public enum CardStatus: Equatable, Sendable {
         default:
             return nil
         }
+    }
+
+    private static let waitingStages: Set<String> = ["requested", "no_release"]
+
+    /// The detail page's words for an owned series whose stage is only waiting, in place of a card mark: #686's
+    /// Following state, words only (Capping, #142). Nil otherwise.
+    public static func following(_ pipeline: TitlePipeline?, isSeries: Bool) -> String? {
+        guard isSeries, let stage = pipeline?.stage, waitingStages.contains(stage) else { return nil }
+        return "In your library. Nectar is watching for new episodes."
     }
 
     private static let gigabyte = Double(1 << 30)

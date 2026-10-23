@@ -42,6 +42,21 @@ struct TitlePipelineTests {
         #expect(CardStatus.of(pipeline("no_release")) == .arriving(.init(words: "No release yet", state: .waiting, value: nil, indeterminate: false)))
     }
 
+    @Test func anOwnedTitleWaitingShowsNothingOnItsCard() {
+        // Capping, #142: "No release yet" on a series you can already watch is the monitor at rest, not news.
+        #expect(CardStatus.of(pipeline("no_release"), owned: true) == nil)
+        #expect(CardStatus.of(pipeline("requested"), owned: true) == nil)
+        #expect(CardStatus.of(pipeline("searching"), owned: true)?.words == "Looking for a release", "something moving still shows")
+        #expect(CardStatus.of(pipeline("upgrading"), owned: true) == .upgrading)
+    }
+
+    @Test func theDetailPageSaysAnOwnedSeriesIsBeingWatched() {
+        #expect(CardStatus.following(pipeline("no_release"), isSeries: true) == "In your library. Nectar is watching for new episodes.")
+        #expect(CardStatus.following(pipeline("no_release"), isSeries: false) == nil)
+        #expect(CardStatus.following(pipeline("searching"), isSeries: true) == nil)
+        #expect(CardStatus.following(nil, isSeries: true) == nil)
+    }
+
     @Test func searchingAndImportingSweep() {
         #expect(CardStatus.of(pipeline("searching")) == .arriving(.init(words: "Looking for a release", state: .active, value: nil, indeterminate: true)))
         #expect(CardStatus.of(pipeline("importing")) == .arriving(.init(words: "Adding to the library", state: .active, value: nil, indeterminate: true)))

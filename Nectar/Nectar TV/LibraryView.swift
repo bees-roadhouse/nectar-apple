@@ -169,6 +169,6 @@ struct LibraryPoster: View {
         }
     }
 
-    private var status: CardStatus? { CardStatus.of(card.pipeline) }
+    private var status: CardStatus? { CardStatus.of(card.pipeline, owned: true) }
     private var year: String { card.year.map(String.init) ?? " " }
 }
