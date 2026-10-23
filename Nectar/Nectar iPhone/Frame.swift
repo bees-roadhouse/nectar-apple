@@ -34,7 +34,7 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
             stack(search(), title: "Search", symbol: "magnifyingglass"),
         ]
         stacks.append(stack(WebPage(root: "/discover", title: "Discover", session: session, signedOut: signedOut), title: "Discover", symbol: "sparkles"))
-        stacks.append(stack(More(session: session, open: { [weak self] row in self?.open(row) }, signOut: signedOut), title: "More", symbol: "ellipsis"))
+        stacks.append(stack(More(session: session, open: { [weak self] row in self?.open(row) }), title: "More", symbol: "ellipsis"))
         setViewControllers(stacks, animated: false)
         tabBar.tintColor = UIColor(red: 0xE8 / 255, green: 0xA0 / 255, blue: 0x3A / 255, alpha: 1)
     }
@@ -200,8 +200,20 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
 
     /// A More row: its web page pushed onto More's stack, with the system's swipe back.
     private func open(_ row: More.Row) {
+        if row.path == "/settings/account" { return account() }
         let page = WebPage(root: row.path, title: row.title, session: session, signedOut: signedOut)
         (viewControllers?.last as? UINavigationController)?.pushViewController(page, animated: true)
+    }
+
+    /// Account, native (#165 slice 1), pushed on More; Sign out lives at its foot now, not More's.
+    private func account() {
+        Task {
+            guard let user = try? await session.currentUser() else { return }
+            let screen = UIHostingController(rootView: AccountScreen(model: AccountModel(user: user, session: session), signOut: signedOut))
+            screen.title = "Account"
+            screen.navigationItem.largeTitleDisplayMode = .never
+            (viewControllers?.last as? UINavigationController)?.pushViewController(screen, animated: true)
+        }
     }
 
     /// A page came on screen: it's the most recent, and anything past the limit gives its process back.
@@ -231,8 +243,8 @@ extension Frame: UINavigationControllerDelegate {
 }
 
 /// More: what isn't a tab, and what the web's header carried before frame mode took it away (Capping, #159), as the
-/// system's inset groups: the account, the collections of things, requests and activity, the Console and Settings, and
-/// Sign out.
+/// system's inset groups: the account, the collections of things, requests and activity, and the Console and Settings.
+/// Sign out is at the foot of Account.
 @MainActor
 final class More: UITableViewController {
 
@@ -244,7 +256,6 @@ final class More: UITableViewController {
 
     private let session: NectarSession
     private let open: (Row) -> Void
-    private let signOut: () -> Void
     private var user: NectarUser?
 
     private var groups: [[Row]] {
@@ -265,10 +276,9 @@ final class More: UITableViewController {
         ]
     }
 
-    init(session: NectarSession, open: @escaping (Row) -> Void, signOut: @escaping () -> Void) {
+    init(session: NectarSession, open: @escaping (Row) -> Void) {
         self.session = session
         self.open = open
-        self.signOut = signOut
         super.init(style: .insetGrouped)
         title = "More"
         navigationItem.largeTitleDisplayMode = .always
@@ -285,23 +295,16 @@ final class More: UITableViewController {
         }
     }
 
-    override func numberOfSections(in tableView: UITableView) -> Int { groups.count + 1 }
+    // Sign out lives at the foot of Account (Capping, 2026-10-23): one home, as Apple's apps keep it.
+    override func numberOfSections(in tableView: UITableView) -> Int { groups.count }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        section < groups.count ? groups[section].count : 1
+        groups[section].count
     }
 
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = UITableViewCell(style: .default, reuseIdentifier: nil)
         var content = cell.defaultContentConfiguration()
-        guard indexPath.section < groups.count else {
-            content.text = "Sign out"
-            content.textProperties.color = .systemRed
-            content.image = UIImage(systemName: "rectangle.portrait.and.arrow.right")
-            content.imageProperties.tintColor = .systemRed
-            cell.contentConfiguration = content
-            return cell
-        }
         let row = groups[indexPath.section][indexPath.row]
         content.text = row.title
         if indexPath.section == 0, let initial = user?.username.first {
@@ -317,7 +320,6 @@ final class More: UITableViewController {
 
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        guard indexPath.section < groups.count else { return signOut() }
         open(groups[indexPath.section][indexPath.row])
     }
 

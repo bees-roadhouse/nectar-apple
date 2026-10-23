@@ -11,11 +11,15 @@ final class WebAuth: NSObject, ASWebAuthenticationPresentationContextProviding {
 
     private var session: ASWebAuthenticationSession?
 
-    func open(_ url: URL) {
+    /// `closed` runs when the sheet goes, whoever closed it: Account's Link refreshes what's linked then.
+    func open(_ url: URL, closed: (@MainActor () -> Void)? = nil) {
         close()
         // A scheme nothing opens: the sheet only ever ends by being closed, here or by the person.
         let session = ASWebAuthenticationSession(url: url, callback: .customScheme("nectar-unused")) { [weak self] _, _ in
-            self?.session = nil
+            Task { @MainActor in
+                self?.session = nil
+                closed?()
+            }
         }
         session.presentationContextProvider = self
         // Not ephemeral, so Safari's saved nectar password, passkey and session carry over.
