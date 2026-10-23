@@ -322,6 +322,8 @@ struct DiscoverDetail: View {
                 .padding(.horizontal, 16)
             }
         }
+        // The system's soft edge keeps the status bar and the glass back button legible over the art (Capping).
+        .scrollEdgeEffectStyle(.soft, for: .top)
         .ignoresSafeArea(edges: .top)
         .background(Color.brhNight)
         .sensoryFeedback(.success, trigger: model.state(of: item))
