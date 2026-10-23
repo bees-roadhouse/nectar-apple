@@ -22,6 +22,8 @@ public enum NectarSessionError: Error, Equatable {
     /// No tokens, or the refresh token was refused: the user has to sign in again.
     case signedOut
     case unexpectedStatus(Int)
+    /// nectar said no, in words the person reads (a 4xx answer's `error`), from a write that asked for them.
+    case refused(Int, String)
     /// A path nectar handed out that doesn't form a URL on this server.
     case invalidPath(String)
 }
@@ -119,6 +121,30 @@ public actor NectarSession {
         _ = try await request("DELETE", path, query: [], body: nil)
     }
 
+    /// A write whose refusal the person reads: a 4xx answer comes back as ``NectarSessionError/refused(_:_:)`` with
+    /// nectar's own `error` text, and a token refused once is refreshed and tried again, as every request is.
+    public func write(_ method: String, _ path: String, data body: Data? = nil) async throws -> Data {
+        do {
+            return try await request(method, path, query: [], body: body, reasons: true)
+        } catch let NectarSessionError.unexpectedStatus(status) {
+            throw NectarSessionError.refused(status, "nectar said no (\(status)).")
+        }
+    }
+
+    /// Takes tokens nectar handed back on a write (a password change keeps this device signed in with a new pair).
+    func adopt(_ tokens: TokenSet) {
+        store.save(tokens)
+    }
+
+    /// One try with the current token, never refreshed or retried: for a write where 401 is the answer, not an
+    /// expired token. Changing the password answers 401 to a wrong current password, and the usual refresh-and-retry
+    /// would end in signing this app out.
+    public func once(_ method: String, _ path: String, json body: some Encodable & Sendable) async throws -> Data {
+        guard let tokens = store.tokens else { throw NectarSessionError.signedOut }
+        let (data, response) = try await send(method, path, query: [], body: try JSONEncoder().encode(body), with: tokens.accessToken)
+        return try Self.checked(data, response, reasons: true)
+    }
+
     /// A media URL AVPlayer can open on its own: it can't add headers, so the access token
     /// rides in the query (nectar#379 takes `?access_token=` on streaming and image paths only).
     /// The URL is a credential; don't log it.
@@ -130,11 +156,11 @@ public actor NectarSession {
         return components.url!
     }
 
-    private func request(_ method: String, _ path: String, query: [URLQueryItem], body: Data?) async throws -> Data {
+    private func request(_ method: String, _ path: String, query: [URLQueryItem], body: Data?, reasons: Bool = false) async throws -> Data {
         guard let tokens = store.tokens else { throw NectarSessionError.signedOut }
 
         let (data, response) = try await send(method, path, query: query, body: body, with: tokens.accessToken)
-        guard response.statusCode == 401 else { return try Self.checked(data, response) }
+        guard response.statusCode == 401 else { return try Self.checked(data, response, reasons: reasons) }
 
         let fresh = try await refreshed(after: tokens)
         let (retryData, retryResponse) = try await send(method, path, query: query, body: body, with: fresh.accessToken)
@@ -142,7 +168,7 @@ public actor NectarSession {
             signOut()
             throw NectarSessionError.signedOut
         }
-        return try Self.checked(retryData, retryResponse)
+        return try Self.checked(retryData, retryResponse, reasons: reasons)
     }
 
     /// A request for a long-lived stream under the base URL: the bearer and client headers, with a token
@@ -225,8 +251,15 @@ public actor NectarSession {
         return try await transport.send(request)
     }
 
-    private static func checked(_ data: Data, _ response: HTTPURLResponse) throws -> Data {
-        guard (200 ..< 300).contains(response.statusCode) else { throw NectarSessionError.unexpectedStatus(response.statusCode) }
+    private static func checked(_ data: Data, _ response: HTTPURLResponse, reasons: Bool = false) throws -> Data {
+        guard (200 ..< 300).contains(response.statusCode) else {
+            struct Reason: Decodable { let error: String?; let message: String? }
+            if reasons, (400 ..< 500).contains(response.statusCode),
+               let reason = try? JSONDecoder().decode(Reason.self, from: data), let words = reason.message ?? reason.error {
+                throw NectarSessionError.refused(response.statusCode, words)
+            }
+            throw NectarSessionError.unexpectedStatus(response.statusCode)
+        }
         return data
     }
 }
