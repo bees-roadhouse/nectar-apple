@@ -316,7 +316,8 @@ private struct WideCard: View {
                     if case .upgrading = CardStatus.of(card.pipeline, owned: true), !typeSize.isAccessibilitySize { UpgradingPill().padding(8) }
                 }
                 .overlay(alignment: .bottomTrailing) {
-                    if let left = timeLeft {
+                    // At the accessibility sizes every chip leaves the art; only the hairline stays (Capping, #172).
+                    if let left = timeLeft, !typeSize.isAccessibilitySize {
                         Text(left).font(.caption.weight(.semibold))
                             .padding(.horizontal, 6).padding(.vertical, 3)
                             .background(.ultraThinMaterial, in: .capsule)
@@ -328,6 +329,10 @@ private struct WideCard: View {
                 }
                 .clipShape(.rect(cornerRadius: 12))
                 Text(card.title ?? "Untitled").font(.subheadline.weight(.medium)).lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
+                // Under the title at the accessibility sizes: the time left first, then the status.
+                if typeSize.isAccessibilitySize, let left = timeLeft {
+                    Text(left).font(.footnote.weight(.semibold)).foregroundStyle(.secondary)
+                }
                 StatusUnderTitle(status: CardStatus.of(card.pipeline, owned: true))
             }
             .frame(width: Self.width, alignment: .leading)
