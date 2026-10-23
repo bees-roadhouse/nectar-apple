@@ -384,7 +384,7 @@ private struct ChangePassword: View {
                     SecureField("Confirm", text: $confirm).textContentType(.newPassword)
                 } footer: {
                     Text(new.isEmpty || confirm.isEmpty || new == confirm
-                        ? "At least 12 characters. Changing it signs out every device, this iPhone too."
+                        ? "At least 12 characters. Changing it signs out every device, this iPhone too: you sign in again here with the new password, and so does everything else."
                         : "The two new passwords don't match.")
                 }
                 Section {
