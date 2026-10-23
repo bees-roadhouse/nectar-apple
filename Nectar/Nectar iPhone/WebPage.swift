@@ -20,6 +20,9 @@ final class WebPage: UIViewController, WKScriptMessageHandlerWithReply, WKNaviga
     private let signedOut: () -> Void
     private var web: WKWebView?
     private var snapshot: UIView?
+    /// Watching the page's size until the person first drags it, to keep a page that's at the top at the top.
+    private var sizeWatch: NSKeyValueObservation?
+    private var dragged = false
 
     /// One process pool and data store for every page, so they share the session's cookie and storage.
     private static let configurationBase: WKWebViewConfiguration = {
@@ -77,6 +80,14 @@ final class WebPage: UIViewController, WKScriptMessageHandlerWithReply, WKNaviga
         view.insertSubview(web, at: 0)
         setContentScrollView(web.scrollView, for: .top)
         self.web = web
+        dragged = false
+        web.scrollView.panGestureRecognizer.addTarget(self, action: #selector(beganDragging))
+        // UIKit shows the large title only with the scroll view at -adjustedContentInset.top, not at 0, where the page
+        // puts itself whenever it lays out (Capping, #159). Until the person drags, a page meant to be at the top is
+        // put back at the true top each time its content changes size.
+        sizeWatch = web.scrollView.observe(\.contentSize, options: [.new]) { [weak self] scroll, _ in
+            MainActor.assumeIsolated { self?.keepAtTop(scroll) }
+        }
         web.load(URLRequest(url: PhoneModel.server.appending(path: place.path)))
     }
 
@@ -91,6 +102,7 @@ final class WebPage: UIViewController, WKScriptMessageHandlerWithReply, WKNaviga
             snapshot = picture
             view.addSubview(picture)
         }
+        sizeWatch = nil
         web.configuration.userContentController.removeAllScriptMessageHandlers()
         web.removeFromSuperview()
         self.web = nil
@@ -115,13 +127,20 @@ final class WebPage: UIViewController, WKScriptMessageHandlerWithReply, WKNaviga
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        // UIKit shows the large title only with the scroll view at -adjustedContentInset.top, not at 0, where a
-        // fresh page starts (Capping, #159): put a page that's at the top there, so the title is large on load.
-        let scroll = webView.scrollView
-        if place.scrollY == 0, scroll.contentOffset.y <= 0 {
-            scroll.setContentOffset(CGPoint(x: 0, y: -scroll.adjustedContentInset.top), animated: false)
-        }
+        keepAtTop(webView.scrollView)
         if snapshot != nil, place.scrollY == 0 { settle() }
+    }
+
+    private func keepAtTop(_ scroll: UIScrollView) {
+        guard !dragged, place.scrollY == 0, scroll.contentOffset.y > -scroll.adjustedContentInset.top else { return }
+        scroll.setContentOffset(CGPoint(x: 0, y: -scroll.adjustedContentInset.top), animated: false)
+    }
+
+    @objc private func beganDragging(_ pan: UIPanGestureRecognizer) {
+        if pan.state == .began {
+            dragged = true
+            sizeWatch = nil
+        }
     }
 
     // MARK: - The tab bar's taps
