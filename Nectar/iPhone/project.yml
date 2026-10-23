@@ -38,6 +38,7 @@ targets:
       - package: NectarKit
       - sdk: AuthenticationServices.framework
       - sdk: WebKit.framework
+      - sdk: VisionKit.framework
     info:
       path: "../Nectar iPhone/Info.plist"
       properties:
