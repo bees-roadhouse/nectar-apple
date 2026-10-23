@@ -30,6 +30,8 @@ final class SearchController: UIHostingController<SearchScreen>, UISearchResults
         search.scopeBarActivation = .onSearchActivation
         navigationItem.searchController = search
         navigationItem.hidesSearchBarWhenScrolling = false
+        // The search presents within its own tab, not over the frame, so the player and other tabs stay free.
+        definesPresentationContext = true
     }
 
     func updateSearchResults(for searchController: UISearchController) {
@@ -85,11 +87,11 @@ struct SearchScreen: View {
         case .idle:
             Browse(model: model, margin: margin, openGenre: openGenre, openCollection: openCollection)
         case .searching:
-            Rows(margin: margin)
+            Rows(margin: margin, mode: model.mode)
         case let .titles(hits) where hits.isEmpty:
-            line("Nothing matches “\(model.query)”.")
+            nothing
         case let .moments(hits) where hits.isEmpty:
-            line("Nothing matches “\(model.query)”.")
+            nothing
         case let .titles(hits):
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(hits) { hit in TitleRow(hit: hit, session: model.session, margin: margin) { open(card(hit)) } }
@@ -98,7 +100,10 @@ struct SearchScreen: View {
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(hits) { hit in
                     // The frame at the moment, or the poster when nectar has no frame for it (as on the TV).
-                    MomentRow(hit: hit, mode: model.mode, frame: model.thumbnails[hit.id] ?? model.session.resolve(hit.posterPath, pixelWidth: 336), margin: margin) { model.play(hit) }
+                    // A song opens its page until music plays natively; a line or a scene plays from its moment.
+                    MomentRow(hit: hit, mode: model.mode, frame: model.thumbnails[hit.id] ?? model.session.resolve(hit.posterPath, pixelWidth: 336), margin: margin) {
+                        if model.mode == .audio { open(hit.card) } else { model.play(hit) }
+                    }
                 }
             }
         case let .disabled(mode):
@@ -106,6 +111,29 @@ struct SearchScreen: View {
         case .failed:
             line("Can't reach nectar right now.")
         }
+    }
+
+    /// Nothing found: says where it looked, and where else to look.
+    private var nothing: some View {
+        let what: String = switch model.mode {
+        case .titles: "No titles match"
+        case .dialogue: "No lines match"
+        case .scenes: "No scenes match"
+        case .audio: "No songs match"
+        }
+        let elsewhere: String = switch model.mode {
+        case .titles: "Try Dialogue for what's said, or Scenes for what's seen."
+        case .dialogue: "Try Titles, or Scenes for what's seen."
+        case .scenes: "Try Titles, or Dialogue for what's said."
+        case .audio: "Try Titles for an album or an artist."
+        }
+        return VStack(spacing: 6) {
+            Text("\(what) “\(model.query)”.").font(.subheadline.weight(.semibold))
+            Text(elsewhere).font(.footnote).foregroundStyle(.secondary)
+        }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity, minHeight: 240)
+        .padding(.horizontal, 32)
     }
 
     private func card(_ hit: TitleHit) -> MediaCard {
@@ -237,7 +265,8 @@ private struct MomentRow: View {
                 CachedImage(url: frame, maxPixelSize: 336, blurHash: nil) { image in
                     image.resizable().scaledToFill()
                 } placeholder: { Color.brhCard }
-                .frame(width: 112, height: 63)
+                // A song's art is square; a moment's frame is the picture's shape.
+                .frame(width: mode == .audio ? 63 : 112, height: 63)
                 .clipShape(.rect(cornerRadius: 6))
                 .overlay(alignment: .bottomTrailing) {
                     if let seconds = hit.seconds {
@@ -260,19 +289,26 @@ private struct MomentRow: View {
             .contentShape(.rect)
         }
         .buttonStyle(Pressed())
-        .disabled(hit.seconds == nil)
+        .disabled(mode != .audio && hit.seconds == nil)
     }
 }
 
 /// Results arriving: rows at their size, never a spinner.
 private struct Rows: View {
     let margin: CGFloat
+    /// The rows take the shape of what's coming: posters for titles, frames for lines and scenes, squares for songs.
+    let mode: SearchMode
 
     var body: some View {
+        let art: CGSize = switch mode {
+        case .titles: CGSize(width: 48, height: 72)
+        case .dialogue, .scenes: CGSize(width: 112, height: 63)
+        case .audio: CGSize(width: 63, height: 63)
+        }
         VStack(alignment: .leading, spacing: 12) {
             ForEach(0 ..< 6, id: \.self) { _ in
                 HStack(spacing: 12) {
-                    RoundedRectangle(cornerRadius: 6).fill(Color.brhCard).frame(width: 48, height: 72)
+                    RoundedRectangle(cornerRadius: 6).fill(Color.brhCard).frame(width: art.width, height: art.height)
                     VStack(alignment: .leading, spacing: 6) {
                         RoundedRectangle(cornerRadius: 3).fill(Color.brhCard).frame(width: 180, height: 14)
                         RoundedRectangle(cornerRadius: 3).fill(Color.brhCard).frame(width: 90, height: 10)

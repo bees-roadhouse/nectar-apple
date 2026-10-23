@@ -74,10 +74,14 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
             stack.additionalSafeAreaInsets.bottom = docked ? Self.dockHeight + 8 : 0
         }
         if !playing { full = nil }
-        let shown = presentedViewController as? FullPlayer
-        if expanded, playing, shown == nil, presentedViewController == nil {
+        // The player goes over whatever is up (a sheet, a menu, an active search), or it would be expanded with
+        // nowhere to show, and the dock hidden for it.
+        var top: UIViewController = self
+        while let next = top.presentedViewController, !(next is FullPlayer) { top = next }
+        let shown = top.presentedViewController as? FullPlayer
+        if expanded, playing, shown == nil {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            present(fullPlayer(), animated: true)
+            top.present(fullPlayer(), animated: true)
         } else if !expanded || !playing, let shown, !shown.isBeingDismissed {
             shown.dismiss(animated: true)
         }

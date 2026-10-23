@@ -57,6 +57,10 @@ final class PlayerModel: Identifiable {
     private var selectionObserver: NSObjectProtocol?
     /// Called when the title plays to its end; a playlist moves on to the next.
     var finished: (() -> Void)?
+    /// The stream played to its end. That's the end whatever the catalogue's runtime says: a file shorter than its
+    /// metadata (Charity Case ends at 2502 s against 44 min listed) otherwise stays in Continue Watching at its last
+    /// second, and Resume plays that second and closes.
+    private var reachedEnd = false
     /// Ten seconds of deciding, or of waiting for the first frame, with nothing on screen yet: the player says it's
     /// still starting, quietly, under the system spinner (#93).
     private(set) var stillStarting = false
@@ -185,7 +189,7 @@ final class PlayerModel: Identifiable {
         tearDown(player)
         let position = position(of: player, decision)
         let duration = decision.durationSeconds ?? card.runtimeSeconds
-        let completed = duration.map { position >= $0 * 0.95 } ?? false
+        let completed = reachedEnd || (duration.map { position >= $0 * 0.95 } ?? false)
         report(position, paused: true, completed: completed ? true : nil, force: true)
         sayGoodbye(decision)
     }
@@ -367,7 +371,10 @@ final class PlayerModel: Identifiable {
         }
         if let item = player.currentItem {
             endObserver = NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: item, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.finished?() }
+                MainActor.assumeIsolated {
+                    self?.reachedEnd = true
+                    self?.finished?()
+                }
             }
         }
         statusObservation = player.observe(\.timeControlStatus) { [weak self] player, _ in
