@@ -62,6 +62,8 @@ struct Shell {
     store: store::Keychain,
     session: Mutex<Option<Session>>,
     pending: Mutex<Option<Pending>>,
+    /// The code's approval link, held apart from `pending` since the poll takes that (#144).
+    approval: Mutex<Option<String>>,
     /// The signed-in landing URL, held while the launch page shows "Approved" (Capping, #131).
     handover: Mutex<Option<String>>,
     /// Stops the code being waited on, when the person asks for another ("Use a different address", #131).
@@ -134,6 +136,7 @@ async fn begin_sign_in(server: String, name: Option<String>, shell: State<'_, Sh
         .map(|qr| qr.render::<qrcode::render::svg::Color>().min_dimensions(240, 240).build())
         .unwrap_or_default();
     let view = CodeView { user_code: code.user_code.clone(), verification_uri: code.verification_uri.clone(), expires_in: code.expires_in, qr_svg };
+    *shell.approval.lock().unwrap() = Some(target);
     *shell.pending.lock().unwrap() = Some(Pending { origin, name, endpoints, code });
     Ok(view)
 }
@@ -150,11 +153,7 @@ fn device(shell: State<'_, Shell>) -> &'static str {
 /// is the server's own, from the pending code; the page can't choose it.
 #[tauri::command]
 fn open_approval(app: AppHandle, shell: State<'_, Shell>) -> Result<(), String> {
-    let target = {
-        let pending = shell.pending.lock().unwrap();
-        let code = &pending.as_ref().ok_or("There's no code waiting.")?.code;
-        code.verification_uri_complete.clone().unwrap_or_else(|| code.verification_uri.clone())
-    };
+    let target = shell.approval.lock().unwrap().clone().ok_or("There's no code waiting.")?;
     let parsed = url::Url::parse(&target).map_err(|_| "The server sent an approval link that isn't a web address.")?;
     if !matches!(parsed.scheme(), "https" | "http") {
         return Err("The server sent an approval link that isn't a web address.".into());
@@ -263,6 +262,7 @@ async fn finish_sign_in(app: AppHandle, shell: State<'_, Shell>) -> Result<&'sta
         _ = cancelled => return Ok("cancelled"),
     };
     // The sign-in sheet, if the person approved in it, has done its job (or its code has); nothing else closes it.
+    shell.approval.lock().unwrap().take();
     let _ = sheet(&app, None);
     match outcome.map_err(|e| e.to_string())? {
         auth::Outcome::Approved(tokens) => {
@@ -394,7 +394,7 @@ pub fn run() {
     let net = Net(reqwest::Client::builder().timeout(std::time::Duration::from_secs(20)).build().expect("an HTTP client"));
     let kind = device_kind();
     tauri::Builder::default()
-        .manage(Shell { net, device: kind, store: store::Keychain, session: Mutex::new(None), pending: Mutex::new(None), handover: Mutex::new(None), cancel: tokio::sync::Notify::new() })
+        .manage(Shell { net, device: kind, store: store::Keychain, session: Mutex::new(None), pending: Mutex::new(None), approval: Mutex::new(None), handover: Mutex::new(None), cancel: tokio::sync::Notify::new() })
         .invoke_handler(tauri::generate_handler![begin_sign_in, servers, save_server, remove_server, open_saved, resume, finish_sign_in, cancel_sign_in, open_server, refresh_token, signed_out, device, open_approval])
         .setup(|app| {
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
