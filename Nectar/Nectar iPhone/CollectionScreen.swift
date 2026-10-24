@@ -21,10 +21,7 @@ struct CollectionScreen: View {
                 VStack(alignment: .leading, spacing: 24) {
                     switch detail {
                     case .loading:
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text(collection.name).font(.title2.bold())
-                            Text(collectionCountLine(collection)).font(.subheadline).foregroundStyle(.secondary)
-                        }
+                        header(collection)
                         grid(columns: count) {
                             ForEach(0..<6) { _ in
                                 VStack(alignment: .leading, spacing: 6) {
@@ -38,15 +35,7 @@ struct CollectionScreen: View {
                             }
                         }
                     case let .loaded(detail):
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text(detail.playlist.name).font(.title2.bold())
-                                .fixedSize(horizontal: false, vertical: true)
-                            Text(collectionCountLine(detail.playlist)).font(.subheadline).foregroundStyle(.secondary)
-                            if let description = detail.playlist.description, !description.isEmpty {
-                                Text(description).foregroundStyle(.secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
+                        header(detail.playlist)
                         if detail.members.isEmpty {
                             ContentUnavailableView("No titles yet", systemImage: "square.stack")
                                 .frame(maxWidth: .infinity)
@@ -81,6 +70,18 @@ struct CollectionScreen: View {
         }
         .background(Color.brhNight)
         .task { await load() }
+    }
+
+    private func header(_ collection: Playlist) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(collection.name).font(.title2.bold())
+                .fixedSize(horizontal: false, vertical: true)
+            Text(collectionCountLine(collection)).font(.subheadline).foregroundStyle(.secondary)
+            if let description = collection.description, !description.isEmpty {
+                Text(description).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 
     private func grid<Content: View>(columns: Int, @ViewBuilder content: () -> Content) -> some View {
