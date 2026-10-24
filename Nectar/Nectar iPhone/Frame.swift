@@ -152,7 +152,7 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
                 self?.push(path: "/genre/\(name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name)", title: name, onTab: 2)
             },
             openCollection: { [weak self] collection in
-                self?.push(path: "/collection/\(collection.id)", title: collection.name, onTab: 2)
+                self?.collection(collection, onTab: 2)
             }
         ))
         screen.title = "Search"
@@ -224,6 +224,7 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
         guard row.path != More.scan else { return scan() }
         if row.path == "/settings/account" { return account() }
         if row.path == "/playlists" { return playlists() }
+        if row.path == "/collections" { return collections() }
         let page = WebPage(root: row.path, title: row.title, session: session, signedOut: signedOut)
         (viewControllers?.last as? UINavigationController)?.pushViewController(page, animated: true)
     }
@@ -232,7 +233,7 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
     private func playlists() {
         guard let stack = viewControllers?.last as? UINavigationController else { return }
         let model = PlaylistsModel(session: session)
-        let screen = UIHostingController(rootView: PlaylistsScreen(model: model) { [weak self, weak stack] playlist in
+        let screen = UIHostingController(rootView: CollectionListScreen(model: model) { [weak self, weak stack] playlist in
             guard let self, let stack else { return }
             let detail = UIHostingController(rootView: PlaylistScreen(
                 playlist: playlist, model: model, playback: playback,
@@ -245,6 +246,26 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
         screen.title = "Playlists"
         screen.navigationItem.largeTitleDisplayMode = .always
         stack.pushViewController(screen, animated: true)
+    }
+
+    /// Collections browse natively; they have no implied playback order (#177).
+    private func collections() {
+        guard let stack = viewControllers?.last as? UINavigationController else { return }
+        let model = PlaylistsModel(session: session)
+        let screen = UIHostingController(rootView: CollectionListScreen(kind: .collection, model: model) { [weak self] collection in
+            guard let self else { return }
+            self.collection(collection, onTab: 4)
+        })
+        screen.title = "Collections"
+        screen.navigationItem.largeTitleDisplayMode = .always
+        stack.pushViewController(screen, animated: true)
+    }
+
+    private func collection(_ collection: Playlist, onTab tab: Int) {
+        let screen = UIHostingController(rootView: CollectionScreen(collection: collection, session: session, open: { [weak self] card in self?.show(card, onTab: tab) }))
+        screen.title = collection.name
+        screen.navigationItem.largeTitleDisplayMode = .never
+        (viewControllers?[tab] as? UINavigationController)?.pushViewController(screen, animated: true)
     }
 
     /// The camera over everything; an accepted code opens the native approve screen (#165), where the person confirms.

@@ -21,9 +21,9 @@ final class PlaylistsModel {
         self.session = session
     }
 
-    func load() async {
+    func load(kind: String = "playlist") async {
         do {
-            playlists = .loaded(try await session.playlists())
+            playlists = .loaded(try await session.collections(kind: kind))
         } catch {
             playlists = .failed
         }
