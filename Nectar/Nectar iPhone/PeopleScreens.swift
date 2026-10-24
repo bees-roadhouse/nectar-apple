@@ -16,7 +16,10 @@ final class PeopleController: UIHostingController<PeopleScreen>, UISearchResults
         navigationItem.hidesSearchBarWhenScrolling = false
         definesPresentationContext = true
         title = "People"
-        followQuery()
+        rootView.clearSearch = { [weak self] in
+            self?.navigationItem.searchController?.searchBar.text = ""
+            self?.model.query = ""
+        }
     }
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("not from a storyboard") }
@@ -24,21 +27,13 @@ final class PeopleController: UIHostingController<PeopleScreen>, UISearchResults
         let query = searchController.searchBar.text ?? ""
         if model.query != query { model.query = query }
     }
-    private func followQuery() {
-        withObservationTracking {
-            let query = model.query
-            if navigationItem.searchController?.searchBar.text != query {
-                navigationItem.searchController?.searchBar.text = query
-            }
-        } onChange: { [weak self] in
-            Task { @MainActor in self?.followQuery() }
-        }
-    }
+
 }
 
 struct PeopleScreen: View {
     @Bindable var model: PeopleBrowser
     let open: (Person) -> Void
+    var clearSearch: () -> Void = {}
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
@@ -48,7 +43,7 @@ struct PeopleScreen: View {
                     Label(model.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "No people yet" : "No people found", systemImage: "person.2")
                 } actions: {
                     if !model.query.isEmpty {
-                        Button("Clear search") { model.query = "" }.foregroundStyle(Color.brhGold)
+                        Button("Clear search", action: clearSearch).foregroundStyle(Color.brhGold)
                     }
                 }
             }
