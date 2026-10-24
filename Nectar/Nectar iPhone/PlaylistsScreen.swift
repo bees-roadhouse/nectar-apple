@@ -12,40 +12,16 @@ struct PlaylistsScreen: View {
             switch model.playlists {
             case .loading:
                 ForEach(0..<5) { _ in
-                    Label {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Playlist name").font(.headline)
-                            Text("12 titles").font(.subheadline).foregroundStyle(.secondary)
-                        }
-                    } icon: { Image(systemName: "music.note.list") }
-                    .redacted(reason: .placeholder)
-                    .accessibilityHidden(true)
+                    playlistRow(Playlist(id: "placeholder", name: "Playlist name", description: nil, itemCount: 12))
+                        .redacted(reason: .placeholder)
+                        .accessibilityHidden(true)
                 }
             case let .loaded(playlists) where playlists.isEmpty:
                 ContentUnavailableView("No playlists yet", systemImage: "music.note.list", description: Text("Add a title to a playlist from its page."))
             case let .loaded(playlists):
                 ForEach(playlists) { playlist in
                     Button { open(playlist) } label: {
-                        rowLayout {
-                            Image(systemName: playlist.mediaType == "audio" ? "music.note.list" : "play.rectangle.on.rectangle")
-                                .font(.system(size: 24)).foregroundStyle(Color.brhGold)
-                                .frame(width: 56, height: 56)
-                                .background(Color.brhCard, in: RoundedRectangle(cornerRadius: 6))
-                                .accessibilityHidden(true)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(playlist.name).font(.headline).foregroundStyle(.primary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                Text(countLine(playlist))
-                                    .font(.subheadline).foregroundStyle(.secondary)
-                            }
-                            if !typeSize.isAccessibilitySize {
-                                Spacer(minLength: 0)
-                                Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
-                                    .foregroundStyle(.tertiary).accessibilityHidden(true)
-                            }
-                        }
-                        .frame(minHeight: 44)
-                        .contentShape(Rectangle())
+                        playlistRow(playlist)
                     }
                     .buttonStyle(.plain)
                 }
@@ -53,7 +29,7 @@ struct PlaylistsScreen: View {
                 ContentUnavailableView {
                     Label("Couldn't load your playlists", systemImage: "wifi.exclamationmark")
                 } actions: {
-                    Button("Retry") { Task { await model.load() } }
+                    Button("Retry") { Task { await model.load() } }.foregroundStyle(Color.brhGold)
                 }
             }
         }
@@ -63,6 +39,30 @@ struct PlaylistsScreen: View {
         .refreshable { await model.load() }
         .task { await model.load() }
     }
+
+    private func playlistRow(_ playlist: Playlist) -> some View {
+        rowLayout {
+            Image(systemName: playlist.mediaType == "audio" ? "music.note.list" : "play.rectangle.on.rectangle")
+                .font(.system(size: 24)).foregroundStyle(Color.brhGold)
+                .frame(width: 56, height: 56)
+                .background(Color.brhCard, in: RoundedRectangle(cornerRadius: 6))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(playlist.name).font(.headline).foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(countLine(playlist))
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+            if !typeSize.isAccessibilitySize {
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary).accessibilityHidden(true)
+            }
+        }
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+    }
+
 
     private var rowLayout: AnyLayout {
         typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12)) : AnyLayout(HStackLayout(spacing: 12))
@@ -89,8 +89,16 @@ struct PlaylistScreen: View {
             switch detail {
             case .loading:
                 ForEach(0..<5) { _ in
-                    Label("Playlist title", systemImage: "film")
-                        .redacted(reason: .placeholder).accessibilityHidden(true)
+                    memberLayout {
+                        RoundedRectangle(cornerRadius: 6).fill(Color.brhCard)
+                            .frame(width: playlist.mediaType == "audio" ? 56 : 48, height: playlist.mediaType == "audio" ? 56 : 72)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Playlist title").font(.headline)
+                            Text("2026 · Movie").font(.subheadline).foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(minHeight: 44, alignment: .leading)
+                    .redacted(reason: .placeholder).accessibilityHidden(true)
                 }
             case let .loaded(detail):
                 VStack(alignment: .leading, spacing: 12) {
@@ -147,7 +155,7 @@ struct PlaylistScreen: View {
                 ContentUnavailableView {
                     Label("Couldn't load this playlist", systemImage: "wifi.exclamationmark")
                 } actions: {
-                    Button("Retry") { Task { await load() } }
+                    Button("Retry") { Task { await load() } }.foregroundStyle(Color.brhGold)
                 }
             }
         }
@@ -158,9 +166,12 @@ struct PlaylistScreen: View {
         .task { await load() }
     }
 
+    private var memberLayout: AnyLayout {
+        typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12)) : AnyLayout(HStackLayout(alignment: .top, spacing: 12))
+    }
+
     private func memberRow(_ member: PlaylistMember, navigable: Bool) -> some View {
-        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12)) : AnyLayout(HStackLayout(alignment: .top, spacing: 12))
-        return layout {
+        memberLayout {
             artwork(member).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
                 Text(member.title).font(.headline).foregroundStyle(.primary)
