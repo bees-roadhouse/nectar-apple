@@ -2,7 +2,9 @@ import NectarKit
 import SwiftUI
 
 /// More's playlists, using the TV's model and the app's existing navigation stack (#174).
-struct PlaylistsScreen: View {
+struct CollectionListScreen: View {
+    enum Kind: String { case playlist, collection }
+    var kind: Kind = .playlist
     @Environment(\.dynamicTypeSize) private var typeSize
     @Bindable var model: PlaylistsModel
     let open: (Playlist) -> Void
@@ -12,12 +14,12 @@ struct PlaylistsScreen: View {
             switch model.playlists {
             case .loading:
                 ForEach(0..<5) { _ in
-                    playlistRow(Playlist(id: "placeholder", name: "Playlist name", description: nil, itemCount: 12))
+                    playlistRow(Playlist(id: "placeholder", name: kind == .playlist ? "Playlist name" : "Collection name", description: nil, itemCount: 12))
                         .redacted(reason: .placeholder)
                         .accessibilityHidden(true)
                 }
             case let .loaded(playlists) where playlists.isEmpty:
-                ContentUnavailableView("No playlists yet", systemImage: "music.note.list", description: Text("Add a title to a playlist from its page."))
+                ContentUnavailableView(kind == .playlist ? "No playlists yet" : "No collections yet", systemImage: kind == .playlist ? "music.note.list" : "square.stack", description: kind == .playlist ? Text("Add a title to a playlist from its page.") : nil)
             case let .loaded(playlists):
                 ForEach(playlists) { playlist in
                     Button { open(playlist) } label: {
@@ -27,22 +29,22 @@ struct PlaylistsScreen: View {
                 }
             case .failed:
                 ContentUnavailableView {
-                    Label("Couldn't load your playlists", systemImage: "wifi.exclamationmark")
+                    Label(kind == .playlist ? "Couldn't load your playlists" : "Couldn't load your collections", systemImage: "wifi.exclamationmark")
                 } actions: {
-                    Button("Retry") { Task { await model.load() } }.foregroundStyle(Color.brhGold)
+                    Button("Retry") { Task { await model.load(kind: kind.rawValue) } }.foregroundStyle(Color.brhGold)
                 }
             }
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(Color.brhNight)
-        .refreshable { await model.load() }
-        .task { await model.load() }
+        .refreshable { await model.load(kind: kind.rawValue) }
+        .task { await model.load(kind: kind.rawValue) }
     }
 
     private func playlistRow(_ playlist: Playlist) -> some View {
         rowLayout {
-            Image(systemName: playlist.mediaType == "audio" ? "music.note.list" : "play.rectangle.on.rectangle")
+            Image(systemName: kind == .collection ? "square.stack" : playlist.mediaType == "audio" ? "music.note.list" : "play.rectangle.on.rectangle")
                 .font(.system(size: 24)).foregroundStyle(Color.brhGold)
                 .frame(width: 56, height: 56)
                 .background(Color.brhCard, in: RoundedRectangle(cornerRadius: 6))
@@ -50,7 +52,7 @@ struct PlaylistsScreen: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(playlist.name).font(.headline).foregroundStyle(.primary)
                     .fixedSize(horizontal: false, vertical: true)
-                Text(countLine(playlist))
+                Text(collectionCountLine(playlist))
                     .font(.subheadline).foregroundStyle(.secondary)
             }
             if !typeSize.isAccessibilitySize {
@@ -69,7 +71,7 @@ struct PlaylistsScreen: View {
     }
 }
 
-private func countLine(_ playlist: Playlist) -> String {
+func collectionCountLine(_ playlist: Playlist) -> String {
     let total = playlist.titleCount == 1 ? "1 title" : "\(playlist.titleCount) titles"
     return playlist.wantedCount > 0 ? "\(total) · \(playlist.wantedCount) not here yet" : total
 }
@@ -103,7 +105,7 @@ struct PlaylistScreen: View {
             case let .loaded(detail):
                 VStack(alignment: .leading, spacing: 12) {
                     Text(detail.playlist.name).font(.title2.bold()).fixedSize(horizontal: false, vertical: true)
-                    Text(countLine(detail.playlist)).font(.subheadline).foregroundStyle(.secondary)
+                    Text(collectionCountLine(detail.playlist)).font(.subheadline).foregroundStyle(.secondary)
                     if let description = detail.playlist.description, !description.isEmpty {
                         Text(description).foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
