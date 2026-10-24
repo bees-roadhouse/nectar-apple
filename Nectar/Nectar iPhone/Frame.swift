@@ -223,8 +223,28 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
     private func open(_ row: More.Row) {
         guard row.path != More.scan else { return scan() }
         if row.path == "/settings/account" { return account() }
+        if row.path == "/playlists" { return playlists() }
         let page = WebPage(root: row.path, title: row.title, session: session, signedOut: signedOut)
         (viewControllers?.last as? UINavigationController)?.pushViewController(page, animated: true)
+    }
+
+    /// Playlists are native; the shared model and the player's queue keep server order (#174).
+    private func playlists() {
+        guard let stack = viewControllers?.last as? UINavigationController else { return }
+        let model = PlaylistsModel(session: session)
+        let screen = UIHostingController(rootView: PlaylistsScreen(model: model) { [weak self, weak stack] playlist in
+            guard let self, let stack else { return }
+            let detail = UIHostingController(rootView: PlaylistScreen(
+                playlist: playlist, model: model, playback: playback,
+                open: { [weak self] card in self?.show(card, onTab: 4) }
+            ))
+            detail.title = playlist.name
+            detail.navigationItem.largeTitleDisplayMode = .never
+            stack.pushViewController(detail, animated: true)
+        })
+        screen.title = "Playlists"
+        screen.navigationItem.largeTitleDisplayMode = .always
+        stack.pushViewController(screen, animated: true)
     }
 
     /// The camera over everything; an accepted code opens the native approve screen (#165), where the person confirms.

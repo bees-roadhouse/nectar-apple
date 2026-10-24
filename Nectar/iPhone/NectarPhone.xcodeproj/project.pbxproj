@@ -31,6 +31,7 @@
 		9F0FAF5FA5E23E664CDFCEB5 /* VisionKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 04631F6F67E6DF3D77EC53D9 /* VisionKit.framework */; };
 		A1ED6336F6ECC4E9D8F943AB /* CardStatusViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64CBB980A399CACD745B6DBF /* CardStatusViews.swift */; };
 		ABE3FDF15F818C54FB9AB5CB /* CachedImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CDEBAA3D531D83289CF74E4 /* CachedImage.swift */; };
+		AC259CC2BFA73CF775AA8E24 /* PlaylistsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5DEFCB63087E904E0789592 /* PlaylistsScreen.swift */; };
 		B20E907E04B9CBC580503FB9 /* Playback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CF0F9B84D9B6BACA92F2B3A /* Playback.swift */; };
 		B41387E78E1C988938E787FD /* LibraryScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C505CAD4BD5A7ED5DDFBC9B /* LibraryScreen.swift */; };
 		B547AF30CD8D5C58C8F7C00F /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FD752F54E662AF45E56C4603 /* WebKit.framework */; };
@@ -68,6 +69,7 @@
 		8CF0F9B84D9B6BACA92F2B3A /* Playback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Playback.swift; sourceTree = "<group>"; };
 		9582523E87CD751B06558316 /* PlaylistAdding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistAdding.swift; sourceTree = "<group>"; };
 		9C505CAD4BD5A7ED5DDFBC9B /* LibraryScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryScreen.swift; sourceTree = "<group>"; };
+		A5DEFCB63087E904E0789592 /* PlaylistsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistsScreen.swift; sourceTree = "<group>"; };
 		A6BBDDB2ECAD156B36B2E653 /* TitleScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TitleScreen.swift; sourceTree = "<group>"; };
 		A7C36C7FABDA905FF4D6B5A1 /* HomeModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeModel.swift; sourceTree = "<group>"; };
 		AF6D25A4A11EB94825ADB58F /* DiscoverScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverScreen.swift; sourceTree = "<group>"; };
@@ -141,6 +143,7 @@
 				C19EEAEF5402B7F83F6E48DC /* NectarPhoneApp.swift */,
 				166EB8D80371E473D2F659AB /* PhoneModel.swift */,
 				8CF0F9B84D9B6BACA92F2B3A /* Playback.swift */,
+				A5DEFCB63087E904E0789592 /* PlaylistsScreen.swift */,
 				616DA5D5FBD9E3A58445A23B /* Scanner.swift */,
 				E56AB1FEB721B958598AC244 /* SearchScreen.swift */,
 				F5AD0197CBA1A6EF00423524 /* SignInView.swift */,
@@ -295,6 +298,7 @@
 				3512BA11EB2A9151CAFD5523 /* PlayerModel.swift in Sources */,
 				4D1A2BAFA501E490A7E04934 /* PlaylistAdding.swift in Sources */,
 				45208BD2EC346CF5B8D6CB68 /* PlaylistsModel.swift in Sources */,
+				AC259CC2BFA73CF775AA8E24 /* PlaylistsScreen.swift in Sources */,
 				8D45E7330983F819AB189085 /* PreloadManager.swift in Sources */,
 				BA361B1176A3D9D279310E30 /* Scanner.swift in Sources */,
 				31F73B368799C78ED837BABF /* SearchModel.swift in Sources */,
