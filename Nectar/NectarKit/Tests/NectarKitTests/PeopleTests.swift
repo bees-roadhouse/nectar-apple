@@ -34,6 +34,35 @@ private func session(_ transport: Server) -> NectarSession {
 @Suite("People and collections")
 struct PeopleTests {
 
+    @Test func aPeoplePagePreservesCreditsAndEncodesTheSearchOnce() async throws {
+        let server = Server(["/api/v1/people": #"""
+        {"people":[{"id":"p2","name":"Élodie A/B & Co","profile_image_url":"/config/people/p2.jpg","credit_count":"9"},
+                   {"id":"p1","name":"Amy Adams","profile_image_url":"https://image.tmdb.org/p1.jpg","credit_count":2}],"total":"81"}
+        """#])
+        let page = try await session(server).people(search: "  Élodie A/B & Co  ", offset: 60)
+        #expect(page.people.map(\.id) == ["p2", "p1"])
+        #expect(page.total == 81 && page.people[0].creditCount == 9)
+        #expect(page.people[0].photo == nil)
+        #expect(page.people[1].photo?.absoluteString == "https://image.tmdb.org/p1.jpg")
+        let request = try #require(await server.requests.first)
+        let query = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        #expect(query.first(where: { $0.name == "search" })?.value == "Élodie A/B & Co")
+        #expect(query.first(where: { $0.name == "offset" })?.value == "60")
+        #expect(query.first(where: { $0.name == "limit" })?.value == "60")
+    }
+
+    @Test func aGenreWithSlashAmpersandAndAccentIsEncodedOnce() async throws {
+        let server = Server(["/api/v1/media": #"{"items":[],"total":0}"#])
+        var request = LibraryQuery(library: nil)
+        request.genre = "R&B / Cinéma"
+        request.offset = 60
+        _ = try await session(server).media(request)
+        let sent = try #require(await server.requests.first)
+        let query = URLComponents(url: sent.url!, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        #expect(query.first(where: { $0.name == "genre" })?.value == "R&B / Cinéma")
+        #expect(query.first(where: { $0.name == "offset" })?.value == "60")
+    }
+
     /// nectar#376 slice 2: a filmography poster's hash reaches the card a credit opens as.
     @Test func aCreditsCardCarriesItsPostersPreview() async throws {
         let server = Server(["/api/v1/people/a1": #"""
