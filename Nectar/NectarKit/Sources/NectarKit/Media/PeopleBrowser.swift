@@ -19,6 +19,13 @@ public final class PeopleBrowser {
 
     public init(session: NectarSession) { self.session = session }
 
+    /// Re-entering a retained directory keeps its pages; refresh and Retry explicitly use search().
+    public func start() async {
+        let normalized = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard normalized != requestedQuery || generation == 0 || !loaded && !loading && !failed else { return }
+        await search()
+    }
+
     public func search(debounce: Bool = true) async {
         generation += 1
         let request = generation

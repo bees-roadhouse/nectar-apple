@@ -74,7 +74,12 @@ struct GenreScreen: View {
                 VStack(alignment: .leading, spacing: 24) {
                     VStack(alignment: .leading, spacing: 12) {
                         Text(name).font(.title2.bold()).fixedSize(horizontal: false, vertical: true)
-                        if loaded { Text(total == 1 ? "1 title" : "\(total) titles").font(.subheadline).foregroundStyle(.secondary) }
+                        if loaded {
+                            Text(total == 1 ? "1 title" : "\(total) titles").font(.subheadline).foregroundStyle(.secondary)
+                        } else {
+                            Text("000 titles").font(.subheadline).foregroundStyle(.secondary)
+                                .redacted(reason: .placeholder).accessibilityHidden(true)
+                        }
                     }
                     if loaded && cards.isEmpty {
                         ContentUnavailableView("No titles in this genre", systemImage: "tag").frame(maxWidth: .infinity)
@@ -96,7 +101,10 @@ struct GenreScreen: View {
             .refreshable { await load(reset: true) }
         }
         .background(Color.brhNight)
-        .task { await load(reset: true) }
+        .task {
+            guard !loaded, !loading, !failed else { return }
+            await load(reset: true)
+        }
     }
 
     private func load(reset: Bool) async {

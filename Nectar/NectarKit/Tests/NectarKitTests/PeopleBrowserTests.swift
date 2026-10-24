@@ -4,6 +4,8 @@ import Testing
 
 /// Controls replies at the HTTP seam, including a server that ignores cancellation.
 private actor DirectoryServer: HTTPTransport {
+    private var immediate: String?
+    private(set) var requestCount = 0
     private var pending: [String: CheckedContinuation<(Data, HTTPURLResponse), Error>] = [:]
     private var requests: [String: URLRequest] = [:]
     private var observers: [String: CheckedContinuation<Void, Never>] = [:]
@@ -15,6 +17,10 @@ private actor DirectoryServer: HTTPTransport {
         let query = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)!.queryItems!
         let key = (query.first { $0.name == "search" }?.value ?? "") + ":" + (query.first { $0.name == "offset" }?.value ?? "0")
         requests[key] = request
+        requestCount += 1
+        if let immediate {
+            return (Data(immediate.utf8), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+        }
         observers.removeValue(forKey: key)?.resume()
         return try await withCheckedThrowingContinuation { pending[key] = $0 }
     }
@@ -22,6 +28,7 @@ private actor DirectoryServer: HTTPTransport {
         if requests[key] != nil { return }
         await withCheckedContinuation { observers[key] = $0 }
     }
+    func immediatelyReply(_ body: String) { immediate = body }
     func waiting(_ key: String) async {
         if pending[key] != nil { return }
         await withCheckedContinuation { observers[key] = $0 }
@@ -54,6 +61,37 @@ struct PeopleBrowserTests {
         await old.value
         #expect(model.people.map(\.id) == ["new"])
         #expect(model.total == 1 && model.query == "new" && !model.loading && !model.failed)
+    }
+
+    @Test func aCancelledInitialLoadCanStartAgainOnReturn() async {
+        let server = DirectoryServer()
+        let model = browser(server)
+        let first = Task { await model.start() }
+        await server.observed(":0")
+        first.cancel()
+        await server.reply(":0", #"{"people":[{"id":"old","name":"Cancelled result","credit_count":9}],"total":1}"#)
+        await first.value
+        #expect(model.people.isEmpty && !model.loaded)
+        await server.immediatelyReply(#"{"people":[{"id":"fresh","name":"Fresh result","credit_count":2}],"total":1}"#)
+        await model.start()
+        #expect(model.people.map(\.id) == ["fresh"] && model.loaded)
+    }
+
+    @Test func returningToTheSameQueryRetainsItsSecondPage() async {
+        let server = DirectoryServer()
+        let model = browser(server)
+        let first = Task { await model.start() }
+        await server.observed(":0")
+        await server.reply(":0", #"{"people":[{"id":"p1","name":"First","credit_count":9}],"total":2}"#)
+        await first.value
+        let second = Task { await model.loadMore() }
+        await server.observed(":1")
+        await server.reply(":1", #"{"people":[{"id":"p2","name":"Second","credit_count":2}],"total":2}"#)
+        await second.value
+        await server.immediatelyReply(#"{"people":[{"id":"p1","name":"First","credit_count":9}],"total":2}"#)
+        await model.start()
+        #expect(model.people.map(\.id) == ["p1", "p2"])
+        #expect(await server.requestCount == 2)
     }
 
     @Test func appendFailureKeepsRowsAndRetryUsesTheSameOffset() async {

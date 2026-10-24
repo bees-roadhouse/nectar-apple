@@ -60,7 +60,7 @@ struct CatalogGrid: View {
         } placeholder: {
             ZStack {
                 Color.brhCard
-                Image(systemName: "film").font(.system(size: 24)).foregroundStyle(.secondary)
+                Image(systemName: square ? "music.note" : "film").font(.system(size: 24)).foregroundStyle(.secondary)
             }
         }
         .frame(width: width, height: square ? width : width * 1.5)

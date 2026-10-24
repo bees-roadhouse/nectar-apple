@@ -83,7 +83,7 @@ struct PeopleScreen: View {
             }
         }
         .listStyle(.plain).scrollContentBackground(.hidden).background(Color.brhNight)
-        .task(id: model.query) { await model.search() }
+        .task(id: model.query) { await model.start() }
         .refreshable { await model.search(debounce: false) }
     }
 
