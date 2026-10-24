@@ -28,7 +28,7 @@ struct PlaylistsScreen: View {
                     Button { open(playlist) } label: {
                         rowLayout {
                             Image(systemName: playlist.mediaType == "audio" ? "music.note.list" : "play.rectangle.on.rectangle")
-                                .font(.title2).foregroundStyle(Color.brhGold)
+                                .font(.system(size: 24)).foregroundStyle(Color.brhGold)
                                 .frame(width: 56, height: 56)
                                 .background(Color.brhCard, in: RoundedRectangle(cornerRadius: 6))
                                 .accessibilityHidden(true)
@@ -93,12 +93,15 @@ struct PlaylistScreen: View {
                         .redacted(reason: .placeholder).accessibilityHidden(true)
                 }
             case let .loaded(detail):
-                Text(detail.playlist.name).font(.title2.bold()).fixedSize(horizontal: false, vertical: true)
-                Text(countLine(detail.playlist)).font(.subheadline).foregroundStyle(.secondary)
-                if let description = detail.playlist.description, !description.isEmpty {
-                    Text(description).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(detail.playlist.name).font(.title2.bold()).fixedSize(horizontal: false, vertical: true)
+                    Text(countLine(detail.playlist)).font(.subheadline).foregroundStyle(.secondary)
+                    if let description = detail.playlist.description, !description.isEmpty {
+                        Text(description).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
+                .listRowSeparator(.hidden)
                 if !detail.playQueue.isEmpty {
                     Button {
                         playback.play(PlayQueue(cards: detail.playQueue))
@@ -110,11 +113,13 @@ struct PlaylistScreen: View {
                     }
                     .buttonStyle(.plain)
                     .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                     .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                 }
                 if !detail.playQueue.isEmpty, detail.playQueue.count < detail.members.count {
                     Text("Plays the \(detail.playQueue.count) films and episodes available now.")
                         .font(.subheadline).foregroundStyle(.secondary)
+                        .listRowSeparator(.hidden)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if detail.playlist.mediaType == "audio", !detail.members.isEmpty {
@@ -189,7 +194,7 @@ struct PlaylistScreen: View {
         } placeholder: {
             ZStack {
                 Color.brhCard
-                Image(systemName: audio ? "music.note" : "film").foregroundStyle(.secondary)
+                Image(systemName: audio ? "music.note" : "film").font(.system(size: 24)).foregroundStyle(.secondary)
             }
         }
         .frame(width: audio ? 56 : 48, height: audio ? 56 : 72)
