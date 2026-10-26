@@ -22,7 +22,9 @@ default:
   image: ghcr.io/cirruslabs/macos-tahoe-xcode:26.5
   tags: [roadhouse-macos]
   interruptible: true
-  timeout: 30 minutes
+  # Each job is a fresh VM, so SwiftPM resolves Swiftfin's packages from nothing every time: 45 minutes for the first
+  # runs. We measure, then decide whether a SourcePackages cache is worth it.
+  timeout: 45 minutes
 
 stages: [test]
 
