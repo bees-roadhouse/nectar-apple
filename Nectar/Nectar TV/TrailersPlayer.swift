@@ -26,6 +26,11 @@ final class TrailersModel: Identifiable {
     private var endObserver: NSObjectProtocol?
     @ObservationIgnored
     private var fetching: Task<Void, Never>?
+    /// Every request here can resume after the person has left; none may touch the player once they have (Palp, #122).
+    /// An `await` that ends in a player call goes through `life.after` or checks `life.isStopped`; a new one that
+    /// skips it is invisible to the tests.
+    @ObservationIgnored
+    private let life = ModelLife()
 
     /// nectar answers an unready trailer with `Retry-After: 20`; look again that often for about two minutes.
     static let lookAgainEvery: Duration = .seconds(20)
@@ -53,6 +58,7 @@ final class TrailersModel: Identifiable {
     }
 
     func stop() {
+        life.stop()
         fetching?.cancel()
         player.pause()
         if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
@@ -68,6 +74,7 @@ final class TrailersModel: Identifiable {
 
     private func move(forward: Bool, closingAfterLast: Bool) async {
         if !queue.unready.isEmpty { await reread() }
+        guard !life.isStopped else { return }
         if let trailer = forward ? queue.advance() : queue.goBack() {
             await play(trailer)
         } else if closingAfterLast {
@@ -76,21 +83,24 @@ final class TrailersModel: Identifiable {
     }
 
     private func play(_ trailer: Trailer?) async {
+        guard let trailer else { return }
         // The URL carries the token: it goes to AVPlayer and nowhere else.
-        guard let trailer, let url = try? await session.mediaURL(trailer.path) else { return }
-        let item = AVPlayerItem(url: url)
-        item.externalMetadata = NowPlaying.metadata(for: trailer, of: detail.title, position: queue.position)
-        if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
-        endObserver = NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: item, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated {
-                guard let self else { return }
-                Task { await self.move(forward: true, closingAfterLast: true) }
+        await life.after({ try? await session.mediaURL(trailer.path) }) { url in
+            guard let url else { return }
+            let item = AVPlayerItem(url: url)
+            item.externalMetadata = NowPlaying.metadata(for: trailer, of: detail.title, position: queue.position)
+            if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
+            endObserver = NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: item, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    Task { await self.move(forward: true, closingAfterLast: true) }
+                }
             }
+            player.replaceCurrentItem(with: item)
+            player.play()
+            showSkips()
+            log.info("trailer \(trailer.id, privacy: .public) (\(trailer.kind.rawValue, privacy: .public)), \(self.queue.position.map { "\($0.number) of \($0.of)" } ?? "-", privacy: .public)")
         }
-        player.replaceCurrentItem(with: item)
-        player.play()
-        showSkips()
-        log.info("trailer \(trailer.id, privacy: .public) (\(trailer.kind.rawValue, privacy: .public)), \(self.queue.position.map { "\($0.number) of \($0.of)" } ?? "-", privacy: .public)")
     }
 
     /// Reads the title again until the trailers still being fetched have landed or failed (the page asked for them
@@ -108,7 +118,7 @@ final class TrailersModel: Identifiable {
     }
 
     private func reread() async {
-        guard let fresh = try? await session.detail(detail.id) else { return }
+        guard let fresh = try? await session.detail(detail.id), !life.isStopped else { return }
         queue.refresh(with: fresh.trailers)
         showSkips()
     }
