@@ -98,24 +98,33 @@ final class ItemDetailModel {
         Task { await load() }
     }
 
-    /// Asks nectar once for each unready trailer as the page opens, which starts its fetch (nectar #715), then reads the
-    /// title again until they've landed or failed, so the Trailers button can arrive on its own.
+    /// Asks nectar for each unready trailer as the page opens, which starts its fetch (nectar #715), then reads the
+    /// title again until they've landed or failed, so the Trailers button can arrive on its own. A trailer is only
+    /// marked asked once nectar has taken the request, so a failed one is asked again at the next look (Palp, #122).
     private func warmTrailers(_ detail: ItemDetail) {
-        let unready = detail.trailers.filter { !$0.isReady && !askedTrailers.contains($0.id) }
-        guard !unready.isEmpty, warming == nil else { return }
-        askedTrailers.formUnion(unready.map(\.id))
+        guard warming == nil, detail.trailers.contains(where: { !$0.isReady && !askedTrailers.contains($0.id) }) else { return }
         warming = Task { [weak self, session, id] in
-            for trailer in unready {
-                do { try await session.head(trailer.path) } catch { log.info("trailer \(trailer.id, privacy: .public) fetch not started: \(String(describing: error), privacy: .public)") }
-            }
+            await self?.askForUnready(detail.trailers)
             for _ in 0 ..< Self.looks {
                 try? await Task.sleep(for: Self.lookAgainEvery)
                 guard let self, !Task.isCancelled else { return }
                 guard let fresh = try? await session.detail(id) else { continue }
                 if case .loaded = self.detail { self.detail = .loaded(fresh) }
                 if fresh.trailers.allSatisfy(\.isReady) { break }
+                await self.askForUnready(fresh.trailers)
             }
             self?.warming = nil
+        }
+    }
+
+    private func askForUnready(_ trailers: [Trailer]) async {
+        for trailer in trailers where !trailer.isReady && !askedTrailers.contains(trailer.id) {
+            do {
+                try await session.head(trailer.path)
+                askedTrailers.insert(trailer.id)
+            } catch {
+                log.info("trailer \(trailer.id, privacy: .public) fetch not started: \(String(describing: error), privacy: .public)")
+            }
         }
     }
 
