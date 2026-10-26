@@ -10,6 +10,9 @@ on:
       # The Nectar TV app has its own gate (nectar-tv.yml); this one is Swiftfin's.
       - '!Nectar/**'
       - '!.github/workflows/nectar-tv.yml'
+      # The iPad shell has its own gate too (ipad.yml).
+      - '!iPad/**'
+      - '!.github/workflows/ipad.yml'
   pull_request:
     types:
       - opened
@@ -22,6 +25,9 @@ on:
       # The Nectar TV app has its own gate (nectar-tv.yml); this one is Swiftfin's.
       - '!Nectar/**'
       - '!.github/workflows/nectar-tv.yml'
+      # The iPad shell has its own gate too (ipad.yml).
+      - '!iPad/**'
+      - '!.github/workflows/ipad.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -77,26 +83,6 @@ jobs:
           command: bundle exec fastlane buildLane \
             scheme:"\"${{ matrix.scheme }}\"" \
             xcodeVersion:${{ env.XCODE_VERSION }}
-
-      - name: Package unsigned IPA
-        env:
-          SCHEME: ${{ matrix.scheme }}
-        run: |
-          set -euo pipefail
-          mkdir -p fastlane/build/Payload
-          cp -R fastlane/build/*.xcarchive/Products/Applications/*.app fastlane/build/Payload/
-          cd fastlane/build
-          zip -r -y "$SCHEME-unsigned.ipa" Payload
-
-      - name: Upload unsigned IPA
-        uses: actions/upload-artifact@v7
-        with:
-          name: ${{ matrix.scheme }}-unsigned
-          path: fastlane/build/*-unsigned.ipa
-          if-no-files-found: error
-          compression-level: 0
-          # nectar-apple: nothing here uses upstream's unsigned builds; a day keeps the org under its artifact quota (#100).
-          retention-days: 1
 
       # Populate the shared cache from main,
       # PR caches are isolated to their merge ref

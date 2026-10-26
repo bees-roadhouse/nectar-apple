@@ -1,5 +1,8 @@
 import Foundation
 import NectarKit
+import os
+
+private let log = Logger(subsystem: "com.beesroadhouse.nectar.tv", category: "detail")
 
 /// One library title's detail page: what nectar says about it, titles like it, and what's playing from it.
 @MainActor
@@ -33,6 +36,15 @@ final class ItemDetailModel {
     private(set) var seasons: [Season] = []
     /// The season whose episodes are showing.
     var selectedSeason: Int?
+    /// Trailers already asked for, so reloading the page doesn't ask again.
+    @ObservationIgnored
+    private var askedTrailers: Set<String> = []
+    @ObservationIgnored
+    private var warming: Task<Void, Never>?
+
+    /// nectar answers an unready trailer with `Retry-After: 20`; look again that often for about two minutes.
+    static let lookAgainEvery: Duration = .seconds(20)
+    static let looks = 6
 
     init(id: String, session: NectarSession, playlistAdding: PlaylistAdding) {
         self.id = id
@@ -58,6 +70,7 @@ final class ItemDetailModel {
                 }
             }
             self.detail = .loaded(detail)
+            warmTrailers(detail)
         } catch {
             detail = .failed
         }
@@ -83,6 +96,27 @@ final class ItemDetailModel {
     func finishedPlaying() {
         playing = nil
         Task { await load() }
+    }
+
+    /// Asks nectar once for each unready trailer as the page opens, which starts its fetch (nectar #715), then reads the
+    /// title again until they've landed or failed, so the Trailers button can arrive on its own.
+    private func warmTrailers(_ detail: ItemDetail) {
+        let unready = detail.trailers.filter { !$0.isReady && !askedTrailers.contains($0.id) }
+        guard !unready.isEmpty, warming == nil else { return }
+        askedTrailers.formUnion(unready.map(\.id))
+        warming = Task { [weak self, session, id] in
+            for trailer in unready {
+                do { try await session.head(trailer.path) } catch { log.info("trailer \(trailer.id, privacy: .public) fetch not started: \(String(describing: error), privacy: .public)") }
+            }
+            for _ in 0 ..< Self.looks {
+                try? await Task.sleep(for: Self.lookAgainEvery)
+                guard let self, !Task.isCancelled else { return }
+                guard let fresh = try? await session.detail(id) else { continue }
+                if case .loaded = self.detail { self.detail = .loaded(fresh) }
+                if fresh.trailers.allSatisfy(\.isReady) { break }
+            }
+            self?.warming = nil
+        }
     }
 
     func playTrailers(_ detail: ItemDetail) {

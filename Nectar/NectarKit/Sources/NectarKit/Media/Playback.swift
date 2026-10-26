@@ -228,6 +228,15 @@ public struct PlaybackDecision: Decodable, Equatable, Sendable {
         subtitleUnavailable = try c.decodeIfPresent(SubtitleUnavailable.self, forKey: .subtitleUnavailable)
     }
 
+    /// Where to tell nectar this viewer has left (#94, nectar#547): beside an HLS stream's playlist, as the web's
+    /// `goodbye()` derives it. Nil for a direct file or a local copy, which hold no stream to release.
+    public var goodbyePath: String? {
+        guard strategy == .hls else { return nil }
+        let path = streamPath.split(separator: "?", maxSplits: 1).first.map(String.init) ?? streamPath
+        guard path.hasSuffix(".m3u8"), let slash = path.lastIndex(of: "/") else { return nil }
+        return String(path[..<slash]) + "/goodbye"
+    }
+
     /// Where to seek once the player is ready. A direct file starts at zero, so seek to the resume
     /// point; an HLS stream already starts at `startOffsetSeconds`, so seek by what's left over.
     public func seek(toResumeAt resume: Double) -> Double {
@@ -258,6 +267,13 @@ extension NectarSession {
     public func decide(_ itemID: String, capabilities: PlaybackCapabilities, startOffset: Double?, subtitle: SubtitleChoice? = nil) async throws -> PlaybackDecision {
         let data = try await post("api/v1/streaming/\(itemID)/decide", json: DecideBody(capabilities, startOffset: startOffset, subtitle: subtitle))
         return try JSONDecoder().decode(PlaybackDecision.self, from: data)
+    }
+
+    /// Tells nectar this viewer has left the stream, so it parks at once and frees its transcoder slot instead of
+    /// waiting out the 45 s no-fetch backstop (nectar#547). Nothing to say for a stream that isn't HLS.
+    public func goodbye(_ decision: PlaybackDecision) async throws {
+        guard let path = decision.goodbyePath else { return }
+        _ = try await post(path)
     }
 
     /// Save where this user is (`POST /api/v1/media/{id}/progress`). nectar keeps `completed` once set.

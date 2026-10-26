@@ -7,7 +7,7 @@ private let log = Logger(subsystem: "com.beesroadhouse.nectar.tv", category: "tr
 
 /// A title's trailers, one into the next (#119; Nate: "trailers auto play when you click to play them"). It's the
 /// system player, and the remote's left and right move between trailers through AVKit's own skip-item behaviour. Unready
-/// trailers are asked for once and join the queue when nectar has them (nectar #715).
+/// trailers join the queue when nectar has them (the page asked for them when it opened, nectar #715).
 @MainActor
 @Observable
 final class TrailersModel: Identifiable {
@@ -93,15 +93,11 @@ final class TrailersModel: Identifiable {
         log.info("trailer \(trailer.id, privacy: .public) (\(trailer.kind.rawValue, privacy: .public)), \(self.queue.position.map { "\($0.number) of \($0.of)" } ?? "-", privacy: .public)")
     }
 
-    /// Asks nectar once for each unready trailer, which starts its fetch, then reads the list again until they've
-    /// landed or failed.
+    /// Reads the title again until the trailers still being fetched have landed or failed (the page asked for them
+    /// when it opened).
     private func fetchUnready() {
-        let unready = queue.unready
-        guard !unready.isEmpty else { return }
-        fetching = Task { [weak self, session] in
-            for trailer in unready {
-                do { try await session.head(trailer.path) } catch { log.info("trailer \(trailer.id, privacy: .public) fetch not started: \(String(describing: error), privacy: .public)") }
-            }
+        guard !queue.unready.isEmpty else { return }
+        fetching = Task { [weak self] in
             for _ in 0 ..< Self.looks {
                 try? await Task.sleep(for: Self.lookAgainEvery)
                 guard let self, !Task.isCancelled else { return }

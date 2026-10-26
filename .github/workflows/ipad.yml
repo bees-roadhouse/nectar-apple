@@ -1,0 +1,40 @@
+# The iPad shell (iPad/), a Tauri 2 app around nectar's own web client (nectar-apple#127): its Rust tests, on the
+# household's macOS runner. The iOS build itself is checked on the MacBook's simulator for now.
+name: "Nectar iPad"
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - "iPad/**"
+      - ".github/workflows/ipad.yml"
+  push:
+    branches: [ main ]
+    paths:
+      - "iPad/**"
+      - ".github/workflows/ipad.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ipad-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: iPad shell tests
+    runs-on: [ self-hosted, macOS, ARM64, roadhouse-macos ]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # The runner is a fresh VM per job; install Rust if its image hasn't.
+      - name: Rust
+        run: |
+          if ! command -v cargo >/dev/null; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          fi
+
+      - name: Shell tests
+        working-directory: iPad/src-tauri
+        run: cargo test --lib

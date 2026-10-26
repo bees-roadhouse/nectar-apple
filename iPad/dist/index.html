@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nectar</title>
+<style>
+  /* The launch screen only; the web client brings its own look once signed in. The tokens and values are the
+     Brand & Visual Identity Standard's (KB page 2451), in its Media-app variant (nectar): charcoal and gold, dark
+     only, capsule buttons with no glow, 12 px text fields with Gold on focus, sentence case. Layout and wording are
+     Capping's (nectar-apple #131). */
+  :root {
+    --brh-bg: #111214;
+    --brh-card: #1d2024;
+    --brh-line-dim: #2a2d32;
+    --brh-gold: #e8a03a;
+    --brh-gold-hi: #f4b660;
+    --brh-gold-ink: #1a1407;
+    --brh-text: #f2f3f5;
+    --brh-text2: #c4c8ce;
+    --brh-err: #e06b52;
+    --brh-ok: #8fbf6a;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center;
+    background: var(--brh-bg); color: var(--brh-text);
+    font: 17px/1.45 -apple-system, BlinkMacSystemFont, sans-serif;
+    padding: env(safe-area-inset-top) 24px env(safe-area-inset-bottom);
+  }
+  main { width: min(520px, 100%); }
+  main.wide { width: min(860px, 100%); }
+  .mark { display: block; height: 44px; width: auto; margin-bottom: 28px; }
+  h1 { font-size: 34px; margin: 0 0 6px; }
+  p { margin: 0 0 18px; color: var(--brh-text2); }
+  label { display: block; font-size: 15px; color: var(--brh-text2); margin-bottom: 8px; }
+  input {
+    width: 100%; font: inherit; color: var(--brh-text); background: var(--brh-card);
+    border: 1px solid var(--brh-line-dim); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px;
+    outline: none; transition: border-color 150ms;
+  }
+  input:focus { border-color: var(--brh-gold); }
+  .primary {
+    display: block; width: 100%; height: 48px; font: inherit; font-weight: 600;
+    color: var(--brh-gold-ink); background: var(--brh-gold); border: 0; border-radius: 999px;
+  }
+  .primary:active { background: var(--brh-gold-hi); }
+  .primary:focus-visible { outline: 2px solid var(--brh-gold-hi); outline-offset: 3px; }
+  .primary[disabled] { opacity: 0.5; }
+  .quiet {
+    font: inherit; font-size: 15px; color: var(--brh-text2); background: none; border: 0; padding: 8px 0;
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+
+  /* The code screen: one object, centred; side by side on a wide landscape screen. */
+  #wait { display: grid; justify-items: center; text-align: center; gap: 0 48px; }
+  #wait .copy { display: grid; justify-items: center; }
+  .code { font: 600 48px/1.1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.08em; margin: 8px 0 16px; }
+  .qr { background: #fff; border-radius: 12px; padding: 12px; width: fit-content; margin-bottom: 16px; }
+  .qr svg { display: block; width: 240px; height: 240px; }
+  .swap { transition: opacity 200ms; }
+  .swap.out { opacity: 0; }
+  /* "Use a different address" comes last, under the QR's caption (Capping, #132). */
+  .back { margin-top: 14px; }
+  .secondary {
+    display: block; width: 100%; height: 48px; font: inherit; font-weight: 600;
+    color: var(--brh-text); background: var(--brh-card); border: 1px solid var(--brh-line-dim); border-radius: 999px;
+  }
+  .secondary:active { border-color: var(--brh-gold); }
+  .secondary:focus-visible { outline: 2px solid var(--brh-gold-hi); outline-offset: 3px; }
+  .here { width: min(320px, 100%); margin-top: 18px; }
+  .fallback { display: none; }
+  .send { margin: 0 0 12px; min-height: 44px; }
+  /* The iPhone's code screen (Capping, #144): the button first, no QR, the code as one line. */
+  .phone #wait .here { width: 100%; margin: 12px 0 8px; }
+  .phone #wait .on-other, .phone #wait #code, .phone #wait .qr-box { display: none; }
+  .phone #wait .fallback { display: block; margin: 0 0 8px; }
+  /* The iPad's side-by-side. Never on a phone: a Pro Max in landscape is 956 pt wide, and the phone's stack holds
+     there (Capping, #145). */
+  @media (min-width: 900px) and (orientation: landscape) {
+    body:not(.phone) #wait { grid-template-columns: 1fr auto; align-items: center; text-align: left; }
+    body:not(.phone) #wait .copy { justify-items: start; }
+    body:not(.phone) #wait .qr { margin-bottom: 0; }
+    body:not(.phone) #wait .back { grid-column: 1; justify-self: start; margin-top: 0; }
+    body:not(.phone) #wait .here { grid-column: 2; justify-self: center; margin-top: 12px; }
+  }
+  /* One fixed-height slot for "Waiting…" and "Approved", so nothing moves at approval (Capping, #132). */
+  .slot { display: grid; place-items: center; height: 40px; margin-bottom: 8px; }
+  #wait .slot > * { grid-area: 1 / 1; margin: 0; }
+  @media (min-width: 900px) and (orientation: landscape) { body:not(.phone) .slot { justify-items: start; } }
+  .status { display: flex; align-items: center; gap: 10px; color: var(--brh-text2); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--brh-gold); animation: pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: 0.25; } }
+  @media (prefers-reduced-motion: reduce) { .dot { animation: none; } .swap { transition: none; } }
+  .approved { display: flex; align-items: center; gap: 12px; font-size: 24px; font-weight: 600; color: var(--brh-text); }
+  .approved svg { width: 32px; height: 32px; color: var(--brh-ok); }
+
+  .error { color: var(--brh-err); margin-top: 12px; }
+  .hint { color: var(--brh-text2); opacity: 0.7; }
+  [hidden] { display: none !important; }
+
+  /* The server list (#135): rows on Plate, 14 px corners, the name over its address. */
+  .lead { margin: 0 0 20px; }
+  .rows { display: grid; gap: 10px; margin-bottom: 20px; }
+  .row { display: flex; align-items: center; background: var(--brh-card); border: 1px solid var(--brh-line-dim); border-radius: 12px; }
+  /* A row that couldn't connect says so itself, with a 2 px Error edge on the leading side (Capping, #136). */
+  .row.failed { box-shadow: inset 2px 0 0 var(--brh-err); }
+  .row.failed .addr { color: var(--brh-text); white-space: normal; }
+  .pick .addr .dot { display: inline-block; vertical-align: middle; margin-right: 8px; }
+  .pick[disabled] { cursor: default; }
+  .row:has(.pick:active) { border-color: var(--brh-gold); }
+  .pick { flex: 1; min-width: 0; display: grid; gap: 2px; text-align: left; font: inherit; color: var(--brh-text); background: none; border: 0; padding: 14px 16px; }
+  .pick .name { font-weight: 600; }
+  .pick .addr { font-size: 15px; color: var(--brh-text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pick:focus-visible { outline: 2px solid var(--brh-gold-hi); outline-offset: -2px; border-radius: 12px; }
+  .row .quiet { padding: 14px 16px; }
+  .actions { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 12px; }
+  .danger { color: var(--brh-err); }
+</style>
+</head>
+<body>
+<main id="main">
+  <section id="list" hidden>
+    <img class="mark" src="brand/nectar-lockup.svg" alt="nectar" width="136" height="44">
+    <p class="lead">Choose a server.</p>
+    <div class="rows" id="rows"></div>
+    <button class="quiet" id="add" type="button">Add a server</button>
+  </section>
+  <section id="ask" hidden>
+    <img class="mark" src="brand/nectar-lockup.svg" alt="nectar" width="136" height="44">
+    <p id="ask-lead">Enter your nectar address.</p>
+    <form id="form">
+      <label for="server">Address</label>
+      <!-- Text, not type=url: a bare host (the placeholder's own form) isn't a valid URL, and the form wouldn't submit.
+           The shell adds https:// itself. inputmode keeps the URL keyboard. -->
+      <input id="server" name="server" type="text" inputmode="url" autocapitalize="off" autocorrect="off"
+             spellcheck="false" placeholder="nectar.example.com" required>
+      <label for="name">Name <span class="hint">(optional)</span></label>
+      <input id="name" name="name" type="text" autocapitalize="words" autocorrect="off" spellcheck="false"
+             placeholder="Home">
+      <button class="primary" id="go" type="submit">Get a code</button>
+      <div class="actions">
+        <button class="quiet" id="cancel" type="button">Cancel</button>
+        <button class="quiet danger" id="remove" type="button" hidden>Remove this server</button>
+      </div>
+    </form>
+  </section>
+  <section id="wait" hidden>
+    <div class="copy">
+      <h1 id="wait-title">Approve this iPad</h1>
+      <p class="on-other">On a signed-in phone or computer, go to <strong id="where"></strong> and enter:</p>
+      <div class="code swap" id="code"></div>
+      <div class="slot">
+        <p class="status" id="waiting"><span class="dot" aria-hidden="true"></span>Waiting for approval…</p>
+        <div class="approved" id="approved" role="status" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+               stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Approved
+        </div>
+      </div>
+      <!-- A phone can't scan its own screen: there, the code is this one line (Capping, #144). -->
+      <p class="fallback">Or enter <strong id="code-line"></strong> on a device that's signed in.</p>
+      <!-- The approval link, with the code in it, to the person's Mac or another phone: AirDrop, Messages, Mail or
+           Copy, through the system share sheet (Nate, 2026-10-23, #148). -->
+      <button class="quiet send" id="send" type="button">Send this code to another device</button>
+    </div>
+    <div class="qr-box">
+      <div class="qr swap" id="qr"></div>
+      <p>Or scan this with your phone's camera.</p>
+    </div>
+    <!-- For a person with nothing else to hand: the system sign-in sheet over the app, a password sign-in, Approve
+         (Capping, #144). On an iPhone it's the first thing under the title; on an iPad, a secondary under the QR. -->
+    <div class="here" id="here-wrap">
+      <button class="secondary" id="here" type="button">Sign in on this iPad</button>
+    </div>
+    <button class="quiet back" id="back" type="button">Use a different address</button>
+  </section>
+  <p class="error" id="error" role="alert" hidden></p>
+</main>
+<script>
+  const { invoke } = window.__TAURI__.core;
+  const $ = (id) => document.getElementById(id);
+  const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
+  // Each code shown gets a turn; a reply for an older turn (one replaced or abandoned) is ignored.
+  let turn = 0;
+  let servers = [];
+  // "iPhone" or "iPad", from the shell (#144); the words say which, and so does the device list.
+  let device = "iPad";
+  // Per row, while it's being opened or after it failed: { origin: { connecting } | { failed: message } }.
+  let rowState = {};
+  // The server being edited (its origin), or null when adding.
+  let editing = null;
+
+  const screen = (id) => {
+    for (const s of ["list", "ask", "wait"]) $(s).hidden = s !== id;
+    $("main").classList.toggle("wide", id === "wait");
+    $("go").disabled = false;
+  };
+  const say = (message) => {
+    $("error").textContent = message ? String(message) : "";
+    $("error").hidden = !message;
+  };
+
+  const showList = (message) => {
+    if (!servers.length) return showForm(null, message);
+    $("rows").replaceChildren(...servers.map((server) => {
+      const row = document.createElement("div");
+      row.className = "row";
+      const pick = document.createElement("button");
+      pick.className = "pick";
+      pick.type = "button";
+      const name = document.createElement("span");
+      name.className = "name";
+      name.textContent = server.name;
+      const addr = document.createElement("span");
+      addr.className = "addr";
+      const state = rowState[server.origin] || {};
+      if (state.connecting) {
+        // The address line becomes the attempt, and the row can't be tapped twice (Capping, #136).
+        const dot = document.createElement("span");
+        dot.className = "dot";
+        dot.setAttribute("aria-hidden", "true");
+        addr.append(dot, "Connecting…");
+        pick.disabled = true;
+      } else if (state.failed) {
+        row.classList.add("failed");
+        addr.textContent = state.failed;
+      } else {
+        addr.textContent = server.address;
+      }
+      // A server named by its address shows it once, unless the line is saying something else.
+      pick.append(...(server.name === server.address && !state.connecting && !state.failed ? [name] : [name, addr]));
+      pick.addEventListener("click", () => open(server));
+      const edit = document.createElement("button");
+      edit.className = "quiet";
+      edit.type = "button";
+      edit.textContent = "Edit";
+      edit.setAttribute("aria-label", "Edit " + server.name);
+      edit.addEventListener("click", () => showForm(server));
+      row.append(pick, edit);
+      return row;
+    }));
+    screen("list");
+    say(message);
+    $("rows").querySelector(".pick")?.focus();
+  };
+
+  // Adding (server null) or editing one.
+  const showForm = (server, message) => {
+    editing = server ? server.origin : null;
+    $("ask-lead").textContent = server
+      ? "Change this server's name or address."
+      : `Enter your nectar address. You'll approve this ${device} here or from another device that's signed in.`;
+    $("server").value = server ? server.address : "";
+    $("name").value = server ? server.name : "";
+    $("go").textContent = server ? "Save" : "Get a code";
+    $("cancel").hidden = !servers.length;
+    $("remove").hidden = !server;
+    $("remove").textContent = "Remove this server";
+    delete $("remove").dataset.armed;
+    screen("ask");
+    say(message);
+    $("server").focus();
+  };
+
+  const show = (code) => {
+    $("where").textContent = code.verification_uri.replace(/^https?:\/\//, "");
+    $("code").textContent = code.user_code;
+    $("code-line").textContent = code.user_code;
+    $("qr").innerHTML = code.qr_svg;
+  };
+
+  // Shows a code and waits on it, renewing an expired one in place. `name` is given only when adding.
+  const signIn = async (server, name) => {
+    const mine = ++turn;
+    show(await invoke("begin_sign_in", { server, name }));
+    screen("wait");
+    $("waiting").hidden = false;
+    $("approved").hidden = true;
+    $("back").textContent = servers.length ? "Choose another server" : "Use a different address";
+    $("back").style.visibility = "";
+    $("here-wrap").style.visibility = "";
+    $("send").style.visibility = "";
+    for (;;) {
+      const result = await invoke("finish_sign_in");
+      if (mine !== turn || result === "cancelled") return;
+      if (result === "approved") {
+        $("waiting").hidden = true;
+        $("back").style.visibility = "hidden";
+        $("here-wrap").style.visibility = "hidden";
+        $("send").style.visibility = "hidden";
+        $("approved").hidden = false;
+        await sleep(600);
+        await invoke("open_server");
+        return;
+      }
+      // "expired": a new code, faded in, with no error.
+      const next = await invoke("begin_sign_in", { server, name });
+      if (mine !== turn) return;
+      for (const id of ["code", "qr"]) $(id).classList.add("out");
+      await sleep(200);
+      show(next);
+      for (const id of ["code", "qr"]) $(id).classList.remove("out");
+    }
+  };
+
+  // What a row says when it couldn't connect: the reason, and that a tap tries again.
+  const failure = (message) =>
+    (String(message).startsWith("Couldn't reach") ? "Couldn't reach it." : String(message)) + " Tap to try again.";
+
+  // A tap on a listed server: straight in if its token still works, else a code. One attempt at a time.
+  let busy = false;
+  const open = async (server) => {
+    if (busy) return;
+    busy = true;
+    say("");
+    rowState = { [server.origin]: { connecting: true } };
+    showList();
+    try {
+      const result = await invoke("open_saved", { origin: server.origin });
+      rowState = {};
+      if (result === "code") await signIn(server.address, null);
+    } catch (message) {
+      rowState = { [server.origin]: { failed: failure(message) } };
+      showList();
+    } finally {
+      busy = false;
+    }
+  };
+
+  $("form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    say("");
+    $("go").disabled = true;
+    try {
+      if (editing) {
+        servers = await invoke("save_server", { previous: editing, address: $("server").value, name: $("name").value });
+        rowState = {};
+        showList();
+      } else {
+        await signIn($("server").value, $("name").value);
+      }
+    } catch (message) {
+      if (editing) {
+        $("go").disabled = false;
+        say(message);
+      } else {
+        showForm(null, message);
+      }
+    }
+  });
+
+  $("add").addEventListener("click", () => showForm(null));
+  $("cancel").addEventListener("click", () => showList());
+
+  // Two taps, the first asking: it forgets the token, so the server needs a code again.
+  $("remove").addEventListener("click", async () => {
+    const button = $("remove");
+    if (!button.dataset.armed) {
+      button.dataset.armed = "1";
+      button.textContent = "Tap again to remove";
+      return;
+    }
+    servers = await invoke("remove_server", { origin: editing });
+    rowState = {};
+    showList();
+  });
+
+  $("here").addEventListener("click", () => invoke("open_approval").catch((error) => say(error)));
+  $("send").addEventListener("click", () => {
+    const r = $("send").getBoundingClientRect();
+    invoke("share_approval", { from: [r.x, r.y, r.width, r.height] }).catch((error) => say(error));
+  });
+  $("back").addEventListener("click", () => {
+    turn++;
+    invoke("cancel_sign_in").catch(() => {});
+    servers.length ? showList() : showForm(null);
+  });
+
+  // A cold start opens the last server if it can; otherwise the list, saying why when the server was unreachable.
+  (async () => {
+    device = await invoke("device").catch(() => "iPad");
+    $("wait-title").textContent = `Approve this ${device}`;
+    $("here").textContent = `Sign in on this ${device}`;
+    if (device === "iPhone") {
+      document.body.classList.add("phone");
+      $("here").className = "primary";
+      $("wait-title").after($("here-wrap"));
+      // "Waiting…" reports the code's poll, so it sits under the line that carries the code (Capping, #145).
+      document.querySelector("#wait .fallback").after(document.querySelector("#wait .slot"));
+    }
+    let message = null;
+    try {
+      if ((await invoke("resume")) === "opened") return;
+    } catch (error) {
+      message = error;
+    }
+    servers = await invoke("servers").catch(() => []);
+    const last = servers.find((server) => server.last);
+    if (message && last) rowState = { [last.origin]: { failed: failure(message) } };
+    showList(message && !last ? message : null);
+  })();
+</script>
+</body>
+</html>

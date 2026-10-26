@@ -10,6 +10,8 @@ public struct Recommendation: Decodable, Equatable, Identifiable, Sendable {
     public let inLibrary: Bool
     public let mediaItemID: String?
     public let posterPath: String?
+    /// nil for a title to discover: its poster is TMDB's.
+    public let posterBlurHash: String?
     /// Why it was picked, when nectar says.
     public let reason: String?
     let tmdbID: Int?
@@ -26,6 +28,7 @@ public struct Recommendation: Decodable, Equatable, Identifiable, Sendable {
         case inLibrary = "in_library"
         case mediaItemID = "media_item_id"
         case posterPath = "poster_url"
+        case posterBlurHash = "poster_blurhash"
         case mediaRef = "media_ref"
     }
 
@@ -45,6 +48,7 @@ public struct Recommendation: Decodable, Equatable, Identifiable, Sendable {
         inLibrary = (try c.decodeIfPresent(Bool.self, forKey: .inLibrary)) ?? false
         mediaItemID = try c.decodeIfPresent(String.self, forKey: .mediaItemID)
         posterPath = try c.decodeIfPresent(String.self, forKey: .posterPath)
+        posterBlurHash = try c.decodeIfPresent(String.self, forKey: .posterBlurHash)
         reason = try c.decodeIfPresent(String.self, forKey: .reason)
         tmdbID = ref?.lenientInt(.tmdbID)
     }

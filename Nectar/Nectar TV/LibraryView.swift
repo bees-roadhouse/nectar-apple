@@ -11,7 +11,7 @@ struct LibraryView: View {
     private var searching = false
 
     init(library: Library, session: NectarSession) {
-        _model = State(initialValue: LibraryModel(library: library, session: session))
+        _model = State(initialValue: LibraryModel(library: library, session: session, posterWidth: LibraryPoster.Shape(library.kind).size.width))
     }
 
     private var shape: LibraryPoster.Shape { .init(model.library.kind) }
@@ -135,11 +135,15 @@ struct LibraryPoster: View {
     let shape: Shape
     let artwork: URL?
     let select: () -> Void
+    @FocusState
+    private var focused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Button(action: select) {
-                CachedImage(url: artwork, maxPixelSize: Int(max(shape.size.width, shape.size.height) * 2)) { image in
+                CachedImage(
+                    url: artwork, maxPixelSize: Int(max(shape.size.width, shape.size.height) * 2), blurHash: card.posterBlurHash
+                ) { image in
                     image.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {
                     ZStack {
@@ -150,15 +154,21 @@ struct LibraryPoster: View {
                 .frame(width: shape.size.width, height: shape.size.height)
                 .clipped()
                 .preloadBadge(card.id)
+                .cardStatus(status)
             }
             .buttonStyle(.card)
+            .focused($focused)
             // The title on one line and the year on its own, so a long title truncates instead of orphaning
             // "· 2011" (Capping, #103).
             VStack(alignment: .leading, spacing: 2) {
                 Text(card.title ?? "Untitled").font(.caption).lineLimit(1)
-                Text(card.year.map(String.init) ?? " ").font(.caption).foregroundStyle(.secondary)
+                // Focused, a title on its way in says where it is in place of its year (#125, Capping).
+                Text(focused ? (status?.words ?? year) : year).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             .frame(width: shape.size.width, alignment: .leading)
         }
     }
+
+    private var status: CardStatus? { CardStatus.of(card.pipeline, owned: true) }
+    private var year: String { card.year.map(String.init) ?? " " }
 }

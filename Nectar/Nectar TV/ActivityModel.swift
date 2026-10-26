@@ -39,6 +39,6 @@ final class ActivityModel {
     /// "12 min left", "less than a minute left", or nothing when nectar can't say.
     static func timeLeft(_ download: Download) -> String? {
         guard let eta = download.etaSeconds, eta > 0 else { return nil }
-        return eta < 60 ? "less than a minute left" : "\(ItemDetailView.duration(eta)) left"
+        return eta < 60 ? "less than a minute left" : "\(Durations.duration(eta)) left"
     }
 }

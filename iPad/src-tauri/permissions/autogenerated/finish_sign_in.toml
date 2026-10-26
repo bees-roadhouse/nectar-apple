@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-finish-sign-in"
+description = "Enables the finish_sign_in command without any pre-configured scope."
+commands.allow = ["finish_sign_in"]
+
+[[permission]]
+identifier = "deny-finish-sign-in"
+description = "Denies the finish_sign_in command without any pre-configured scope."
+commands.deny = ["finish_sign_in"]

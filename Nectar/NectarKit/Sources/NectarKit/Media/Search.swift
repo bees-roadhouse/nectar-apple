@@ -35,21 +35,28 @@ public struct TitleHit: Decodable, Equatable, Identifiable, Sendable {
     public let overview: String?
     /// nectar doesn't send one yet; used as soon as it does.
     public let posterPath: String?
+    public let posterBlurHash: String?
 
     enum CodingKeys: String, CodingKey {
         case id, title, year, overview
         case itemType = "item_type"
         case posterPath = "poster_url"
+        case posterBlurHash = "poster_blurhash"
     }
 
-    public init(id: String, itemType: String, title: String, year: Int? = nil, overview: String? = nil, posterPath: String? = nil) {
+    public init(
+        id: String, itemType: String, title: String, year: Int? = nil, overview: String? = nil, posterPath: String? = nil,
+        posterBlurHash: String? = nil
+    ) {
         self.id = id
         self.itemType = itemType
         self.title = title
         self.year = year
         self.overview = overview
         self.posterPath = posterPath
+        self.posterBlurHash = posterBlurHash
     }
+
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -59,6 +66,7 @@ public struct TitleHit: Decodable, Equatable, Identifiable, Sendable {
         year = c.lenientInt(.year)
         overview = try c.decodeIfPresent(String.self, forKey: .overview)
         posterPath = try c.decodeIfPresent(String.self, forKey: .posterPath)
+        posterBlurHash = try c.decodeIfPresent(String.self, forKey: .posterBlurHash)
     }
 }
 

@@ -91,7 +91,10 @@ struct ItemDetailView: View {
             .padding(.bottom, 80)
         }
         .background(alignment: .top) {
-            CachedImage(url: model.session.resolve(detail.backdropPath ?? detail.posterPath, pixelWidth: 1920), maxPixelSize: 3840) { image in
+            CachedImage(
+                url: model.session.resolve(detail.backdropPath ?? detail.posterPath, pixelWidth: 1920), maxPixelSize: 3840,
+                blurHash: detail.artworkBlurHash
+            ) { image in
                 image.resizable().aspectRatio(contentMode: .fill)
             } placeholder: {
                 Color.black
@@ -107,6 +110,12 @@ struct ItemDetailView: View {
         VStack(alignment: .leading, spacing: 20) {
             Text(detail.title).font(.largeTitle.bold())
             Text(facts(detail)).foregroundStyle(.secondary)
+            // Everything on a detail page is in the library: a waiting stage is the monitor at rest, in words (#142).
+            if let status = CardStatus.of(detail.pipeline, owned: true) {
+                DetailStatus(status: status)
+            } else if let following = CardStatus.following(detail.pipeline, isSeries: detail.itemType == "series") {
+                Text(following).font(.callout).foregroundStyle(.secondary)
+            }
             if let tagline = detail.tagline, !tagline.isEmpty {
                 Text(tagline).font(.headline).italic()
             }
@@ -141,15 +150,16 @@ struct ItemDetailView: View {
                         Button("Play", systemImage: "play.fill") { model.play(detail, from: nil) }
                     }
                 }
-                // Shown once one trailer is ready; the rest are fetched when it opens (nectar #715).
-                if detail.trailers.contains(where: \.isReady) {
-                    Button(detail.trailers.count > 1 ? "Trailers" : "Trailer", systemImage: "film") { model.playTrailers(detail) }
-                }
                 if detail.itemType == "movie" || detail.itemType == "episode" {
                     PreloadButton(detail: detail, session: model.session)
                 }
                 Button("Add to playlist", systemImage: "text.badge.plus") {
                     model.playlistAdding.target = .owned(id: detail.id, title: detail.title)
+                }
+                // Last in the row, so it arrives without moving anything: nectar fetches the unready ones as the page
+                // opens (nectar #715) and the button shows once one is ready.
+                if detail.trailers.contains(where: \.isReady) {
+                    Button(detail.trailers.count > 1 ? "Trailers" : "Trailer", systemImage: "film") { model.playTrailers(detail) }
                 }
             }
         }
@@ -205,17 +215,10 @@ struct ItemDetailView: View {
     }
 
     /// "1h 56m"
-    static func duration(_ seconds: Double) -> String {
-        let minutes = Int(seconds / 60)
-        return minutes >= 60 ? "\(minutes / 60)h \(minutes % 60)m" : "\(minutes)m"
-    }
+    static func duration(_ seconds: Double) -> String { Durations.duration(seconds) }
 
     /// "1:21:52" or "21:52"
-    static func clock(_ seconds: Double) -> String {
-        let total = Int(seconds)
-        let (h, m, s) = (total / 3600, total % 3600 / 60, total % 60)
-        return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%d:%02d", m, s)
-    }
+    static func clock(_ seconds: Double) -> String { Durations.clock(seconds) }
 }
 
 /// A titled horizontal row.
@@ -308,7 +311,7 @@ private struct EpisodeCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Button(action: select) {
-                CachedImage(url: thumbnail, maxPixelSize: Int(Self.size.width * 2)) { image in
+                CachedImage(url: thumbnail, maxPixelSize: Int(Self.size.width * 2), blurHash: episode.thumbBlurHash) { image in
                     image.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {
                     ZStack {
