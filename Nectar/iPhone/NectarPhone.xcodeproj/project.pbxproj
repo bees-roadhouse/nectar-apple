@@ -1,0 +1,522 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		078195A399FAAE08482E61FC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F850BC6F6427ACAE1D20FB25 /* Assets.xcassets */; };
+		1EFCA8CCB1BAC77A50E9199C /* CollectionScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DC8A3FF82530ECC8DAD8082 /* CollectionScreen.swift */; };
+		28C20CF4553A617E3493C536 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5AD0197CBA1A6EF00423524 /* SignInView.swift */; };
+		31F73B368799C78ED837BABF /* SearchModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F5442AF9EAA8F6E443A0BD /* SearchModel.swift */; };
+		3512BA11EB2A9151CAFD5523 /* PlayerModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61933CF38892D13352BED014 /* PlayerModel.swift */; };
+		38BA0AD720DD08DF32374CA3 /* WebAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B5F77FD74E60A02A0F31D67 /* WebAuth.swift */; };
+		3C5DC5C84AA068DEA1EF6151 /* PhoneModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 166EB8D80371E473D2F659AB /* PhoneModel.swift */; };
+		449AFF47CF83E92D6138E5C1 /* Durations.swift in Sources */ = {isa = PBXBuildFile; fileRef = C17229E474830BC6B02E5557 /* Durations.swift */; };
+		45208BD2EC346CF5B8D6CB68 /* PlaylistsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4C8C67E0AD6CC1755F68D02 /* PlaylistsModel.swift */; };
+		4D1A2BAFA501E490A7E04934 /* PlaylistAdding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582523E87CD751B06558316 /* PlaylistAdding.swift */; };
+		5454F923B960AFFD0F858F1B /* PlayQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E4F853F1432B2603370B5B2 /* PlayQueue.swift */; };
+		62B32D505C01107512980B80 /* DiscoverModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE4EE47DB464A9FC9C7C16A8 /* DiscoverModel.swift */; };
+		697D7DBF449A4D713E926666 /* AuthenticationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F789E66CE2BDCF053BBDC515 /* AuthenticationServices.framework */; };
+		6CC5DFA4EB3535F03F62BDB7 /* NectarPhoneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C19EEAEF5402B7F83F6E48DC /* NectarPhoneApp.swift */; };
+		6F0B556DB143EDFCAB888695 /* Frame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4448FD47C2D58C30D3B35C4E /* Frame.swift */; };
+		78B3FB6C62587C8E95809EB3 /* SignInModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C5743A7D197AEA2D91A2408 /* SignInModel.swift */; };
+		803312CA733007F9BB89C9EE /* LibraryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63DE94A8834248B7D394AAD /* LibraryModel.swift */; };
+		81ABB7C5FB943A27E51E7CE4 /* SearchScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = E56AB1FEB721B958598AC244 /* SearchScreen.swift */; };
+		82A81A6CAD363760DDB1A3EA /* AccountScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F77DE340F8FF8179F74596D6 /* AccountScreen.swift */; };
+		8D45E7330983F819AB189085 /* PreloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43EB08DAAF458E5153B0C80E /* PreloadManager.swift */; };
+		978E0952E71BDEF00E664F99 /* WebPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78BAED1018FD02DE7E69338D /* WebPage.swift */; };
+		98CE401BFB278D55D2294F1D /* ServerModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88AC49082808E5A727E9706D /* ServerModel.swift */; };
+		9F0FAF5FA5E23E664CDFCEB5 /* VisionKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 04631F6F67E6DF3D77EC53D9 /* VisionKit.framework */; };
+		A1ED6336F6ECC4E9D8F943AB /* CardStatusViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64CBB980A399CACD745B6DBF /* CardStatusViews.swift */; };
+		ABE3FDF15F818C54FB9AB5CB /* CachedImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CDEBAA3D531D83289CF74E4 /* CachedImage.swift */; };
+		AC259CC2BFA73CF775AA8E24 /* PlaylistsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5DEFCB63087E904E0789592 /* PlaylistsScreen.swift */; };
+		B20E907E04B9CBC580503FB9 /* Playback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CF0F9B84D9B6BACA92F2B3A /* Playback.swift */; };
+		B41387E78E1C988938E787FD /* LibraryScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C505CAD4BD5A7ED5DDFBC9B /* LibraryScreen.swift */; };
+		B547AF30CD8D5C58C8F7C00F /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FD752F54E662AF45E56C4603 /* WebKit.framework */; };
+		BA361B1176A3D9D279310E30 /* Scanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 616DA5D5FBD9E3A58445A23B /* Scanner.swift */; };
+		BC11E64DB66FD6CDA3EC1406 /* HomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D84E692AE9CB9E7311B65B44 /* HomeScreen.swift */; };
+		C2913725FF836BA69C49B42A /* ItemDetailModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C299E22052A0EE39B61A7B55 /* ItemDetailModel.swift */; };
+		C697B75FBB7E4698FB357E64 /* DiscoverScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF6D25A4A11EB94825ADB58F /* DiscoverScreen.swift */; };
+		C7C05639177F09B8D33519E5 /* TitleCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3470885CB9602C46D7CD6FF /* TitleCatalog.swift */; };
+		E6BE14FD78F0235D1CAB0B90 /* LibrarySearchModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D71B495270536E69BE0651AA /* LibrarySearchModel.swift */; };
+		E7BF8DC19EC821F25A0A69E7 /* TitleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6BBDDB2ECAD156B36B2E653 /* TitleScreen.swift */; };
+		F08B7390C6306F099382E126 /* AccountModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B363A26BE53478C0AD1AB6BF /* AccountModel.swift */; };
+		F35E792576A337FF8CA5D995 /* NectarKit in Frameworks */ = {isa = PBXBuildFile; productRef = B904F2A288B695B110A032C3 /* NectarKit */; };
+		F3C9C585422B2A05DDF29D44 /* ActivityModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCF5FAFA2202378F691F3B96 /* ActivityModel.swift */; };
+		FAFEDE51BCB0E111A1D811DA /* DiscoverState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5290B2E341E1B3899B6054F /* DiscoverState.swift */; };
+		FB0AA563A0BBF12296E74CEB /* HomeModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C36C7FABDA905FF4D6B5A1 /* HomeModel.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		04631F6F67E6DF3D77EC53D9 /* VisionKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VisionKit.framework; path = System/Library/Frameworks/VisionKit.framework; sourceTree = SDKROOT; };
+		166EB8D80371E473D2F659AB /* PhoneModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneModel.swift; sourceTree = "<group>"; };
+		1C5743A7D197AEA2D91A2408 /* SignInModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInModel.swift; sourceTree = "<group>"; };
+		38F5442AF9EAA8F6E443A0BD /* SearchModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchModel.swift; sourceTree = "<group>"; };
+		3B5F77FD74E60A02A0F31D67 /* WebAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebAuth.swift; sourceTree = "<group>"; };
+		3CDEBAA3D531D83289CF74E4 /* CachedImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedImage.swift; sourceTree = "<group>"; };
+		43EB08DAAF458E5153B0C80E /* PreloadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreloadManager.swift; sourceTree = "<group>"; };
+		4448FD47C2D58C30D3B35C4E /* Frame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Frame.swift; sourceTree = "<group>"; };
+		4E4F853F1432B2603370B5B2 /* PlayQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayQueue.swift; sourceTree = "<group>"; };
+		616DA5D5FBD9E3A58445A23B /* Scanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scanner.swift; sourceTree = "<group>"; };
+		61933CF38892D13352BED014 /* PlayerModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerModel.swift; sourceTree = "<group>"; };
+		64CBB980A399CACD745B6DBF /* CardStatusViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardStatusViews.swift; sourceTree = "<group>"; };
+		78BAED1018FD02DE7E69338D /* WebPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebPage.swift; sourceTree = "<group>"; };
+		78F09EDA9026A598D45FA992 /* Nectar.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Nectar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8772ECA24FFF2286A4436B72 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		88AC49082808E5A727E9706D /* ServerModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerModel.swift; sourceTree = "<group>"; };
+		8CF0F9B84D9B6BACA92F2B3A /* Playback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Playback.swift; sourceTree = "<group>"; };
+		8DC8A3FF82530ECC8DAD8082 /* CollectionScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionScreen.swift; sourceTree = "<group>"; };
+		9582523E87CD751B06558316 /* PlaylistAdding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistAdding.swift; sourceTree = "<group>"; };
+		9C505CAD4BD5A7ED5DDFBC9B /* LibraryScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryScreen.swift; sourceTree = "<group>"; };
+		A5DEFCB63087E904E0789592 /* PlaylistsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistsScreen.swift; sourceTree = "<group>"; };
+		A6BBDDB2ECAD156B36B2E653 /* TitleScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TitleScreen.swift; sourceTree = "<group>"; };
+		A7C36C7FABDA905FF4D6B5A1 /* HomeModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeModel.swift; sourceTree = "<group>"; };
+		AF6D25A4A11EB94825ADB58F /* DiscoverScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverScreen.swift; sourceTree = "<group>"; };
+		B363A26BE53478C0AD1AB6BF /* AccountModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountModel.swift; sourceTree = "<group>"; };
+		B4C8C67E0AD6CC1755F68D02 /* PlaylistsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistsModel.swift; sourceTree = "<group>"; };
+		B63DE94A8834248B7D394AAD /* LibraryModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryModel.swift; sourceTree = "<group>"; };
+		BCF5FAFA2202378F691F3B96 /* ActivityModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityModel.swift; sourceTree = "<group>"; };
+		C17229E474830BC6B02E5557 /* Durations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Durations.swift; sourceTree = "<group>"; };
+		C19EEAEF5402B7F83F6E48DC /* NectarPhoneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NectarPhoneApp.swift; sourceTree = "<group>"; };
+		C299E22052A0EE39B61A7B55 /* ItemDetailModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemDetailModel.swift; sourceTree = "<group>"; };
+		C3470885CB9602C46D7CD6FF /* TitleCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TitleCatalog.swift; sourceTree = "<group>"; };
+		D5290B2E341E1B3899B6054F /* DiscoverState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverState.swift; sourceTree = "<group>"; };
+		D71B495270536E69BE0651AA /* LibrarySearchModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibrarySearchModel.swift; sourceTree = "<group>"; };
+		D84E692AE9CB9E7311B65B44 /* HomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreen.swift; sourceTree = "<group>"; };
+		DE4EE47DB464A9FC9C7C16A8 /* DiscoverModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverModel.swift; sourceTree = "<group>"; };
+		E56AB1FEB721B958598AC244 /* SearchScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchScreen.swift; sourceTree = "<group>"; };
+		E5B71018F923FFAE3EF75008 /* NectarKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NectarKit; path = ../NectarKit; sourceTree = SOURCE_ROOT; };
+		F5AD0197CBA1A6EF00423524 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
+		F77DE340F8FF8179F74596D6 /* AccountScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountScreen.swift; sourceTree = "<group>"; };
+		F789E66CE2BDCF053BBDC515 /* AuthenticationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AuthenticationServices.framework; path = System/Library/Frameworks/AuthenticationServices.framework; sourceTree = SDKROOT; };
+		F850BC6F6427ACAE1D20FB25 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		FD752F54E662AF45E56C4603 /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		1E838576C37BC7F47E5D93BE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F35E792576A337FF8CA5D995 /* NectarKit in Frameworks */,
+				697D7DBF449A4D713E926666 /* AuthenticationServices.framework in Frameworks */,
+				B547AF30CD8D5C58C8F7C00F /* WebKit.framework in Frameworks */,
+				9F0FAF5FA5E23E664CDFCEB5 /* VisionKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		174DF4AA5C228FD69A917869 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				F789E66CE2BDCF053BBDC515 /* AuthenticationServices.framework */,
+				04631F6F67E6DF3D77EC53D9 /* VisionKit.framework */,
+				FD752F54E662AF45E56C4603 /* WebKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		1DF66B21583926BE9C194033 = {
+			isa = PBXGroup;
+			children = (
+				31D82F20147FC785EADF1F6E /* Nectar iPhone */,
+				AE85988A464C7F6E87E85BBE /* Nectar TV */,
+				448E974BD4602195907A8E5E /* Packages */,
+				174DF4AA5C228FD69A917869 /* Frameworks */,
+				8A93A4BBC13220F71A2CA1FC /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		31D82F20147FC785EADF1F6E /* Nectar iPhone */ = {
+			isa = PBXGroup;
+			children = (
+				F77DE340F8FF8179F74596D6 /* AccountScreen.swift */,
+				F850BC6F6427ACAE1D20FB25 /* Assets.xcassets */,
+				8DC8A3FF82530ECC8DAD8082 /* CollectionScreen.swift */,
+				AF6D25A4A11EB94825ADB58F /* DiscoverScreen.swift */,
+				4448FD47C2D58C30D3B35C4E /* Frame.swift */,
+				D84E692AE9CB9E7311B65B44 /* HomeScreen.swift */,
+				8772ECA24FFF2286A4436B72 /* Info.plist */,
+				9C505CAD4BD5A7ED5DDFBC9B /* LibraryScreen.swift */,
+				C19EEAEF5402B7F83F6E48DC /* NectarPhoneApp.swift */,
+				166EB8D80371E473D2F659AB /* PhoneModel.swift */,
+				8CF0F9B84D9B6BACA92F2B3A /* Playback.swift */,
+				A5DEFCB63087E904E0789592 /* PlaylistsScreen.swift */,
+				616DA5D5FBD9E3A58445A23B /* Scanner.swift */,
+				E56AB1FEB721B958598AC244 /* SearchScreen.swift */,
+				F5AD0197CBA1A6EF00423524 /* SignInView.swift */,
+				C3470885CB9602C46D7CD6FF /* TitleCatalog.swift */,
+				A6BBDDB2ECAD156B36B2E653 /* TitleScreen.swift */,
+				3B5F77FD74E60A02A0F31D67 /* WebAuth.swift */,
+				78BAED1018FD02DE7E69338D /* WebPage.swift */,
+			);
+			name = "Nectar iPhone";
+			path = "../Nectar iPhone";
+			sourceTree = "<group>";
+		};
+		448E974BD4602195907A8E5E /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				E5B71018F923FFAE3EF75008 /* NectarKit */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		8A93A4BBC13220F71A2CA1FC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				78F09EDA9026A598D45FA992 /* Nectar.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		AE85988A464C7F6E87E85BBE /* Nectar TV */ = {
+			isa = PBXGroup;
+			children = (
+				B363A26BE53478C0AD1AB6BF /* AccountModel.swift */,
+				BCF5FAFA2202378F691F3B96 /* ActivityModel.swift */,
+				3CDEBAA3D531D83289CF74E4 /* CachedImage.swift */,
+				64CBB980A399CACD745B6DBF /* CardStatusViews.swift */,
+				DE4EE47DB464A9FC9C7C16A8 /* DiscoverModel.swift */,
+				D5290B2E341E1B3899B6054F /* DiscoverState.swift */,
+				C17229E474830BC6B02E5557 /* Durations.swift */,
+				A7C36C7FABDA905FF4D6B5A1 /* HomeModel.swift */,
+				C299E22052A0EE39B61A7B55 /* ItemDetailModel.swift */,
+				B63DE94A8834248B7D394AAD /* LibraryModel.swift */,
+				D71B495270536E69BE0651AA /* LibrarySearchModel.swift */,
+				61933CF38892D13352BED014 /* PlayerModel.swift */,
+				9582523E87CD751B06558316 /* PlaylistAdding.swift */,
+				B4C8C67E0AD6CC1755F68D02 /* PlaylistsModel.swift */,
+				4E4F853F1432B2603370B5B2 /* PlayQueue.swift */,
+				43EB08DAAF458E5153B0C80E /* PreloadManager.swift */,
+				38F5442AF9EAA8F6E443A0BD /* SearchModel.swift */,
+				88AC49082808E5A727E9706D /* ServerModel.swift */,
+				1C5743A7D197AEA2D91A2408 /* SignInModel.swift */,
+			);
+			name = "Nectar TV";
+			path = "../Nectar TV";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		C6CDE72454AA35FE043623A0 /* Nectar */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1F0B782124EADE433DBC7446 /* Build configuration list for PBXNativeTarget "Nectar" */;
+			buildPhases = (
+				36FEB52E0D2A1ED2FE8CDD8C /* Sources */,
+				D0B7B83FFD61938144D319B9 /* Resources */,
+				1E838576C37BC7F47E5D93BE /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Nectar;
+			packageProductDependencies = (
+				B904F2A288B695B110A032C3 /* NectarKit */,
+			);
+			productName = Nectar;
+			productReference = 78F09EDA9026A598D45FA992 /* Nectar.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		741E5CED7D43D616A0AA9F46 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					C6CDE72454AA35FE043623A0 = {
+						DevelopmentTeam = B5SARBZDRT;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = EB3BD1CA4798E1F8C3D8479F /* Build configuration list for PBXProject "NectarPhone" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 1DF66B21583926BE9C194033;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				6CC852A4D2A3CDE4D457723D /* XCLocalSwiftPackageReference "../NectarKit" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 8A93A4BBC13220F71A2CA1FC /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				C6CDE72454AA35FE043623A0 /* Nectar */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D0B7B83FFD61938144D319B9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				078195A399FAAE08482E61FC /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		36FEB52E0D2A1ED2FE8CDD8C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F08B7390C6306F099382E126 /* AccountModel.swift in Sources */,
+				82A81A6CAD363760DDB1A3EA /* AccountScreen.swift in Sources */,
+				F3C9C585422B2A05DDF29D44 /* ActivityModel.swift in Sources */,
+				ABE3FDF15F818C54FB9AB5CB /* CachedImage.swift in Sources */,
+				A1ED6336F6ECC4E9D8F943AB /* CardStatusViews.swift in Sources */,
+				1EFCA8CCB1BAC77A50E9199C /* CollectionScreen.swift in Sources */,
+				62B32D505C01107512980B80 /* DiscoverModel.swift in Sources */,
+				C697B75FBB7E4698FB357E64 /* DiscoverScreen.swift in Sources */,
+				FAFEDE51BCB0E111A1D811DA /* DiscoverState.swift in Sources */,
+				449AFF47CF83E92D6138E5C1 /* Durations.swift in Sources */,
+				6F0B556DB143EDFCAB888695 /* Frame.swift in Sources */,
+				FB0AA563A0BBF12296E74CEB /* HomeModel.swift in Sources */,
+				BC11E64DB66FD6CDA3EC1406 /* HomeScreen.swift in Sources */,
+				C2913725FF836BA69C49B42A /* ItemDetailModel.swift in Sources */,
+				803312CA733007F9BB89C9EE /* LibraryModel.swift in Sources */,
+				B41387E78E1C988938E787FD /* LibraryScreen.swift in Sources */,
+				E6BE14FD78F0235D1CAB0B90 /* LibrarySearchModel.swift in Sources */,
+				6CC5DFA4EB3535F03F62BDB7 /* NectarPhoneApp.swift in Sources */,
+				3C5DC5C84AA068DEA1EF6151 /* PhoneModel.swift in Sources */,
+				5454F923B960AFFD0F858F1B /* PlayQueue.swift in Sources */,
+				B20E907E04B9CBC580503FB9 /* Playback.swift in Sources */,
+				3512BA11EB2A9151CAFD5523 /* PlayerModel.swift in Sources */,
+				4D1A2BAFA501E490A7E04934 /* PlaylistAdding.swift in Sources */,
+				45208BD2EC346CF5B8D6CB68 /* PlaylistsModel.swift in Sources */,
+				AC259CC2BFA73CF775AA8E24 /* PlaylistsScreen.swift in Sources */,
+				8D45E7330983F819AB189085 /* PreloadManager.swift in Sources */,
+				BA361B1176A3D9D279310E30 /* Scanner.swift in Sources */,
+				31F73B368799C78ED837BABF /* SearchModel.swift in Sources */,
+				81ABB7C5FB943A27E51E7CE4 /* SearchScreen.swift in Sources */,
+				98CE401BFB278D55D2294F1D /* ServerModel.swift in Sources */,
+				78B3FB6C62587C8E95809EB3 /* SignInModel.swift in Sources */,
+				28C20CF4553A617E3493C536 /* SignInView.swift in Sources */,
+				C7C05639177F09B8D33519E5 /* TitleCatalog.swift in Sources */,
+				E7BF8DC19EC821F25A0A69E7 /* TitleScreen.swift in Sources */,
+				38BA0AD720DD08DF32374CA3 /* WebAuth.swift in Sources */,
+				978E0952E71BDEF00E664F99 /* WebPage.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		3E7DABEE62A266435C50508B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		57418FDCAE97BB934BBBC14E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		58A2345D12BC26A907A4A208 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = B5SARBZDRT;
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = "../Nectar iPhone/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.beesroadhouse.nectar.ios;
+				PRODUCT_NAME = Nectar;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		6BD8F5D30AB9D6BE128BA7B7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = B5SARBZDRT;
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = "../Nectar iPhone/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.beesroadhouse.nectar.ios;
+				PRODUCT_NAME = Nectar;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1F0B782124EADE433DBC7446 /* Build configuration list for PBXNativeTarget "Nectar" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6BD8F5D30AB9D6BE128BA7B7 /* Debug */,
+				58A2345D12BC26A907A4A208 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		EB3BD1CA4798E1F8C3D8479F /* Build configuration list for PBXProject "NectarPhone" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				57418FDCAE97BB934BBBC14E /* Debug */,
+				3E7DABEE62A266435C50508B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		6CC852A4D2A3CDE4D457723D /* XCLocalSwiftPackageReference "../NectarKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../NectarKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B904F2A288B695B110A032C3 /* NectarKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NectarKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 741E5CED7D43D616A0AA9F46 /* Project object */;
+}

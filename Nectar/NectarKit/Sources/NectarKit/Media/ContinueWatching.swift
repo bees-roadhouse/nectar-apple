@@ -26,6 +26,11 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
     /// Each image's BlurHash (nectar#376 slice 2); nil until nectar has hashed that image.
     public let posterBlurHash: String?
     public let backdropBlurHash: String?
+    /// Where the title stands on its way into the library (nectar #773); nil when nothing is happening.
+    public let pipeline: TitlePipeline?
+    /// TMDB's 0–10 score, as the web's hero shows it ("61%"), and the content rating ("R"): nil when nectar has none.
+    public let communityRating: Rating?
+    public let contentRating: String?
 
     public init(
         id: String,
@@ -43,7 +48,10 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
         logoPath: String? = nil,
         genres: [String]? = nil,
         posterBlurHash: String? = nil,
-        backdropBlurHash: String? = nil
+        backdropBlurHash: String? = nil,
+        pipeline: TitlePipeline? = nil,
+        communityRating: Rating? = nil,
+        contentRating: String? = nil
     ) {
         self.id = id
         self.itemType = itemType
@@ -61,6 +69,9 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
         self.genres = genres
         self.posterBlurHash = posterBlurHash
         self.backdropBlurHash = backdropBlurHash
+        self.pipeline = pipeline
+        self.communityRating = communityRating
+        self.contentRating = contentRating
     }
 
     enum CodingKeys: String, CodingKey {
@@ -79,6 +90,9 @@ public struct MediaCard: Decodable, Equatable, Identifiable, Sendable {
         case logoPath = "logo_url"
         case posterBlurHash = "poster_blurhash"
         case backdropBlurHash = "backdrop_blurhash"
+        case pipeline
+        case communityRating = "community_rating"
+        case contentRating = "content_rating"
     }
 
     /// How far through, 0...1, or nil when nectar doesn't know the runtime.
@@ -141,4 +155,28 @@ extension NectarSession {
     /// nectar #695 versions every image URL it hands out, the server's `v` wins and this is only a fallback.
     /// A versioned URL is immutable, so the image cache keeps it for good.
     static let imageVersion = 2
+}
+
+/// A 0–10 score that arrives as a number, or as a string from a numeric column (postgres.js), so a card never fails to
+/// decode over it.
+public struct Rating: Decodable, Equatable, Sendable {
+    public let value: Double
+
+    public init(_ value: Double) {
+        self.value = value
+    }
+
+    public init(from decoder: Decoder) throws {
+        let single = try decoder.singleValueContainer()
+        if let number = try? single.decode(Double.self) {
+            value = number
+        } else if let text = try? single.decode(String.self), let number = Double(text) {
+            value = number
+        } else {
+            value = 0
+        }
+    }
+
+    /// As the web shows it, "61%": a tenth of a point is a percent; nothing for a score of 0.
+    public var percent: Int? { value > 0 ? Int((value * 10).rounded()) : nil }
 }

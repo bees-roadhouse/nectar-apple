@@ -24,9 +24,13 @@ final class LibraryModel {
     let playlistAdding: PlaylistAdding
     private var loadingMore = false
 
-    init(library: Library, session: NectarSession) {
+    /// The poster's width in points on this screen, for prefetching its images at twice that.
+    private let posterWidth: CGFloat
+
+    init(library: Library, session: NectarSession, posterWidth: CGFloat) {
         self.library = library
         self.session = session
+        self.posterWidth = posterWidth
         query = LibraryQuery(library)
         playlistAdding = PlaylistAdding(session: session)
     }
@@ -68,7 +72,8 @@ final class LibraryModel {
         opened = card
     }
 
-    private func reload() async {
+    /// The first page again: pull to refresh on the phone (#158), and every change of the query.
+    func reload() async {
         state = .loading
         do {
             let page = try await session.media(query)
@@ -82,7 +87,7 @@ final class LibraryModel {
     }
 
     private func prefetch(_ cards: [MediaCard]) {
-        let width = LibraryPoster.Shape(library.kind).size.width * 2
+        let width = posterWidth * 2
         ImageCache.shared.prefetch(cards.map { session.resolve($0.posterPath, pixelWidth: width) })
     }
 }

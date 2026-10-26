@@ -63,16 +63,32 @@
   .swap.out { opacity: 0; }
   /* "Use a different address" comes last, under the QR's caption (Capping, #132). */
   .back { margin-top: 14px; }
+  .secondary {
+    display: block; width: 100%; height: 48px; font: inherit; font-weight: 600;
+    color: var(--brh-text); background: var(--brh-card); border: 1px solid var(--brh-line-dim); border-radius: 999px;
+  }
+  .secondary:active { border-color: var(--brh-gold); }
+  .secondary:focus-visible { outline: 2px solid var(--brh-gold-hi); outline-offset: 3px; }
+  .here { width: min(320px, 100%); margin-top: 18px; }
+  .fallback { display: none; }
+  .send { margin: 0 0 12px; min-height: 44px; }
+  /* The iPhone's code screen (Capping, #144): the button first, no QR, the code as one line. */
+  .phone #wait .here { width: 100%; margin: 12px 0 8px; }
+  .phone #wait .on-other, .phone #wait #code, .phone #wait .qr-box { display: none; }
+  .phone #wait .fallback { display: block; margin: 0 0 8px; }
+  /* The iPad's side-by-side. Never on a phone: a Pro Max in landscape is 956 pt wide, and the phone's stack holds
+     there (Capping, #145). */
   @media (min-width: 900px) and (orientation: landscape) {
-    #wait { grid-template-columns: 1fr auto; align-items: center; text-align: left; }
-    #wait .copy { justify-items: start; }
-    #wait .qr { margin-bottom: 0; }
-    #wait .back { grid-column: 1; justify-self: start; margin-top: 0; }
+    body:not(.phone) #wait { grid-template-columns: 1fr auto; align-items: center; text-align: left; }
+    body:not(.phone) #wait .copy { justify-items: start; }
+    body:not(.phone) #wait .qr { margin-bottom: 0; }
+    body:not(.phone) #wait .back { grid-column: 1; justify-self: start; margin-top: 0; }
+    body:not(.phone) #wait .here { grid-column: 2; justify-self: center; margin-top: 12px; }
   }
   /* One fixed-height slot for "Waiting…" and "Approved", so nothing moves at approval (Capping, #132). */
   .slot { display: grid; place-items: center; height: 40px; margin-bottom: 8px; }
   #wait .slot > * { grid-area: 1 / 1; margin: 0; }
-  @media (min-width: 900px) and (orientation: landscape) { .slot { justify-items: start; } }
+  @media (min-width: 900px) and (orientation: landscape) { body:not(.phone) .slot { justify-items: start; } }
   .status { display: flex; align-items: center; gap: 10px; color: var(--brh-text2); }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--brh-gold); animation: pulse 1.8s ease-in-out infinite; }
   @keyframes pulse { 50% { opacity: 0.25; } }
@@ -113,7 +129,7 @@
   </section>
   <section id="ask" hidden>
     <img class="mark" src="brand/nectar-lockup.svg" alt="nectar" width="136" height="44">
-    <p id="ask-lead">Enter your nectar address. You'll approve this iPad from a phone or computer that's already signed in.</p>
+    <p id="ask-lead">Enter your nectar address.</p>
     <form id="form">
       <label for="server">Address</label>
       <!-- Text, not type=url: a bare host (the placeholder's own form) isn't a valid URL, and the form wouldn't submit.
@@ -132,8 +148,8 @@
   </section>
   <section id="wait" hidden>
     <div class="copy">
-      <h1>Approve this iPad</h1>
-      <p>On a signed-in phone or computer, go to <strong id="where"></strong> and enter:</p>
+      <h1 id="wait-title">Approve this iPad</h1>
+      <p class="on-other">On a signed-in phone or computer, go to <strong id="where"></strong> and enter:</p>
       <div class="code swap" id="code"></div>
       <div class="slot">
         <p class="status" id="waiting"><span class="dot" aria-hidden="true"></span>Waiting for approval…</p>
@@ -142,10 +158,20 @@
                stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Approved
         </div>
       </div>
+      <!-- A phone can't scan its own screen: there, the code is this one line (Capping, #144). -->
+      <p class="fallback">Or enter <strong id="code-line"></strong> on a device that's signed in.</p>
+      <!-- The approval link, with the code in it, to the person's Mac or another phone: AirDrop, Messages, Mail or
+           Copy, through the system share sheet (Nate, 2026-10-23, #148). -->
+      <button class="quiet send" id="send" type="button">Send this code to another device</button>
     </div>
-    <div>
+    <div class="qr-box">
       <div class="qr swap" id="qr"></div>
       <p>Or scan this with your phone's camera.</p>
+    </div>
+    <!-- For a person with nothing else to hand: the system sign-in sheet over the app, a password sign-in, Approve
+         (Capping, #144). On an iPhone it's the first thing under the title; on an iPad, a secondary under the QR. -->
+    <div class="here" id="here-wrap">
+      <button class="secondary" id="here" type="button">Sign in on this iPad</button>
     </div>
     <button class="quiet back" id="back" type="button">Use a different address</button>
   </section>
@@ -158,6 +184,8 @@
   // Each code shown gets a turn; a reply for an older turn (one replaced or abandoned) is ignored.
   let turn = 0;
   let servers = [];
+  // "iPhone" or "iPad", from the shell (#144); the words say which, and so does the device list.
+  let device = "iPad";
   // Per row, while it's being opened or after it failed: { origin: { connecting } | { failed: message } }.
   let rowState = {};
   // The server being edited (its origin), or null when adding.
@@ -222,7 +250,7 @@
     editing = server ? server.origin : null;
     $("ask-lead").textContent = server
       ? "Change this server's name or address."
-      : "Enter your nectar address. You'll approve this iPad from a phone or computer that's already signed in.";
+      : `Enter your nectar address. You'll approve this ${device} here or from another device that's signed in.`;
     $("server").value = server ? server.address : "";
     $("name").value = server ? server.name : "";
     $("go").textContent = server ? "Save" : "Get a code";
@@ -238,6 +266,7 @@
   const show = (code) => {
     $("where").textContent = code.verification_uri.replace(/^https?:\/\//, "");
     $("code").textContent = code.user_code;
+    $("code-line").textContent = code.user_code;
     $("qr").innerHTML = code.qr_svg;
   };
 
@@ -250,12 +279,16 @@
     $("approved").hidden = true;
     $("back").textContent = servers.length ? "Choose another server" : "Use a different address";
     $("back").style.visibility = "";
+    $("here-wrap").style.visibility = "";
+    $("send").style.visibility = "";
     for (;;) {
       const result = await invoke("finish_sign_in");
       if (mine !== turn || result === "cancelled") return;
       if (result === "approved") {
         $("waiting").hidden = true;
         $("back").style.visibility = "hidden";
+        $("here-wrap").style.visibility = "hidden";
+        $("send").style.visibility = "hidden";
         $("approved").hidden = false;
         await sleep(600);
         await invoke("open_server");
@@ -333,6 +366,11 @@
     showList();
   });
 
+  $("here").addEventListener("click", () => invoke("open_approval").catch((error) => say(error)));
+  $("send").addEventListener("click", () => {
+    const r = $("send").getBoundingClientRect();
+    invoke("share_approval", { from: [r.x, r.y, r.width, r.height] }).catch((error) => say(error));
+  });
   $("back").addEventListener("click", () => {
     turn++;
     invoke("cancel_sign_in").catch(() => {});
@@ -341,6 +379,16 @@
 
   // A cold start opens the last server if it can; otherwise the list, saying why when the server was unreachable.
   (async () => {
+    device = await invoke("device").catch(() => "iPad");
+    $("wait-title").textContent = `Approve this ${device}`;
+    $("here").textContent = `Sign in on this ${device}`;
+    if (device === "iPhone") {
+      document.body.classList.add("phone");
+      $("here").className = "primary";
+      $("wait-title").after($("here-wrap"));
+      // "Waiting…" reports the code's poll, so it sits under the line that carries the code (Capping, #145).
+      document.querySelector("#wait .fallback").after(document.querySelector("#wait .slot"));
+    }
     let message = null;
     try {
       if ((await invoke("resume")) === "opened") return;

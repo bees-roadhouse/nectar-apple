@@ -54,3 +54,15 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/dd" \
             -skipMacroValidation -skipPackagePluginValidation \
             CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM=""
+
+      # The iPhone and iPad app (#156) shares the TV's models, so a change to either has to build both.
+      - name: Build Nectar for the iOS Simulator
+        working-directory: Nectar/iPhone
+        run: |
+          xcodebuild build \
+            -project NectarPhone.xcodeproj \
+            -scheme Nectar \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/dd-ios" \
+            -skipMacroValidation -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM=""

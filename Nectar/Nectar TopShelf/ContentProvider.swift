@@ -21,7 +21,7 @@ final class ContentProvider: TVTopShelfContentProvider {
         log.info("top shelf: \(feed.watching.count, privacy: .public) watching, \(feed.new.count, privacy: .public) new")
         var sections: [TVTopShelfItemCollection<TVTopShelfSectionedItem>] = []
         if !feed.watching.isEmpty {
-            sections.append(section("Continue Watching", feed.watching, shape: .hdtv))
+            sections.append(section("Continue watching", feed.watching, shape: .hdtv))
         }
         if !feed.new.isEmpty {
             sections.append(section("New", feed.new, shape: .poster))

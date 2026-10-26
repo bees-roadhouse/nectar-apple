@@ -135,4 +135,16 @@ struct ContinueWatchingTests {
         #expect(MediaCard(id: "x", posterPath: "/p", backdropPath: "/b").artworkPath == "/b")
         #expect(MediaCard(id: "x", posterPath: "/p").artworkPath == "/p")
     }
+
+    @Test func aCardsRatingReadsAsTheWebShowsIt() throws {
+        let number = try JSONDecoder().decode(MediaCard.self, from: Data(#"{"id":"m1","community_rating":6.12,"content_rating":"R"}"#.utf8))
+        #expect(number.communityRating?.percent == 61)
+        #expect(number.contentRating == "R")
+        let text = try JSONDecoder().decode(MediaCard.self, from: Data(#"{"id":"m1","community_rating":"7.45"}"#.utf8))
+        #expect(text.communityRating?.percent == 75, "a numeric column may arrive as a string")
+        let none = try JSONDecoder().decode(MediaCard.self, from: Data(#"{"id":"m1","community_rating":0}"#.utf8))
+        #expect(none.communityRating?.percent == nil)
+        let missing = try JSONDecoder().decode(MediaCard.self, from: Data(#"{"id":"m1"}"#.utf8))
+        #expect(missing.communityRating == nil)
+    }
 }

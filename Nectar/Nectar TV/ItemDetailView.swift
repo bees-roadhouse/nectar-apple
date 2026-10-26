@@ -107,6 +107,12 @@ struct ItemDetailView: View {
         VStack(alignment: .leading, spacing: 20) {
             Text(detail.title).font(.largeTitle.bold())
             Text(facts(detail)).foregroundStyle(.secondary)
+            // Everything on a detail page is in the library: a waiting stage is the monitor at rest, in words (#142).
+            if let status = CardStatus.of(detail.pipeline, owned: true) {
+                DetailStatus(status: status)
+            } else if let following = CardStatus.following(detail.pipeline, isSeries: detail.itemType == "series") {
+                Text(following).font(.callout).foregroundStyle(.secondary)
+            }
             if let tagline = detail.tagline, !tagline.isEmpty {
                 Text(tagline).font(.headline).italic()
             }
@@ -204,17 +210,10 @@ struct ItemDetailView: View {
     }
 
     /// "1h 56m"
-    static func duration(_ seconds: Double) -> String {
-        let minutes = Int(seconds / 60)
-        return minutes >= 60 ? "\(minutes / 60)h \(minutes % 60)m" : "\(minutes)m"
-    }
+    static func duration(_ seconds: Double) -> String { Durations.duration(seconds) }
 
     /// "1:21:52" or "21:52"
-    static func clock(_ seconds: Double) -> String {
-        let total = Int(seconds)
-        let (h, m, s) = (total / 3600, total % 3600 / 60, total % 60)
-        return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%d:%02d", m, s)
-    }
+    static func clock(_ seconds: Double) -> String { Durations.clock(seconds) }
 }
 
 /// A titled horizontal row.

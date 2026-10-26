@@ -49,6 +49,11 @@ public struct ItemDetail: Decodable, Equatable, Identifiable, Sendable {
     public let trailerPath: String?
     public let chapters: [Chapter]
     public let seasonCount: Int?
+    /// Where the title stands on its way into the library (nectar #773); nil when nothing is happening.
+    public let pipeline: TitlePipeline?
+    /// An owned title's place in the library, in the server's words (nectar #789, #686 slice 2); nil for an episode,
+    /// a title not owned, a film whose quality isn't measured yet, or a server from before #789.
+    public let libraryState: LibraryState?
     public let episodeCount: Int?
     /// Where this user stopped; nil when they haven't started, or finished.
     public let resumeSeconds: Double?
@@ -73,6 +78,8 @@ public struct ItemDetail: Decodable, Equatable, Identifiable, Sendable {
         case posterBlurHash = "poster_blurhash"
         case trailerPath = "trailer_url"
         case seasonCount = "season_count"
+        case pipeline
+        case libraryState = "library_state"
         case episodeCount = "episode_count"
     }
 
@@ -147,6 +154,8 @@ public struct ItemDetail: Decodable, Equatable, Identifiable, Sendable {
         trailerPath = try c.decodeIfPresent(String.self, forKey: .trailerPath)
         chapters = (try? c.decodeIfPresent([Chapter].self, forKey: .chapters)) ?? []
         seasonCount = c.lenientInt(.seasonCount)
+        pipeline = try? c.decodeIfPresent(TitlePipeline.self, forKey: .pipeline)
+        libraryState = try? c.decodeIfPresent(LibraryState.self, forKey: .libraryState)
         episodeCount = c.lenientInt(.episodeCount)
         source = (try? outer.decode(PlaybackSource.self, forKey: .item))
             ?? PlaybackSource(container: nil, videoCodec: nil, resolution: nil, hdr: nil, bitrate: nil, sizeBytes: nil, audioTracks: [])
@@ -181,4 +190,23 @@ extension NectarSession {
     public func similar(to id: String) async throws -> [MediaCard] {
         try JSONDecoder().decode(Similar.self, from: try await get("api/v1/media/\(id)/similar")).items
     }
+}
+
+/// Where an owned title stands, as nectar words it: a pill's label and a sentence, both the server's, so every client
+/// says the same (nectar #789).
+public struct LibraryState: Decodable, Equatable, Sendable {
+    /// upgrading, best_quality, following, missing_episodes or kept; a string, so a new state still reads.
+    public let state: String
+    public let label: String
+    public let sentence: String
+    public let cutoff: String?
+    public let missingEpisodes: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case state, label, sentence, cutoff
+        case missingEpisodes = "missing_episodes"
+    }
+
+    /// #686's pills: Upgrading and missing episodes are active (green, the arrow only for Upgrading); the rest rest.
+    public var isActive: Bool { state == "upgrading" || state == "missing_episodes" }
 }
