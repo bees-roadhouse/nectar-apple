@@ -3,7 +3,7 @@ import Testing
 @testable import NectarKit
 
 /// Controls replies at the HTTP seam, including a server that ignores cancellation.
-private actor DirectoryServer: HTTPTransport {
+actor DirectoryServer: HTTPTransport {
     private var immediate: String?
     private(set) var requestCount = 0
     private var pending: [String: CheckedContinuation<(Data, HTTPURLResponse), Error>] = [:]

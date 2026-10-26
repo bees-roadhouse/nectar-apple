@@ -57,15 +57,14 @@ struct GenreScreen: View {
     let name: String
     let session: NectarSession
     let open: (MediaCard) -> Void
-    @State private var cards: [MediaCard] = []
-    @State private var total = 0
-    @State private var offset = 0
-    @State private var loading = false
-    @State private var loaded = false
-    @State private var failed = false
-    @State private var more = true
-    @State private var generation = 0
-    @State private var failedReset = false
+    @State private var browser: GenreBrowser
+
+    init(name: String, session: NectarSession, open: @escaping (MediaCard) -> Void) {
+        self.name = name
+        self.session = session
+        self.open = open
+        _browser = State(initialValue: GenreBrowser(session: session, genre: name))
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -74,61 +73,33 @@ struct GenreScreen: View {
                 VStack(alignment: .leading, spacing: 24) {
                     VStack(alignment: .leading, spacing: 12) {
                         Text(name).font(.title2.bold()).fixedSize(horizontal: false, vertical: true)
-                        if loaded {
-                            Text(total == 1 ? "1 title" : "\(total) titles").font(.subheadline).foregroundStyle(.secondary)
+                        if browser.loaded {
+                            Text(browser.total == 1 ? "1 title" : "\(browser.total) titles").font(.subheadline).foregroundStyle(.secondary)
                         } else {
                             Text("000 titles").font(.subheadline).foregroundStyle(.secondary)
                                 .redacted(reason: .placeholder).accessibilityHidden(true)
                         }
                     }
-                    if loaded && cards.isEmpty {
+                    if browser.loaded && browser.cards.isEmpty {
                         ContentUnavailableView("No titles in this genre", systemImage: "tag").frame(maxWidth: .infinity)
                     }
-                    CatalogGrid(cards: cards, session: session, width: max(1, proxy.size.width - margin * 2), loading: loading || !loaded && !failed, appeared: { card in
-                        guard card.id == cards.last?.id, more, !failed else { return }
-                        Task { await load(reset: false) }
+                    CatalogGrid(cards: browser.cards, session: session, width: max(1, proxy.size.width - margin * 2), loading: browser.loading || !browser.loaded && !browser.failed, appeared: { card in
+                        guard card.id == browser.cards.last?.id else { return }
+                        Task { await browser.loadMore() }
                     }, open: open)
-                    if failed {
+                    if browser.failed {
                         VStack(spacing: 12) {
                             Text("Couldn't load titles in this genre").foregroundStyle(.secondary)
-                            Button("Retry") { Task { await load(reset: failedReset) } }.foregroundStyle(Color.brhGold)
+                            Button("Retry") { Task { await browser.load(reset: browser.failedReset) } }.foregroundStyle(Color.brhGold)
                         }
                         .frame(maxWidth: .infinity)
                     }
                 }
                 .padding(.horizontal, margin).padding(.vertical, 16).padding(.bottom, 32)
             }
-            .refreshable { await load(reset: true) }
+            .refreshable { await browser.load(reset: true) }
         }
         .background(Color.brhNight)
-        .task {
-            guard !loaded, !loading, !failed else { return }
-            await load(reset: true)
-        }
-    }
-
-    private func load(reset: Bool) async {
-        if reset {
-            generation += 1
-            loading = false
-            offset = 0; more = true
-        }
-        guard !loading, more else { return }
-        let request = generation
-        loading = true; failed = false
-        defer { if request == generation { loading = false } }
-        var query = LibraryQuery(library: nil)
-        query.genre = name; query.sort = .rating; query.descending = true; query.offset = offset
-        do {
-            let page = try await session.media(query)
-            guard request == generation, !Task.isCancelled else { return }
-            if reset { cards = page.items }
-            else { cards += page.items.filter { item in !cards.contains { $0.id == item.id } } }
-            offset += page.items.count; total = page.total; loaded = true
-            more = !page.items.isEmpty && offset < page.total
-        } catch {
-            guard request == generation, !Task.isCancelled else { return }
-            failed = true; failedReset = reset
-        }
+        .task { await browser.start() }
     }
 }
