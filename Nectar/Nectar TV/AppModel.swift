@@ -84,13 +84,14 @@ final class AppModel {
     func signOut() {
         Task { await session?.signOut() }
         store.save(nil)
-        // The next person to sign in shouldn't find the last one's titles on the Top Shelf.
-        TopShelfStore()?.save(nil)
-        TVTopShelfContentProvider.topShelfContentDidChange()
         beginSignIn()
     }
 
+    /// Every way into the sign-in code (signing out, a refused saved token, a failed first lookup) leaves nobody
+    /// signed in, so the next person to sign in shouldn't find the last one's titles on the Top Shelf.
     private func beginSignIn() {
+        TopShelfStore()?.save(nil)
+        TVTopShelfContentProvider.topShelfContentDidChange()
         let flow = DeviceFlowClient(issuer: Self.server, clientID: Self.clientID, deviceName: UIDevice.current.name)
         let signIn = SignInModel(flow: flow) { [weak self] tokens, endpoints in
             await self?.finishSignIn(tokens, tokenEndpoint: endpoints.token)
