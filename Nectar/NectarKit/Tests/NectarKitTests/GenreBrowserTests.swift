@@ -81,4 +81,20 @@ struct GenreBrowserTests {
         #expect(model.cards.map(\.id) == ["a"])
         #expect(await server.requestCount == 1)
     }
+
+    /// Capping on #181: a pull to refresh keeps the old titles until the new first page lands, and a failed one keeps them.
+    @Test func aRefreshKeepsItsTitlesInFlightAndWhenItFails() async {
+        let server = DirectoryServer()
+        let model = browser(server)
+        let first = Task { await model.start() }
+        await server.observed(":0")
+        await server.reply(":0", page(["a", "b"], total: 2))
+        await first.value
+        let refresh = Task { await model.load(reset: true) }
+        await server.waiting(":0")
+        #expect(model.cards.map(\.id) == ["a", "b"], "the titles stay while the refresh is in flight")
+        await server.reply(":0", #"{"error":"unavailable"}"#, status: 503)
+        await refresh.value
+        #expect(model.cards.map(\.id) == ["a", "b"] && model.failed && model.failedReset)
+    }
 }

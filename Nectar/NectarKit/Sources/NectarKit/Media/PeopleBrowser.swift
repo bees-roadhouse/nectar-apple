@@ -13,6 +13,8 @@ public final class PeopleBrowser {
     public private(set) var loaded = false
     public private(set) var failed = false
     public private(set) var more = true
+    /// Whether the failed request was a pull to refresh, so Retry asks for the first page again.
+    public private(set) var failedRefresh = false
     private var offset = 0
     private var generation = 0
     private var requestedQuery = ""
@@ -40,25 +42,41 @@ public final class PeopleBrowser {
         await page(generation: request)
     }
 
+    /// Pull to refresh: the rows stay until the new first page lands, and a failure keeps them with Retry. Only a new
+    /// query clears the list first (`search`).
+    public func refresh() async {
+        generation += 1
+        let request = generation
+        requestedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        loading = false
+        await page(generation: request, replacing: true)
+    }
+
     public func loadMore() async {
         guard more, !loading else { return }
         await page(generation: generation)
     }
 
-    private func page(generation request: Int) async {
+    private func page(generation request: Int, replacing: Bool = false) async {
         guard !loading else { return }
-        loading = true; failed = false
+        loading = true; failed = false; failedRefresh = false
+        let startOffset = replacing ? 0 : offset
         let search = requestedQuery
         defer { if request == generation { loading = false } }
         do {
-            let page = try await session.people(search: search, offset: offset)
+            let page = try await session.people(search: search, offset: startOffset)
             guard request == generation, search == query.trimmingCharacters(in: .whitespacesAndNewlines), !Task.isCancelled else { return }
-            people += page.people.filter { seen.insert($0.id).inserted }
-            offset += page.people.count; total = page.total; loaded = true
+            if replacing {
+                people = page.people
+                seen = Set(page.people.map(\.id))
+            } else {
+                people += page.people.filter { seen.insert($0.id).inserted }
+            }
+            offset = startOffset + page.people.count; total = page.total; loaded = true
             more = !page.people.isEmpty && offset < page.total
         } catch {
             guard request == generation, search == query.trimmingCharacters(in: .whitespacesAndNewlines), !Task.isCancelled else { return }
-            failed = true
+            failed = true; failedRefresh = replacing
         }
     }
 }

@@ -69,6 +69,7 @@ struct PeopleScreen: View {
                     Button("Retry") {
                         Task {
                             if model.people.isEmpty { await model.search(debounce: false) }
+                            else if model.failedRefresh { await model.refresh() }
                             else { await model.loadMore() }
                         }
                     }
@@ -79,7 +80,7 @@ struct PeopleScreen: View {
         }
         .listStyle(.plain).scrollContentBackground(.hidden).background(Color.brhNight)
         .task(id: model.query) { await model.start() }
-        .refreshable { await model.search(debounce: false) }
+        .refreshable { await model.refresh() }
     }
 
     private func row(name: String, photo: URL?, count: Int) -> some View {

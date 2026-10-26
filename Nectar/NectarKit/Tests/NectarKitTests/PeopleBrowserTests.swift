@@ -113,4 +113,40 @@ struct PeopleBrowserTests {
         #expect(model.people.map(\.id) == ["p1", "p2"])
         #expect(!model.failed && !model.more && !model.loading)
     }
+
+    /// Capping on #181: pull to refresh keeps the old rows until the new first page lands, and a failed refresh keeps
+    /// them with Retry; only a new query clears first.
+    @Test func aRefreshKeepsItsRowsUntilTheNewFirstPageLands() async {
+        let server = DirectoryServer()
+        let model = browser(server)
+        let first = Task { await model.search(debounce: false) }
+        await server.observed(":0")
+        await server.reply(":0", #"{"people":[{"id":"p1","name":"First","credit_count":9}],"total":1}"#)
+        await first.value
+        let refresh = Task { await model.refresh() }
+        await server.waiting(":0")
+        #expect(model.people.map(\.id) == ["p1"] && model.loaded, "the rows stay while the refresh is in flight")
+        await server.reply(":0", #"{"people":[{"id":"p9","name":"Fresh","credit_count":1}],"total":1}"#)
+        await refresh.value
+        #expect(model.people.map(\.id) == ["p9"] && !model.failed)
+    }
+
+    @Test func aFailedRefreshKeepsItsRowsAndRetryRefreshesAgain() async {
+        let server = DirectoryServer()
+        let model = browser(server)
+        let first = Task { await model.search(debounce: false) }
+        await server.observed(":0")
+        await server.reply(":0", #"{"people":[{"id":"p1","name":"First","credit_count":9}],"total":2}"#)
+        await first.value
+        let refresh = Task { await model.refresh() }
+        await server.waiting(":0")
+        await server.reply(":0", #"{"error":"unavailable"}"#, status: 503)
+        await refresh.value
+        #expect(model.people.map(\.id) == ["p1"] && model.failed && model.failedRefresh && model.more)
+        let retry = Task { await model.refresh() }
+        await server.waiting(":0")
+        await server.reply(":0", #"{"people":[{"id":"p1","name":"First","credit_count":9},{"id":"p2","name":"Second","credit_count":1}],"total":2}"#)
+        await retry.value
+        #expect(model.people.map(\.id) == ["p1", "p2"] && !model.failed && !model.failedRefresh && !model.more)
+    }
 }
