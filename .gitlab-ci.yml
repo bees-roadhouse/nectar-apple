@@ -5,7 +5,7 @@
 #   push to main    the same
 #
 # Both jobs run on the Mac's macOS lane (`roadhouse-macos`: a fresh Tart VM per job, macOS Tahoe 26.6.2 with
-# Xcode 26.5, fenced off the LAN), one at a time. They build unsigned: CI proves the code compiles and the tests
+# Xcode 26.5, from the cirruslabs image below, fenced off the LAN), one at a time. They build unsigned: CI proves the code compiles and the tests
 # pass; signing is the Apple TV's and the phone's, with Nate's personal team, and happens on the MacBook.
 # No secrets are used here.
 
@@ -19,6 +19,7 @@ workflow:
     - if: $CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "api"
 
 default:
+  image: ghcr.io/cirruslabs/macos-tahoe-xcode:26.5
   tags: [roadhouse-macos]
   interruptible: true
   timeout: 30 minutes
@@ -52,7 +53,7 @@ nectar-tv:
         -project Nectar/Nectar.xcodeproj \
         -scheme NectarTV \
         -destination 'generic/platform=tvOS Simulator' \
-        -derivedDataPath "$CI_PROJECT_DIR/.dd-tv" \
+        -derivedDataPath "$CI_PROJECT_DIR/dd/tv" \
         -skipMacroValidation -skipPackagePluginValidation \
         CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM=""
     # The iPhone and iPad app shares the TV's models, so a change to either has to build both.
@@ -61,11 +62,11 @@ nectar-tv:
         -project Nectar/iPhone/NectarPhone.xcodeproj \
         -scheme Nectar \
         -destination 'generic/platform=iOS Simulator' \
-        -derivedDataPath "$CI_PROJECT_DIR/.dd-ios" \
+        -derivedDataPath "$CI_PROJECT_DIR/dd/ios" \
         -skipMacroValidation -skipPackagePluginValidation \
         CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM=""
   after_script:
-    - rm -rf "$CI_PROJECT_DIR/.dd-tv" "$CI_PROJECT_DIR/.dd-ios"
+    - rm -rf "$CI_PROJECT_DIR/dd"
 
 # The iPad shell, a Tauri 2 app around nectar's own web client: its Rust tests. The iOS build itself is checked on
 # the MacBook's simulator for now.
