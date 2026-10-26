@@ -38,6 +38,8 @@ struct PeopleScreen: View {
 
     var body: some View {
         List {
+            // A failed pull to refresh shows its error where the pull was, at the top.
+            if model.failedRefresh { failure }
             if model.loaded && model.people.isEmpty {
                 ContentUnavailableView {
                     Label(model.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "No people yet" : "No people found", systemImage: "person.2")
@@ -57,30 +59,32 @@ struct PeopleScreen: View {
                     await model.loadMore()
                 }
             }
-            if model.loading || !model.loaded && !model.failed {
+            if model.loading && !model.refreshing || !model.loaded && !model.failed {
                 ForEach(0..<6) { _ in
                     row(name: "Person's name", photo: nil, count: 12)
                         .redacted(reason: .placeholder).accessibilityHidden(true)
                 }
             }
-            if model.failed {
-                VStack(spacing: 12) {
-                    Text("Couldn't load people").foregroundStyle(.secondary)
-                    Button("Retry") {
-                        Task {
-                            if model.people.isEmpty { await model.search(debounce: false) }
-                            else if model.failedRefresh { await model.refresh() }
-                            else { await model.loadMore() }
-                        }
-                    }
-                    .foregroundStyle(Color.brhGold)
-                }
-                .frame(maxWidth: .infinity)
-            }
+            if model.failed && !model.failedRefresh { failure }
         }
         .listStyle(.plain).scrollContentBackground(.hidden).background(Color.brhNight)
         .task(id: model.query) { await model.start() }
         .refreshable { await model.refresh() }
+    }
+
+    private var failure: some View {
+        VStack(spacing: 12) {
+            Text("Couldn't load people").foregroundStyle(.secondary)
+            Button("Retry") {
+                Task {
+                    if model.people.isEmpty { await model.search(debounce: false) }
+                    else if model.failedRefresh { await model.refresh() }
+                    else { await model.loadMore() }
+                }
+            }
+            .foregroundStyle(Color.brhGold)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private func row(name: String, photo: URL?, count: Int) -> some View {

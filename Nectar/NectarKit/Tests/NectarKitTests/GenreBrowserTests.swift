@@ -93,8 +93,9 @@ struct GenreBrowserTests {
         let refresh = Task { await model.load(reset: true) }
         await server.waiting(":0")
         #expect(model.cards.map(\.id) == ["a", "b"], "the titles stay while the refresh is in flight")
+        #expect(model.refreshing && model.loading, "a refresh over shown titles asks for no placeholders")
         await server.reply(":0", #"{"error":"unavailable"}"#, status: 503)
         await refresh.value
-        #expect(model.cards.map(\.id) == ["a", "b"] && model.failed && model.failedReset)
+        #expect(model.cards.map(\.id) == ["a", "b"] && model.failed && model.failedReset && !model.refreshing)
     }
 }

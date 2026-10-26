@@ -66,11 +66,21 @@ struct GenreScreen: View {
         _browser = State(initialValue: GenreBrowser(session: session, genre: name))
     }
 
+    private var failure: some View {
+        VStack(spacing: 12) {
+            Text("Couldn't load titles in this genre").foregroundStyle(.secondary)
+            Button("Retry") { Task { await browser.load(reset: browser.failedReset) } }.foregroundStyle(Color.brhGold)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
     var body: some View {
         GeometryReader { proxy in
             let margin: CGFloat = proxy.size.width >= 428 ? 20 : 16
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
+                    // A failed pull to refresh shows its error where the pull was, at the top.
+                    if browser.failed && browser.failedReset && browser.loaded { failure }
                     VStack(alignment: .leading, spacing: 12) {
                         Text(name).font(.title2.bold()).fixedSize(horizontal: false, vertical: true)
                         if browser.loaded {
@@ -83,17 +93,11 @@ struct GenreScreen: View {
                     if browser.loaded && browser.cards.isEmpty {
                         ContentUnavailableView("No titles in this genre", systemImage: "tag").frame(maxWidth: .infinity)
                     }
-                    CatalogGrid(cards: browser.cards, session: session, width: max(1, proxy.size.width - margin * 2), loading: browser.loading || !browser.loaded && !browser.failed, appeared: { card in
+                    CatalogGrid(cards: browser.cards, session: session, width: max(1, proxy.size.width - margin * 2), loading: browser.loading && !browser.refreshing || !browser.loaded && !browser.failed, appeared: { card in
                         guard card.id == browser.cards.last?.id else { return }
                         Task { await browser.loadMore() }
                     }, open: open)
-                    if browser.failed {
-                        VStack(spacing: 12) {
-                            Text("Couldn't load titles in this genre").foregroundStyle(.secondary)
-                            Button("Retry") { Task { await browser.load(reset: browser.failedReset) } }.foregroundStyle(Color.brhGold)
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
+                    if browser.failed && !(browser.failedReset && browser.loaded) { failure }
                 }
                 .padding(.horizontal, margin).padding(.vertical, 16).padding(.bottom, 32)
             }

@@ -15,6 +15,8 @@ public final class PeopleBrowser {
     public private(set) var more = true
     /// Whether the failed request was a pull to refresh, so Retry asks for the first page again.
     public private(set) var failedRefresh = false
+    /// A pull to refresh in flight over rows already shown: the pulled spinner is its indicator, so no placeholders.
+    public private(set) var refreshing = false
     private var offset = 0
     private var generation = 0
     private var requestedQuery = ""
@@ -61,8 +63,9 @@ public final class PeopleBrowser {
         guard !loading else { return }
         loading = true; failed = false; failedRefresh = false
         let startOffset = replacing ? 0 : offset
+        refreshing = replacing && loaded
         let search = requestedQuery
-        defer { if request == generation { loading = false } }
+        defer { if request == generation { loading = false; refreshing = false } }
         do {
             let page = try await session.people(search: search, offset: startOffset)
             guard request == generation, search == query.trimmingCharacters(in: .whitespacesAndNewlines), !Task.isCancelled else { return }

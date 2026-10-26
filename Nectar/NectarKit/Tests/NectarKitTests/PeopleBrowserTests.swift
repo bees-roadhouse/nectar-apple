@@ -121,14 +121,16 @@ struct PeopleBrowserTests {
         let model = browser(server)
         let first = Task { await model.search(debounce: false) }
         await server.observed(":0")
+        #expect(model.loading && !model.refreshing, "the first load keeps its placeholders")
         await server.reply(":0", #"{"people":[{"id":"p1","name":"First","credit_count":9}],"total":1}"#)
         await first.value
         let refresh = Task { await model.refresh() }
         await server.waiting(":0")
         #expect(model.people.map(\.id) == ["p1"] && model.loaded, "the rows stay while the refresh is in flight")
+        #expect(model.refreshing && model.loading, "a refresh over shown rows asks for no placeholders")
         await server.reply(":0", #"{"people":[{"id":"p9","name":"Fresh","credit_count":1}],"total":1}"#)
         await refresh.value
-        #expect(model.people.map(\.id) == ["p9"] && !model.failed)
+        #expect(model.people.map(\.id) == ["p9"] && !model.failed && !model.refreshing)
     }
 
     @Test func aFailedRefreshKeepsItsRowsAndRetryRefreshesAgain() async {
@@ -142,7 +144,7 @@ struct PeopleBrowserTests {
         await server.waiting(":0")
         await server.reply(":0", #"{"error":"unavailable"}"#, status: 503)
         await refresh.value
-        #expect(model.people.map(\.id) == ["p1"] && model.failed && model.failedRefresh && model.more)
+        #expect(model.people.map(\.id) == ["p1"] && model.failed && model.failedRefresh && model.more && !model.refreshing)
         let retry = Task { await model.refresh() }
         await server.waiting(":0")
         await server.reply(":0", #"{"people":[{"id":"p1","name":"First","credit_count":9},{"id":"p2","name":"Second","credit_count":1}],"total":2}"#)

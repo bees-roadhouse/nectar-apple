@@ -16,6 +16,8 @@ public final class GenreBrowser {
     public private(set) var more = true
     /// Whether the failed request was a first page, so Retry knows to reset.
     public private(set) var failedReset = false
+    /// A pull to refresh in flight over titles already shown: the pulled spinner is its indicator, so no placeholders.
+    public private(set) var refreshing = false
     private var offset = 0
     private var generation = 0
     private var seen: Set<String> = []
@@ -45,7 +47,8 @@ public final class GenreBrowser {
         guard !loading, more else { return }
         let request = generation
         loading = true; failed = false
-        defer { if request == generation { loading = false } }
+        refreshing = reset && loaded
+        defer { if request == generation { loading = false; refreshing = false } }
         var query = LibraryQuery(library: nil)
         query.genre = genre; query.sort = .rating; query.descending = true; query.offset = offset
         do {
