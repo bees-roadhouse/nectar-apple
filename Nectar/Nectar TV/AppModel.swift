@@ -90,6 +90,8 @@ final class AppModel {
     /// Every way into the sign-in code (signing out, a refused saved token, a failed first lookup) leaves nobody
     /// signed in, so the next person to sign in shouldn't find the last one's titles on the Top Shelf.
     private func beginSignIn() {
+        // Retired first: a Home load still waiting would otherwise write the last person's titles back after the clear.
+        if case let .signedIn(_, home) = state { home.retire() }
         TopShelfStore()?.save(nil)
         TVTopShelfContentProvider.topShelfContentDidChange()
         let flow = DeviceFlowClient(issuer: Self.server, clientID: Self.clientID, deviceName: UIDevice.current.name)

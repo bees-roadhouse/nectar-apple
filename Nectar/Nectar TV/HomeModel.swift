@@ -45,6 +45,8 @@ final class HomeModel {
     /// How many genre rows, as the web's home.
     private static let genreRows = 4
     private let signedOut: () -> Void
+    /// Ends when someone signs out: a load still waiting then must not write their titles to the Top Shelf.
+    private let life = ModelLife()
 
     init(session: NectarSession, signedOut: @escaping () -> Void) {
         self.session = session
@@ -109,6 +111,11 @@ final class HomeModel {
         }
     }
 
+    /// Signed out: nothing this Home was still loading is shown or published any more.
+    func retire() {
+        life.stop()
+    }
+
     /// Back from the player: the row's order and progress have moved.
     func finishedPlaying() {
         playing = nil
@@ -132,6 +139,7 @@ final class HomeModel {
         async let series = try? session.media(.recentlyAdded(in: nil, itemType: "series"))
         let (newFilms, newSeries) = await ((films)?.items ?? [], (series)?.items ?? [])
         let recent = zip(newFilms, newSeries).flatMap { [$0, $1] } + newFilms.dropFirst(newSeries.count) + newSeries.dropFirst(newFilms.count)
+        guard !life.isStopped else { return }
         if case let .loaded(watching) = continueWatching {
             hero = HeroSlide.pick(watching: watching, recent: recent)
             publishTopShelf(watching: watching, recent: recent)
