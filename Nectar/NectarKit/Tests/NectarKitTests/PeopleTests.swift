@@ -102,4 +102,19 @@ struct PeopleTests {
         #expect(await server.requests.first?.url?.query == "kind=collection")
         #expect(collections.map(\.name) == ["Marvel"] && collections[0].itemCount == 23)
     }
+
+    /// Palp's note on #181: URLComponents leaves "+" bare in a query, and nectar reads a bare "+" as a space.
+    @Test func aPlusInASearchOrGenreReachesTheServerAsAPlus() async throws {
+        let server = Server(["/api/v1/people": #"{"people":[],"total":0}"#, "/api/v1/media": #"{"items":[],"total":0}"#])
+        _ = try await session(server).people(search: "C++ & A+B")
+        var request = LibraryQuery(library: nil)
+        request.genre = "Rock+Roll"
+        _ = try await session(server).media(request)
+        let sent = await server.requests
+        let people = try #require(sent.first?.url?.query)
+        let media = try #require(sent.last?.url?.query)
+        #expect(people.contains("search=C%2B%2B%20%26%20A%2BB"), "people query: \(people)")
+        #expect(media.contains("genre=Rock%2BRoll"), "media query: \(media)")
+        #expect(!people.contains("+") && !media.contains("+"))
+    }
 }

@@ -238,7 +238,14 @@ public actor NectarSession {
 
     private func send(_ method: String, _ path: String, query: [URLQueryItem], body: Data?, with accessToken: String) async throws -> (Data, HTTPURLResponse) {
         var url = baseURL.appending(path: path)
-        if !query.isEmpty { url.append(queryItems: query) }
+        if !query.isEmpty {
+            url.append(queryItems: query)
+            // URLComponents leaves "+" bare in a query, and the server reads a bare "+" as a space.
+            if var components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+                components.percentEncodedQuery = components.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
+                url = components.url ?? url
+            }
+        }
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
