@@ -16,6 +16,7 @@ public final class PeopleBrowser {
     private var offset = 0
     private var generation = 0
     private var requestedQuery = ""
+    private var seen: Set<String> = []
 
     public init(session: NectarSession) { self.session = session }
 
@@ -30,7 +31,7 @@ public final class PeopleBrowser {
         generation += 1
         let request = generation
         requestedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        people = []; total = 0; offset = 0; more = true; loaded = false; failed = false; loading = false
+        people = []; seen = []; total = 0; offset = 0; more = true; loaded = false; failed = false; loading = false
         if debounce && !requestedQuery.isEmpty {
             do { try await Task.sleep(for: .milliseconds(300)) }
             catch { return }
@@ -52,7 +53,7 @@ public final class PeopleBrowser {
         do {
             let page = try await session.people(search: search, offset: offset)
             guard request == generation, search == query.trimmingCharacters(in: .whitespacesAndNewlines), !Task.isCancelled else { return }
-            people += page.people.filter { person in !people.contains { $0.id == person.id } }
+            people += page.people.filter { seen.insert($0.id).inserted }
             offset += page.people.count; total = page.total; loaded = true
             more = !page.people.isEmpty && offset < page.total
         } catch {
