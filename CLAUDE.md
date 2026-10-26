@@ -40,7 +40,7 @@ The TV app's models are compiled into the iPhone target (`project.yml` lists the
 
 - **Capping reviews every UI change for feel** (pixels from the TV or a simulator run, otherwise from source). The brand standard is KB page 2451, and colours are the role names, never copied hex values.
 - **A PR written on Sonnet is merged only after Palp's two-axis review on Opus** (Standards: this file, the house file and the DevOps book; Spec: the issue it closes), posted on the PR and written as separate axes (2026-10-24).
-- Ocelli merges its own PRs once they are green and reviewed, with a squash and no admin override. The gate is the repo's CI. Merge without `--delete-branch`, then delete the remote branch with the API once the PR reads MERGED.
+- Ocelli merges its own PRs once they are green and reviewed, with a squash and no admin override. The gate is the repo's CI: until the cut-over that is the first GitLab pipeline, not GitHub's checks (2026-10-26). Merge without `--delete-branch`, then delete the remote branch with the API once the PR reads MERGED.
 - A reviewer's fix goes in its own commit, never inside a "Merge main" commit.
 
 ## Working here
@@ -52,4 +52,4 @@ The TV app's models are compiled into the iPhone target (`project.yml` lists the
 
 ## Never in a commit
 
-Tokens (access, refresh, the device-flow code), Apple ID credentials, signing certificates, provisioning profiles, the nectar test user's password, DerivedData, `xcuserdata`, debug-hook patches, and titles or names from the household's library. Muzzle a tool that prints a secret.
+This repo is public, so a commit, a PR body or a test fixture is published. Keep out tokens (access, refresh, the device-flow code), Apple ID credentials, signing certificates, provisioning profiles, the nectar test user's password, DerivedData, `xcuserdata`, debug-hook patches, screenshots of a household member's profile or library, and new room, device or person names from the household (the team ID and the TV's name are already on `main`; do not add more). Muzzle a tool that prints a secret.
