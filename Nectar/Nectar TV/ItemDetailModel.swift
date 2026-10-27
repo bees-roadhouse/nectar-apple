@@ -1,6 +1,8 @@
-import AVFoundation
 import Foundation
 import NectarKit
+import os
+
+private let log = Logger(subsystem: "com.beesroadhouse.nectar.tv", category: "detail")
 
 /// One library title's detail page: what nectar says about it, titles like it, and what's playing from it.
 @MainActor
@@ -24,8 +26,8 @@ final class ItemDetailModel {
     var playing: PlayerModel?
     /// A series playing from an episode on, one into the next.
     var queue: PlayQueue?
-    /// The trailer playing, if one is.
-    var trailer: TrailerPlayer?
+    /// The trailers playing, if they are.
+    var trailers: TrailersModel?
     /// A "More like this" title opened on top of this one.
     var opened: MediaCard?
     /// Someone from the cast, opened on top.
@@ -34,6 +36,15 @@ final class ItemDetailModel {
     private(set) var seasons: [Season] = []
     /// The season whose episodes are showing.
     var selectedSeason: Int?
+    /// Trailers already asked for, so reloading the page doesn't ask again.
+    @ObservationIgnored
+    private var askedTrailers: Set<String> = []
+    @ObservationIgnored
+    private var warming: Task<Void, Never>?
+
+    /// nectar answers an unready trailer with `Retry-After: 20`; look again that often for about two minutes.
+    static let lookAgainEvery: Duration = .seconds(20)
+    static let looks = 6
 
     init(id: String, session: NectarSession, playlistAdding: PlaylistAdding) {
         self.id = id
@@ -59,6 +70,7 @@ final class ItemDetailModel {
                 }
             }
             self.detail = .loaded(detail)
+            warmTrailers(detail)
         } catch {
             detail = .failed
         }
@@ -86,15 +98,37 @@ final class ItemDetailModel {
         Task { await load() }
     }
 
-    func playTrailer(_ detail: ItemDetail) async {
-        guard let path = detail.trailerPath, let url = try? await session.mediaURL(path) else { return }
-        // The URL carries the token: it goes to AVPlayer and nowhere else.
-        trailer = TrailerPlayer(player: AVPlayer(url: url))
+    /// Asks nectar for each unready trailer as the page opens, which starts its fetch (nectar #715), then reads the
+    /// title again until they've landed or failed, so the Trailers button can arrive on its own. A trailer is only
+    /// marked asked once nectar has taken the request, so a failed one is asked again at the next look (Palp, #122).
+    private func warmTrailers(_ detail: ItemDetail) {
+        guard warming == nil, detail.trailers.contains(where: { !$0.isReady && !askedTrailers.contains($0.id) }) else { return }
+        warming = Task { [weak self, session, id] in
+            await self?.askForUnready(detail.trailers)
+            for _ in 0 ..< Self.looks {
+                try? await Task.sleep(for: Self.lookAgainEvery)
+                guard let self, !Task.isCancelled else { return }
+                guard let fresh = try? await session.detail(id) else { continue }
+                if case .loaded = self.detail { self.detail = .loaded(fresh) }
+                if fresh.trailers.allSatisfy(\.isReady) { break }
+                await self.askForUnready(fresh.trailers)
+            }
+            self?.warming = nil
+        }
     }
-}
 
-/// A trailer is a plain file: no decide, no progress.
-struct TrailerPlayer: Identifiable {
-    let id = UUID()
-    let player: AVPlayer
+    private func askForUnready(_ trailers: [Trailer]) async {
+        for trailer in trailers where !trailer.isReady && !askedTrailers.contains(trailer.id) {
+            do {
+                try await session.head(trailer.path)
+                askedTrailers.insert(trailer.id)
+            } catch {
+                log.info("trailer \(trailer.id, privacy: .public) fetch not started: \(String(describing: error), privacy: .public)")
+            }
+        }
+    }
+
+    func playTrailers(_ detail: ItemDetail) {
+        trailers = TrailersModel(detail: detail, session: session)
+    }
 }
