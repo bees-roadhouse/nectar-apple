@@ -126,7 +126,7 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
                     self?.push(path: "/library/\(shelf.id.dropFirst("recent-".count))", title: shelf.title, onTab: 0)
                 } else if shelf.id.hasPrefix("genre-") {
                     let name = String(shelf.id.dropFirst("genre-".count))
-                    self?.push(path: "/genre/\(name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name)", title: name, onTab: 0)
+                    self?.genre(name, onTab: 0)
                 }
             }
         ))
@@ -149,7 +149,7 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
             playback: playback,
             open: { [weak self] card in self?.show(card, onTab: 2) },
             openGenre: { [weak self] name in
-                self?.push(path: "/genre/\(name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name)", title: name, onTab: 2)
+                self?.genre(name, onTab: 2)
             },
             openCollection: { [weak self] collection in
                 self?.collection(collection, onTab: 2)
@@ -200,7 +200,7 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
             model: model,
             playback: playback,
             open: { [weak self] card in self?.title(card, onTab: tab) },
-            openPerson: { [weak self] person in self?.push(path: "/person/\(person.id)", title: person.name, onTab: tab) },
+            openPerson: { [weak self] person in self?.person(id: person.id, name: person.name, photo: person.photo, onTab: tab) },
             back: { [weak stack] in _ = stack?.popViewController(animated: true) }
         ))
         screen.title = card.title
@@ -225,6 +225,8 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
         if row.path == "/settings/account" { return account() }
         if row.path == "/playlists" { return playlists() }
         if row.path == "/collections" { return collections() }
+        if row.path == "/people" { return people() }
+        if row.path == "/genres" { return genres() }
         let page = WebPage(root: row.path, title: row.title, session: session, signedOut: signedOut)
         (viewControllers?.last as? UINavigationController)?.pushViewController(page, animated: true)
     }
@@ -264,6 +266,36 @@ final class Frame: UITabBarController, UITabBarControllerDelegate {
     private func collection(_ collection: Playlist, onTab tab: Int) {
         let screen = UIHostingController(rootView: CollectionScreen(collection: collection, session: session, open: { [weak self] card in self?.show(card, onTab: tab) }))
         screen.title = collection.name
+        screen.navigationItem.largeTitleDisplayMode = .never
+        (viewControllers?[tab] as? UINavigationController)?.pushViewController(screen, animated: true)
+    }
+
+    private func people() {
+        let model = PeopleBrowser(session: session)
+        let screen = PeopleController(model: model) { [weak self] person in
+            self?.person(id: person.id, name: person.name, photo: person.photo, onTab: 4)
+        }
+        screen.navigationItem.largeTitleDisplayMode = .always
+        (viewControllers?.last as? UINavigationController)?.pushViewController(screen, animated: true)
+    }
+
+    private func person(id: String, name: String, photo: URL?, onTab tab: Int) {
+        let screen = UIHostingController(rootView: PersonScreen(id: id, name: name, photo: photo, session: session, open: { [weak self] card in self?.show(card, onTab: tab) }))
+        screen.title = name
+        screen.navigationItem.largeTitleDisplayMode = .never
+        (viewControllers?[tab] as? UINavigationController)?.pushViewController(screen, animated: true)
+    }
+
+    private func genres() {
+        let screen = UIHostingController(rootView: GenresScreen(session: session, open: { [weak self] name in self?.genre(name, onTab: 4) }))
+        screen.title = "Genres"
+        screen.navigationItem.largeTitleDisplayMode = .always
+        (viewControllers?.last as? UINavigationController)?.pushViewController(screen, animated: true)
+    }
+
+    private func genre(_ name: String, onTab tab: Int) {
+        let screen = UIHostingController(rootView: GenreScreen(name: name, session: session, open: { [weak self] card in self?.show(card, onTab: tab) }))
+        screen.title = name
         screen.navigationItem.largeTitleDisplayMode = .never
         (viewControllers?[tab] as? UINavigationController)?.pushViewController(screen, animated: true)
     }

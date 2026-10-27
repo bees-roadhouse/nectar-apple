@@ -1,0 +1,86 @@
+import Foundation
+import Observation
+
+/// A directory search owns its generation: a late old page cannot replace a newer query.
+@MainActor
+@Observable
+public final class PeopleBrowser {
+    public let session: NectarSession
+    public var query = ""
+    public private(set) var people: [Person] = []
+    public private(set) var total = 0
+    public private(set) var loading = false
+    public private(set) var loaded = false
+    public private(set) var failed = false
+    public private(set) var more = true
+    /// Whether the failed request was a pull to refresh, so Retry asks for the first page again.
+    public private(set) var failedRefresh = false
+    /// A pull to refresh in flight over rows already shown: the pulled spinner is its indicator, so no placeholders.
+    public private(set) var refreshing = false
+    private var offset = 0
+    private var generation = 0
+    private var requestedQuery = ""
+    private var seen: Set<String> = []
+
+    public init(session: NectarSession) { self.session = session }
+
+    /// Re-entering a retained directory keeps its pages; refresh and Retry explicitly use search().
+    public func start() async {
+        let normalized = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard normalized != requestedQuery || generation == 0 || !loaded && !loading && !failed else { return }
+        await search()
+    }
+
+    public func search(debounce: Bool = true) async {
+        generation += 1
+        let request = generation
+        requestedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        people = []; seen = []; total = 0; offset = 0; more = true; loaded = false; failed = false; loading = false
+        if debounce && !requestedQuery.isEmpty {
+            do { try await Task.sleep(for: .milliseconds(300)) }
+            catch { return }
+        }
+        guard request == generation, !Task.isCancelled else { return }
+        await page(generation: request)
+    }
+
+    /// Pull to refresh: the rows stay until the new first page lands, and a failure keeps them with Retry. Only a new
+    /// query clears the list first (`search`).
+    public func refresh() async {
+        generation += 1
+        let request = generation
+        requestedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        loading = false
+        await page(generation: request, replacing: true)
+    }
+
+    public func loadMore() async {
+        guard more, !loading else { return }
+        await page(generation: generation)
+    }
+
+    private func page(generation request: Int, replacing: Bool = false) async {
+        guard !loading else { return }
+        loading = true; failed = false; failedRefresh = false
+        let startOffset = replacing ? 0 : offset
+        refreshing = replacing && loaded
+        let search = requestedQuery
+        defer { if request == generation { loading = false; refreshing = false } }
+        do {
+            let page = try await session.people(search: search, offset: startOffset)
+            guard request == generation, search == query.trimmingCharacters(in: .whitespacesAndNewlines), !Task.isCancelled else { return }
+            if replacing {
+                people = page.people
+                seen = Set(page.people.map(\.id))
+            } else {
+                people += page.people.filter { seen.insert($0.id).inserted }
+            }
+            offset = startOffset + page.people.count; total = page.total; loaded = true
+            more = !page.people.isEmpty && offset < page.total
+        } catch {
+            guard request == generation, search == query.trimmingCharacters(in: .whitespacesAndNewlines), !Task.isCancelled else { return }
+            failed = true; failedRefresh = replacing
+        }
+    }
+}
+

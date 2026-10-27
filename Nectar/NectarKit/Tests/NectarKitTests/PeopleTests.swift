@@ -34,6 +34,35 @@ private func session(_ transport: Server) -> NectarSession {
 @Suite("People and collections")
 struct PeopleTests {
 
+    @Test func aPeoplePagePreservesCreditsAndEncodesTheSearchOnce() async throws {
+        let server = Server(["/api/v1/people": #"""
+        {"people":[{"id":"p2","name":"Élodie A/B & Co","profile_image_url":"/config/people/p2.jpg","credit_count":"9"},
+                   {"id":"p1","name":"Amy Adams","profile_image_url":"https://image.tmdb.org/p1.jpg","credit_count":2}],"total":"81"}
+        """#])
+        let page = try await session(server).people(search: "  Élodie A/B & Co  ", offset: 60)
+        #expect(page.people.map(\.id) == ["p2", "p1"])
+        #expect(page.total == 81 && page.people[0].creditCount == 9)
+        #expect(page.people[0].photo == nil)
+        #expect(page.people[1].photo?.absoluteString == "https://image.tmdb.org/p1.jpg")
+        let request = try #require(await server.requests.first)
+        let query = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        #expect(query.first(where: { $0.name == "search" })?.value == "Élodie A/B & Co")
+        #expect(query.first(where: { $0.name == "offset" })?.value == "60")
+        #expect(query.first(where: { $0.name == "limit" })?.value == "60")
+    }
+
+    @Test func aGenreWithSlashAmpersandAndAccentIsEncodedOnce() async throws {
+        let server = Server(["/api/v1/media": #"{"items":[],"total":0}"#])
+        var request = LibraryQuery(library: nil)
+        request.genre = "R&B / Cinéma"
+        request.offset = 60
+        _ = try await session(server).media(request)
+        let sent = try #require(await server.requests.first)
+        let query = URLComponents(url: sent.url!, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        #expect(query.first(where: { $0.name == "genre" })?.value == "R&B / Cinéma")
+        #expect(query.first(where: { $0.name == "offset" })?.value == "60")
+    }
+
     /// nectar#376 slice 2: a filmography poster's hash reaches the card a credit opens as.
     @Test func aCreditsCardCarriesItsPostersPreview() async throws {
         let server = Server(["/api/v1/people/a1": #"""
@@ -72,5 +101,20 @@ struct PeopleTests {
         let collections = try await session(server).collections(kind: "collection")
         #expect(await server.requests.first?.url?.query == "kind=collection")
         #expect(collections.map(\.name) == ["Marvel"] && collections[0].itemCount == 23)
+    }
+
+    /// Palp's note on #181: URLComponents leaves "+" bare in a query, and nectar reads a bare "+" as a space.
+    @Test func aPlusInASearchOrGenreReachesTheServerAsAPlus() async throws {
+        let server = Server(["/api/v1/people": #"{"people":[],"total":0}"#, "/api/v1/media": #"{"items":[],"total":0}"#])
+        _ = try await session(server).people(search: "C++ & A+B")
+        var request = LibraryQuery(library: nil)
+        request.genre = "Rock+Roll"
+        _ = try await session(server).media(request)
+        let sent = await server.requests
+        let people = try #require(sent.first?.url?.query)
+        let media = try #require(sent.last?.url?.query)
+        #expect(people.contains("search=C%2B%2B%20%26%20A%2BB"), "people query: \(people)")
+        #expect(media.contains("genre=Rock%2BRoll"), "media query: \(media)")
+        #expect(!people.contains("+") && !media.contains("+"))
     }
 }

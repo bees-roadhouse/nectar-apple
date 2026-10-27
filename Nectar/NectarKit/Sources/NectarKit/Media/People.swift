@@ -75,7 +75,31 @@ private struct PersonPage: Decodable {
     let filmography: [Film]
 }
 
+/// One server-ordered directory page. Credit counts are global credits, not scoped title counts.
+public struct PeoplePage: Decodable, Sendable {
+    public let people: [Person]
+    public let total: Int
+
+    private enum CodingKeys: String, CodingKey { case people, total }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        people = try c.decode([PersonPage.Row].self, forKey: .people).map { row in
+            let photo = row.profileImageURL.flatMap(URL.init(string:)).flatMap { $0.scheme?.hasPrefix("http") == true ? $0 : nil }
+            return Person(id: row.id, name: row.name, photo: photo, creditCount: row.creditCount ?? 0)
+        }
+        total = c.lenientInt(.total) ?? people.count
+    }
+}
+
 extension NectarSession {
+
+    public func people(search: String = "", offset: Int = 0) async throws -> PeoplePage {
+        let search = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        var query = [URLQueryItem(name: "limit", value: "60"), URLQueryItem(name: "offset", value: String(max(0, offset)))]
+        if !search.isEmpty { query.append(URLQueryItem(name: "search", value: search)) }
+        return try JSONDecoder().decode(PeoplePage.self, from: try await get("api/v1/people", query: query))
+    }
 
     public func person(_ id: String) async throws -> PersonDetail {
         let page = try JSONDecoder().decode(PersonPage.self, from: try await get("api/v1/people/\(id)"))

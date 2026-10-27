@@ -10,6 +10,7 @@
 		078195A399FAAE08482E61FC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F850BC6F6427ACAE1D20FB25 /* Assets.xcassets */; };
 		1EFCA8CCB1BAC77A50E9199C /* CollectionScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DC8A3FF82530ECC8DAD8082 /* CollectionScreen.swift */; };
 		28C20CF4553A617E3493C536 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5AD0197CBA1A6EF00423524 /* SignInView.swift */; };
+		2BEB0E1753F4604E9BAD1D6B /* CatalogGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = C76BA1B2CD166B0945C355AF /* CatalogGrid.swift */; };
 		31F73B368799C78ED837BABF /* SearchModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F5442AF9EAA8F6E443A0BD /* SearchModel.swift */; };
 		3512BA11EB2A9151CAFD5523 /* PlayerModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61933CF38892D13352BED014 /* PlayerModel.swift */; };
 		38BA0AD720DD08DF32374CA3 /* WebAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B5F77FD74E60A02A0F31D67 /* WebAuth.swift */; };
@@ -33,6 +34,7 @@
 		A1ED6336F6ECC4E9D8F943AB /* CardStatusViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64CBB980A399CACD745B6DBF /* CardStatusViews.swift */; };
 		ABE3FDF15F818C54FB9AB5CB /* CachedImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CDEBAA3D531D83289CF74E4 /* CachedImage.swift */; };
 		AC259CC2BFA73CF775AA8E24 /* PlaylistsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5DEFCB63087E904E0789592 /* PlaylistsScreen.swift */; };
+		AF147576848B75FD883D6F14 /* GenreScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93A7E63955474B90BEFB70BF /* GenreScreens.swift */; };
 		B20E907E04B9CBC580503FB9 /* Playback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CF0F9B84D9B6BACA92F2B3A /* Playback.swift */; };
 		B41387E78E1C988938E787FD /* LibraryScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C505CAD4BD5A7ED5DDFBC9B /* LibraryScreen.swift */; };
 		B547AF30CD8D5C58C8F7C00F /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FD752F54E662AF45E56C4603 /* WebKit.framework */; };
@@ -41,6 +43,7 @@
 		C2913725FF836BA69C49B42A /* ItemDetailModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C299E22052A0EE39B61A7B55 /* ItemDetailModel.swift */; };
 		C697B75FBB7E4698FB357E64 /* DiscoverScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF6D25A4A11EB94825ADB58F /* DiscoverScreen.swift */; };
 		C7C05639177F09B8D33519E5 /* TitleCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3470885CB9602C46D7CD6FF /* TitleCatalog.swift */; };
+		CA2C0C1B202C10B96CC6B594 /* PeopleScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = EECC0CC7D69917D2879F42A4 /* PeopleScreens.swift */; };
 		E6BE14FD78F0235D1CAB0B90 /* LibrarySearchModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D71B495270536E69BE0651AA /* LibrarySearchModel.swift */; };
 		E7BF8DC19EC821F25A0A69E7 /* TitleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6BBDDB2ECAD156B36B2E653 /* TitleScreen.swift */; };
 		F08B7390C6306F099382E126 /* AccountModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B363A26BE53478C0AD1AB6BF /* AccountModel.swift */; };
@@ -69,6 +72,7 @@
 		88AC49082808E5A727E9706D /* ServerModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerModel.swift; sourceTree = "<group>"; };
 		8CF0F9B84D9B6BACA92F2B3A /* Playback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Playback.swift; sourceTree = "<group>"; };
 		8DC8A3FF82530ECC8DAD8082 /* CollectionScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionScreen.swift; sourceTree = "<group>"; };
+		93A7E63955474B90BEFB70BF /* GenreScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenreScreens.swift; sourceTree = "<group>"; };
 		9582523E87CD751B06558316 /* PlaylistAdding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistAdding.swift; sourceTree = "<group>"; };
 		9C505CAD4BD5A7ED5DDFBC9B /* LibraryScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryScreen.swift; sourceTree = "<group>"; };
 		A5DEFCB63087E904E0789592 /* PlaylistsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistsScreen.swift; sourceTree = "<group>"; };
@@ -83,12 +87,14 @@
 		C19EEAEF5402B7F83F6E48DC /* NectarPhoneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NectarPhoneApp.swift; sourceTree = "<group>"; };
 		C299E22052A0EE39B61A7B55 /* ItemDetailModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemDetailModel.swift; sourceTree = "<group>"; };
 		C3470885CB9602C46D7CD6FF /* TitleCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TitleCatalog.swift; sourceTree = "<group>"; };
+		C76BA1B2CD166B0945C355AF /* CatalogGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogGrid.swift; sourceTree = "<group>"; };
 		D5290B2E341E1B3899B6054F /* DiscoverState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverState.swift; sourceTree = "<group>"; };
 		D71B495270536E69BE0651AA /* LibrarySearchModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibrarySearchModel.swift; sourceTree = "<group>"; };
 		D84E692AE9CB9E7311B65B44 /* HomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreen.swift; sourceTree = "<group>"; };
 		DE4EE47DB464A9FC9C7C16A8 /* DiscoverModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverModel.swift; sourceTree = "<group>"; };
 		E56AB1FEB721B958598AC244 /* SearchScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchScreen.swift; sourceTree = "<group>"; };
 		E5B71018F923FFAE3EF75008 /* NectarKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NectarKit; path = ../NectarKit; sourceTree = SOURCE_ROOT; };
+		EECC0CC7D69917D2879F42A4 /* PeopleScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeopleScreens.swift; sourceTree = "<group>"; };
 		F5AD0197CBA1A6EF00423524 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
 		F77DE340F8FF8179F74596D6 /* AccountScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountScreen.swift; sourceTree = "<group>"; };
 		F789E66CE2BDCF053BBDC515 /* AuthenticationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AuthenticationServices.framework; path = System/Library/Frameworks/AuthenticationServices.framework; sourceTree = SDKROOT; };
@@ -137,13 +143,16 @@
 			children = (
 				F77DE340F8FF8179F74596D6 /* AccountScreen.swift */,
 				F850BC6F6427ACAE1D20FB25 /* Assets.xcassets */,
+				C76BA1B2CD166B0945C355AF /* CatalogGrid.swift */,
 				8DC8A3FF82530ECC8DAD8082 /* CollectionScreen.swift */,
 				AF6D25A4A11EB94825ADB58F /* DiscoverScreen.swift */,
 				4448FD47C2D58C30D3B35C4E /* Frame.swift */,
+				93A7E63955474B90BEFB70BF /* GenreScreens.swift */,
 				D84E692AE9CB9E7311B65B44 /* HomeScreen.swift */,
 				8772ECA24FFF2286A4436B72 /* Info.plist */,
 				9C505CAD4BD5A7ED5DDFBC9B /* LibraryScreen.swift */,
 				C19EEAEF5402B7F83F6E48DC /* NectarPhoneApp.swift */,
+				EECC0CC7D69917D2879F42A4 /* PeopleScreens.swift */,
 				166EB8D80371E473D2F659AB /* PhoneModel.swift */,
 				8CF0F9B84D9B6BACA92F2B3A /* Playback.swift */,
 				A5DEFCB63087E904E0789592 /* PlaylistsScreen.swift */,
@@ -283,12 +292,14 @@
 				F3C9C585422B2A05DDF29D44 /* ActivityModel.swift in Sources */,
 				ABE3FDF15F818C54FB9AB5CB /* CachedImage.swift in Sources */,
 				A1ED6336F6ECC4E9D8F943AB /* CardStatusViews.swift in Sources */,
+				2BEB0E1753F4604E9BAD1D6B /* CatalogGrid.swift in Sources */,
 				1EFCA8CCB1BAC77A50E9199C /* CollectionScreen.swift in Sources */,
 				62B32D505C01107512980B80 /* DiscoverModel.swift in Sources */,
 				C697B75FBB7E4698FB357E64 /* DiscoverScreen.swift in Sources */,
 				FAFEDE51BCB0E111A1D811DA /* DiscoverState.swift in Sources */,
 				449AFF47CF83E92D6138E5C1 /* Durations.swift in Sources */,
 				6F0B556DB143EDFCAB888695 /* Frame.swift in Sources */,
+				AF147576848B75FD883D6F14 /* GenreScreens.swift in Sources */,
 				FB0AA563A0BBF12296E74CEB /* HomeModel.swift in Sources */,
 				BC11E64DB66FD6CDA3EC1406 /* HomeScreen.swift in Sources */,
 				C2913725FF836BA69C49B42A /* ItemDetailModel.swift in Sources */,
@@ -296,6 +307,7 @@
 				B41387E78E1C988938E787FD /* LibraryScreen.swift in Sources */,
 				E6BE14FD78F0235D1CAB0B90 /* LibrarySearchModel.swift in Sources */,
 				6CC5DFA4EB3535F03F62BDB7 /* NectarPhoneApp.swift in Sources */,
+				CA2C0C1B202C10B96CC6B594 /* PeopleScreens.swift in Sources */,
 				3C5DC5C84AA068DEA1EF6151 /* PhoneModel.swift in Sources */,
 				5454F923B960AFFD0F858F1B /* PlayQueue.swift in Sources */,
 				B20E907E04B9CBC580503FB9 /* Playback.swift in Sources */,
