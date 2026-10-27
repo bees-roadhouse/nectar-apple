@@ -1,0 +1,91 @@
+# nectar-apple's CI on GitLab (nectar-apple #184), ported from .github/workflows/nectar-tv.yml and ipad.yml.
+# ci.yml (upstream Swiftfin's build) and testflight.yml stay on GitHub: they are not ours to run.
+#
+#   merge request   both jobs, when the files they cover changed
+#   push to main    the same
+#
+# Both jobs run on the Mac's macOS lane (`roadhouse-macos`: a fresh Tart VM per job, macOS Tahoe 26.6.2 with
+# Xcode 26.5, from the cirruslabs image below, fenced off the LAN), one at a time. They build unsigned: CI proves the code compiles and the tests
+# pass; signing is the Apple TV's and the phone's, with Nate's personal team, and happens on the MacBook.
+# No secrets are used here.
+
+workflow:
+  # A new push to the same merge request cancels the run it supersedes.
+  auto_cancel:
+    on_new_commit: interruptible
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "api"
+
+default:
+  image: ghcr.io/cirruslabs/macos-tahoe-xcode:26.5
+  tags: [roadhouse-macos]
+  interruptible: true
+  # Each job is a fresh VM, so SwiftPM resolves Swiftfin's packages from nothing every time: 45 minutes for the first
+  # runs. We measure, then decide whether a SourcePackages cache is worth it.
+  timeout: 45 minutes
+
+stages: [test]
+
+.tv-paths: &tv-paths
+  - "Nectar/**/*"
+  - "Shared/Objects/MediaPlayerManager/SubtitleRenditionMatcher.swift"
+  - ".gitlab-ci.yml"
+
+# The Nectar TV app, the iPhone app (which compiles the TV's models) and their shared package.
+nectar-tv:
+  stage: test
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes: *tv-paths
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes: *tv-paths
+    - if: $CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "api"
+  script:
+    - xcodebuild -version
+    - swift --version
+    - xcodebuild -showsdks | grep -i tvos || true
+    # `swift test` prints "Test run with N tests": a harness that found nothing shows as a small N.
+    - (cd Nectar/NectarKit && swift test)
+    - (cd Nectar/SwiftfinForkTests && swift test)
+    # Unsigned: CI only proves it compiles.
+    - |
+      xcodebuild build \
+        -project Nectar/Nectar.xcodeproj \
+        -scheme NectarTV \
+        -destination 'generic/platform=tvOS Simulator' \
+        -derivedDataPath "$CI_PROJECT_DIR/dd/tv" \
+        -skipMacroValidation -skipPackagePluginValidation \
+        CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM=""
+    # The iPhone and iPad app shares the TV's models, so a change to either has to build both.
+    - |
+      xcodebuild build \
+        -project Nectar/iPhone/NectarPhone.xcodeproj \
+        -scheme Nectar \
+        -destination 'generic/platform=iOS Simulator' \
+        -derivedDataPath "$CI_PROJECT_DIR/dd/ios" \
+        -skipMacroValidation -skipPackagePluginValidation \
+        CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM=""
+  after_script:
+    - rm -rf "$CI_PROJECT_DIR/dd"
+
+# The iPad shell, a Tauri 2 app around nectar's own web client: its Rust tests. The iOS build itself is checked on
+# the MacBook's simulator for now.
+ipad:
+  stage: test
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes: ["iPad/**/*", ".gitlab-ci.yml"]
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes: ["iPad/**/*", ".gitlab-ci.yml"]
+    - if: $CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "api"
+  script:
+    # The lane is a fresh VM per job; install Rust if its image hasn't.
+    - |
+      if ! command -v cargo >/dev/null; then
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+        export PATH="$HOME/.cargo/bin:$PATH"
+      fi
+    - cargo --version
+    - (cd iPad/src-tauri && cargo test --lib)
