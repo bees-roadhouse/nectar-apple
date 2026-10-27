@@ -2,6 +2,7 @@ import AVFoundation
 import Foundation
 import NectarKit
 import OSLog
+import UIKit
 import VideoToolbox
 
 /// What playback did, for checking on a device: never a URL, so never the token in it.
@@ -54,6 +55,9 @@ final class PlayerModel: Identifiable {
     private var fellBack = false
     /// The rendition to select once the stream is ready: the person's default, or the AVKit track picked while burned.
     private var pendingRendition: String?
+    /// The pending rendition is the person's default, not a track they picked: a forced-only one gives way to the
+    /// full track in its language (#187).
+    private var pendingIsDefault = false
     private var selectionObserver: NSObjectProtocol?
     /// Called when the title plays to its end; a playlist moves on to the next.
     var finished: (() -> Void)?
@@ -471,6 +475,7 @@ final class PlayerModel: Identifiable {
             return decision
         case let .rendition(track):
             pendingRendition = track.label
+            pendingIsDefault = true
             log.info("subtitles: the default is the rendition \(track.label, privacy: .public)")
             return decision
         case let .unavailable(unavailable):
@@ -522,10 +527,18 @@ final class PlayerModel: Identifiable {
         }
         guard let name = pendingRendition else { return }
         pendingRendition = nil
+        let isDefault = pendingIsDefault
+        pendingIsDefault = false
         let wanted = subtitles.first { $0.label == name } ?? SubtitleTrack(id: name, kind: .other("chosen"), label: name)
-        guard let index = wanted.option(among: options) else {
+        guard var index = wanted.option(among: options) else {
             log.info("subtitles: no rendition matches \(name, privacy: .public)")
             return
+        }
+        // A forced-only track shows only the lines spoken in another language; with subtitles on, the viewer wants
+        // the full one (#187).
+        if isDefault, let full = SubtitleOption.fullTrack(replacing: index, among: options, prefersSDH: UIAccessibility.isClosedCaptioningEnabled) {
+            log.info("subtitles: \(options[index].name, privacy: .public) is forced-only, so the full track \(options[full].name, privacy: .public) instead")
+            index = full
         }
         item.select(group.options[index], in: group)
         log.info("subtitles: selected \(options[index].name, privacy: .public)")
