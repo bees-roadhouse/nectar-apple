@@ -2,6 +2,7 @@ import AVFoundation
 import Foundation
 import NectarKit
 import OSLog
+import UIKit
 import VideoToolbox
 
 /// What playback did, for checking on a device: never a URL, so never the token in it.
@@ -53,7 +54,10 @@ final class PlayerModel: Identifiable {
     /// A burned start that never showed a frame has fallen back to the unburned stream; a second failure is final.
     private var fellBack = false
     /// The rendition to select once the stream is ready: the person's default, or the AVKit track picked while burned.
-    private var pendingRendition: String?
+    /// The rendition to select once the stream is ready, and whether it is the person's default (a forced-only
+    /// default gives way to the full track in its language, #187) or a track they picked, which is left alone. One
+    /// value, so a later pick can never inherit an earlier default's flag.
+    private var pendingRendition: (name: String, isDefault: Bool)?
     private var selectionObserver: NSObjectProtocol?
     /// Called when the title plays to its end; a playlist moves on to the next.
     var finished: (() -> Void)?
@@ -470,7 +474,7 @@ final class PlayerModel: Identifiable {
             log.info("subtitles: nectar burned the default \(track.label, privacy: .public) from the first frame")
             return decision
         case let .rendition(track):
-            pendingRendition = track.label
+            pendingRendition = (track.label, isDefault: true)
             log.info("subtitles: the default is the rendition \(track.label, privacy: .public)")
             return decision
         case let .unavailable(unavailable):
@@ -520,12 +524,18 @@ final class PlayerModel: Identifiable {
             if group.allowsEmptySelection { item.select(nil, in: group) }
             return
         }
-        guard let name = pendingRendition else { return }
+        guard let (name, isDefault) = pendingRendition else { return }
         pendingRendition = nil
         let wanted = subtitles.first { $0.label == name } ?? SubtitleTrack(id: name, kind: .other("chosen"), label: name)
-        guard let index = wanted.option(among: options) else {
+        guard var index = wanted.option(among: options) else {
             log.info("subtitles: no rendition matches \(name, privacy: .public)")
             return
+        }
+        // A forced-only track shows only the lines spoken in another language; with subtitles on, the viewer wants
+        // the full one (#187).
+        if isDefault, let full = SubtitleOption.fullTrack(replacing: index, among: options, prefersSDH: UIAccessibility.isClosedCaptioningEnabled) {
+            log.info("subtitles: \(options[index].name, privacy: .public) is forced-only, so the full track \(options[full].name, privacy: .public) instead")
+            index = full
         }
         item.select(group.options[index], in: group)
         log.info("subtitles: selected \(options[index].name, privacy: .public)")
@@ -579,7 +589,7 @@ final class PlayerModel: Identifiable {
         await player.seek(to: CMTime(seconds: decision.seek(toResumeAt: at), preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
         tearDown(old)
         burned = track
-        pendingRendition = rendition
+        pendingRendition = rendition.map { ($0, isDefault: false) }
         observe(player, decision)
         phase = .playing(player, decision)
         if play { player.play() }

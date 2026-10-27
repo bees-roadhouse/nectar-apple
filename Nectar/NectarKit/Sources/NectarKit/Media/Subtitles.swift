@@ -99,6 +99,44 @@ public struct SubtitleOption: Equatable, Sendable {
     }
 }
 
+extension SubtitleOption {
+
+    /// The track to show instead when the default is forced-only (#187). A forced track carries only the lines
+    /// spoken in another language, so with subtitles on it shows almost nothing; the full track in the same language
+    /// is what the viewer asked for. Plain over SDH unless the viewer prefers SDH, text over image-based renditions,
+    /// and AVKit's order breaks a tie. Nil when the default isn't forced-only, or no full track exists in its
+    /// language (the forced one then stays, which is what it is for).
+    public static func fullTrack(replacing index: Int, among options: [SubtitleOption], prefersSDH: Bool) -> Int? {
+        guard options.indices.contains(index), options[index].isForcedOnly else { return nil }
+        let language = baseLanguage(options[index].language)
+        let candidates = options.indices.filter { candidate in
+            let option = options[candidate]
+            return !option.isForcedOnly && baseLanguage(option.language) == language && language != nil
+        }
+        return candidates.min { lhs, rhs in
+            let l = options[lhs].rank(prefersSDH: prefersSDH), r = options[rhs].rank(prefersSDH: prefersSDH)
+            return l == r ? lhs < rhs : l < r
+        }
+    }
+
+    /// nectar flags a forced PGS rendition with the characteristic and names a forced SRT one "(forced SRT)" without.
+    private var isForcedOnly: Bool {
+        forced || name.lowercased().contains("forced")
+    }
+
+    /// Lower is better: matching the viewer's SDH choice first, then text before image.
+    private func rank(prefersSDH: Bool) -> (Int, Int) {
+        let text = name.lowercased()
+        let sdh = text.contains("sdh") || text.contains("hearing")
+        let image = ["pgs", "vobsub", "dvd", "bitmap"].contains { text.contains($0) }
+        return (sdh == prefersSDH ? 0 : 1, image ? 1 : 0)
+    }
+
+    private static func baseLanguage(_ tag: String?) -> String? {
+        tag.flatMap(SubtitleTrack.baseLanguage)
+    }
+}
+
 extension SubtitleTrack {
 
     /// This track's rendition among AVKit's options: the same name first (nectar names a rendition after its
