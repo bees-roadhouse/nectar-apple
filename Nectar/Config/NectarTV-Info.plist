@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<!-- Merged with the generated Info.plist: what the build settings can't say. -->
-	<!-- nectar://item/{id} and nectar://play/{id}: the Top Shelf's tiles (#74), Siri (#77) and Play on TV open these. -->
+	<!-- nectar://item/{id} and nectar://play/{id}, what the Top Shelf's tiles open (#74). -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -15,5 +15,8 @@
 			</array>
 		</dict>
 	</array>
+	<!-- The keychain group the app shares with its Top Shelf extension; the team prefix is filled in at build time. -->
+	<key>NectarSharedKeychainGroup</key>
+	<string>$(AppIdentifierPrefix)com.beesroadhouse.nectar.shared</string>
 </dict>
 </plist>

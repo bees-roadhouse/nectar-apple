@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The app's own group first: it stays the default, so the sign-in tokens stay where they are and
+	     the extension can't read them. The shared group holds only the Top Shelf feed (#74). -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.beesroadhouse.nectar.tv</string>
+		<string>$(AppIdentifierPrefix)com.beesroadhouse.nectar.shared</string>
+	</array>
+</dict>
+</plist>
