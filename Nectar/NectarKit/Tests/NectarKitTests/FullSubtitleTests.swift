@@ -62,4 +62,25 @@ struct FullSubtitleTests {
         ]
         #expect(SubtitleOption.fullTrack(replacing: 0, among: options, prefersSDH: false) == 1)
     }
+
+    /// The viewer's SDH choice outranks text over image: someone who asked for SDH gets the SDH track even as an image.
+    @Test func anSDHViewerPrefersSDHOverPlainTextWhenOnlyTheSDHOneIsAnImage() {
+        let options = [
+            SubtitleOption(name: "English (forced PGS)", language: "eng", forced: true),
+            SubtitleOption(name: "English (SRT)", language: "eng", forced: false),
+            SubtitleOption(name: "English (SDH PGS (original))", language: "eng", forced: false),
+        ]
+        #expect(SubtitleOption.fullTrack(replacing: 0, among: options, prefersSDH: true) == 2)
+        #expect(SubtitleOption.fullTrack(replacing: 0, among: options, prefersSDH: false) == 1)
+    }
+
+    /// Equal tracks: AVKit's order decides, the earlier one.
+    @Test func equalTracksKeepAVKitsOrder() {
+        let options = [
+            SubtitleOption(name: "English (forced PGS)", language: "eng", forced: true),
+            SubtitleOption(name: "English (SRT)", language: "eng", forced: false),
+            SubtitleOption(name: "English (SRT, from the sidecar)", language: "eng", forced: false),
+        ]
+        #expect(SubtitleOption.fullTrack(replacing: 0, among: options, prefersSDH: false) == 1)
+    }
 }

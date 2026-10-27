@@ -54,10 +54,10 @@ final class PlayerModel: Identifiable {
     /// A burned start that never showed a frame has fallen back to the unburned stream; a second failure is final.
     private var fellBack = false
     /// The rendition to select once the stream is ready: the person's default, or the AVKit track picked while burned.
-    private var pendingRendition: String?
-    /// The pending rendition is the person's default, not a track they picked: a forced-only one gives way to the
-    /// full track in its language (#187).
-    private var pendingIsDefault = false
+    /// The rendition to select once the stream is ready, and whether it is the person's default (a forced-only
+    /// default gives way to the full track in its language, #187) or a track they picked, which is left alone. One
+    /// value, so a later pick can never inherit an earlier default's flag.
+    private var pendingRendition: (name: String, isDefault: Bool)?
     private var selectionObserver: NSObjectProtocol?
     /// Called when the title plays to its end; a playlist moves on to the next.
     var finished: (() -> Void)?
@@ -474,8 +474,7 @@ final class PlayerModel: Identifiable {
             log.info("subtitles: nectar burned the default \(track.label, privacy: .public) from the first frame")
             return decision
         case let .rendition(track):
-            pendingRendition = track.label
-            pendingIsDefault = true
+            pendingRendition = (track.label, isDefault: true)
             log.info("subtitles: the default is the rendition \(track.label, privacy: .public)")
             return decision
         case let .unavailable(unavailable):
@@ -525,10 +524,8 @@ final class PlayerModel: Identifiable {
             if group.allowsEmptySelection { item.select(nil, in: group) }
             return
         }
-        guard let name = pendingRendition else { return }
+        guard let (name, isDefault) = pendingRendition else { return }
         pendingRendition = nil
-        let isDefault = pendingIsDefault
-        pendingIsDefault = false
         let wanted = subtitles.first { $0.label == name } ?? SubtitleTrack(id: name, kind: .other("chosen"), label: name)
         guard var index = wanted.option(among: options) else {
             log.info("subtitles: no rendition matches \(name, privacy: .public)")
@@ -592,7 +589,7 @@ final class PlayerModel: Identifiable {
         await player.seek(to: CMTime(seconds: decision.seek(toResumeAt: at), preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
         tearDown(old)
         burned = track
-        pendingRendition = rendition
+        pendingRendition = rendition.map { ($0, isDefault: false) }
         observe(player, decision)
         phase = .playing(player, decision)
         if play { player.play() }
